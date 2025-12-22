@@ -100,7 +100,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
     </section>
 
     <!-- Features Section -->
-    <section class="py-24 relative overflow-hidden bg-cafe-cream">
+    <section class="py-24 relative overflow-hidden bg-cafe-cream/70">
       <!-- Wood Wave Top -->
       <div class="absolute top-0 left-0 right-0 h-16 overflow-hidden transform rotate-180">
         <svg viewBox="0 0 1440 60" class="w-full h-full" preserveAspectRatio="none">
@@ -156,7 +156,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
     </section>
 
     <!-- Characters Section -->
-    <section class="py-20 bg-cafe-ivory">
+    <section class="py-20 bg-cafe-ivory/60">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div>
@@ -185,7 +185,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
     </section>
 
     <!-- Featured Courses Section -->
-    <section class="py-24 bg-cafe-cream relative overflow-hidden">
+    <section class="py-24 bg-cafe-cream/70 relative overflow-hidden">
       <div class="absolute top-0 right-0 w-96 h-96 bg-nature-mint rounded-full opacity-20 blur-3xl"></div>
       
       <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -236,7 +236,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
     </section>
 
     <!-- How It Works Section -->
-    <section class="py-24 bg-cafe-ivory relative overflow-hidden">
+    <section class="py-24 bg-cafe-ivory/60 relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <span class="inline-flex items-center bg-nature-sage/50 text-nature-forest font-medium px-4 py-2 rounded-full text-sm mb-4">
@@ -285,7 +285,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
     </section>
 
     <!-- Blog Section -->
-    <section class="py-24 bg-cafe-cream">
+    <section class="py-24 bg-cafe-cream/70">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col md:flex-row justify-between items-center mb-12">
           <div class="text-center md:text-left mb-6 md:mb-0">
