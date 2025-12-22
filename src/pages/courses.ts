@@ -44,10 +44,10 @@ export const renderCoursesPage = (courses: Course[]) => {
           <!-- Row 1: Search + Categories -->
           <div class="flex items-center gap-4 mb-3">
             <!-- Search Bar -->
-            <div class="relative w-72 flex-shrink-0">
+            <div class="relative w-80 flex-shrink-0">
               <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-future-textLight"></i>
               <input type="text" id="search-input" 
-                class="w-full pl-11 pr-10 py-2.5 border border-future-sky rounded-xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light text-sm"
+                class="w-full pl-11 pr-10 py-2.5 border border-future-sky rounded-xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light"
                 placeholder="講座名で検索...">
               <button id="search-clear" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-future-textLight hover:text-future-text hidden">
                 <i class="fas fa-times"></i>
@@ -55,34 +55,34 @@ export const renderCoursesPage = (courses: Course[]) => {
             </div>
 
             <!-- Category Filter - Inline -->
-            <div class="flex items-center gap-2 flex-wrap" id="category-filters">
-              <span class="text-future-textLight text-sm font-medium">カテゴリ:</span>
-              <button class="filter-btn category-btn active gradient-ai text-white px-4 py-1.5 rounded-full text-sm font-medium transition-all shadow-sm" data-category="all">すべて</button>
-              <button class="filter-btn category-btn glass text-future-text px-4 py-1.5 rounded-full text-sm font-medium hover:bg-ai-cyan/10 transition-all" data-category="AI基礎">AI基礎</button>
-              <button class="filter-btn category-btn glass text-future-text px-4 py-1.5 rounded-full text-sm font-medium hover:bg-ai-blue/10 transition-all" data-category="プログラミング">プログラミング</button>
-              <button class="filter-btn category-btn glass text-future-text px-4 py-1.5 rounded-full text-sm font-medium hover:bg-ai-purple/10 transition-all" data-category="データ分析">データ分析</button>
-              <button class="filter-btn category-btn glass text-future-text px-4 py-1.5 rounded-full text-sm font-medium hover:bg-ai-pink/10 transition-all" data-category="資格対策">資格対策</button>
-              <button class="filter-btn category-btn glass text-future-text px-4 py-1.5 rounded-full text-sm font-medium hover:bg-nature-forest/10 transition-all" data-category="教育者向け">教育者向け</button>
+            <div class="flex items-center gap-3 flex-wrap" id="category-filters">
+              <span class="text-future-textLight font-medium">カテゴリ:</span>
+              <button class="filter-btn category-btn active gradient-ai text-white px-5 py-2 rounded-full font-medium transition-all shadow-sm" data-category="all">すべて</button>
+              <button class="filter-btn category-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-ai-cyan/10 transition-all" data-category="AI基礎">AI基礎</button>
+              <button class="filter-btn category-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-ai-blue/10 transition-all" data-category="プログラミング">プログラミング</button>
+              <button class="filter-btn category-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-ai-purple/10 transition-all" data-category="データ分析">データ分析</button>
+              <button class="filter-btn category-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-ai-pink/10 transition-all" data-category="資格対策">資格対策</button>
+              <button class="filter-btn category-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-nature-forest/10 transition-all" data-category="教育者向け">教育者向け</button>
             </div>
           </div>
 
           <!-- Row 2: Price + Sort + Results -->
           <div class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-5">
+            <div class="flex items-center gap-6">
               <!-- Price Filter - Inline -->
-              <div class="flex items-center gap-2" id="price-filters">
-                <span class="text-future-textLight text-sm font-medium">価格:</span>
-                <button class="filter-btn price-btn active gradient-ai text-white px-4 py-1.5 rounded-full text-sm font-medium transition-all shadow-sm" data-price="all">すべて</button>
-                <button class="filter-btn price-btn glass text-future-text px-4 py-1.5 rounded-full text-sm font-medium hover:bg-green-500/10 transition-all" data-price="free">無料</button>
-                <button class="filter-btn price-btn glass text-future-text px-4 py-1.5 rounded-full text-sm font-medium hover:bg-ai-cyan/10 transition-all" data-price="under5000">〜5千円</button>
-                <button class="filter-btn price-btn glass text-future-text px-4 py-1.5 rounded-full text-sm font-medium hover:bg-ai-blue/10 transition-all" data-price="under10000">〜1万円</button>
-                <button class="filter-btn price-btn glass text-future-text px-4 py-1.5 rounded-full text-sm font-medium hover:bg-ai-purple/10 transition-all" data-price="over10000">1万円〜</button>
+              <div class="flex items-center gap-3" id="price-filters">
+                <span class="text-future-textLight font-medium">価格:</span>
+                <button class="filter-btn price-btn active gradient-ai text-white px-5 py-2 rounded-full font-medium transition-all shadow-sm" data-price="all">すべて</button>
+                <button class="filter-btn price-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-green-500/10 transition-all" data-price="free">無料</button>
+                <button class="filter-btn price-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-ai-cyan/10 transition-all" data-price="under5000">〜5千円</button>
+                <button class="filter-btn price-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-ai-blue/10 transition-all" data-price="under10000">〜1万円</button>
+                <button class="filter-btn price-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-ai-purple/10 transition-all" data-price="over10000">1万円〜</button>
               </div>
 
               <!-- Sort Dropdown -->
               <div class="flex items-center gap-2">
-                <span class="text-future-textLight text-sm font-medium">並び替え:</span>
-                <select id="sort-select" class="px-4 py-1.5 border border-future-sky rounded-xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light text-future-text text-sm">
+                <span class="text-future-textLight font-medium">並び替え:</span>
+                <select id="sort-select" class="px-4 py-2 border border-future-sky rounded-xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light text-future-text">
                   <option value="newest">新着順</option>
                   <option value="popular">人気順</option>
                   <option value="price-asc">安い順</option>
@@ -92,13 +92,13 @@ export const renderCoursesPage = (courses: Course[]) => {
               </div>
 
               <!-- Reset Filters -->
-              <button id="reset-filters" class="text-ai-blue text-sm font-medium hover:text-ai-purple transition-colors hidden">
+              <button id="reset-filters" class="text-ai-blue font-medium hover:text-ai-purple transition-colors hidden">
                 <i class="fas fa-redo mr-1"></i>リセット
               </button>
             </div>
 
             <!-- Results Count -->
-            <p class="text-future-textLight text-sm">
+            <p class="text-future-textLight">
               全<span class="font-bold text-future-text">${courses.length}</span>件中<span class="font-bold text-future-text" id="filtered-count">${courses.length}</span>件
             </p>
           </div>
