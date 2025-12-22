@@ -122,7 +122,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div class="card-hover bg-cafe-ivory p-8 text-center border border-cafe-beige shadow-md">
+          <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
             <div class="w-20 h-20 bg-nature-mint rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md">
               <i class="fas fa-users text-nature-forest text-2xl"></i>
             </div>
@@ -132,7 +132,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
             </p>
           </div>
           
-          <div class="card-hover bg-cafe-ivory p-8 text-center border border-cafe-beige shadow-md">
+          <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
             <div class="w-20 h-20 bg-nature-sky rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md">
               <i class="fas fa-globe text-nature-blue text-2xl"></i>
             </div>
@@ -142,7 +142,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
             </p>
           </div>
           
-          <div class="card-hover bg-cafe-ivory p-8 text-center border border-cafe-beige shadow-md">
+          <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
             <div class="w-20 h-20 bg-cafe-latte rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md">
               <i class="fas fa-award text-cafe-brown text-2xl"></i>
             </div>
@@ -203,7 +203,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
           ${featuredCourses.map((course, index) => `
-            <div class="card-hover bg-cafe-ivory overflow-hidden shadow-lg border border-cafe-beige">
+            <div class="card-hover bg-white overflow-hidden shadow-lg border border-cafe-beige">
               <div class="aspect-video relative overflow-hidden">
                 <img src="${course.image}" alt="${course.title}" class="w-full h-full object-cover hover:scale-110 transition-transform duration-700">
                 <div class="absolute inset-0 bg-gradient-to-t from-cafe-espresso/50 to-transparent"></div>
@@ -211,7 +211,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
                   <span class="bg-cafe-wood text-white text-xs font-bold px-3 py-1 rounded-full shadow">${course.level}</span>
                 </div>
                 <div class="absolute bottom-4 right-4">
-                  <span class="bg-cafe-ivory/90 text-cafe-text text-xs font-bold px-3 py-1 rounded-full">
+                  <span class="bg-white/90 text-cafe-text text-xs font-bold px-3 py-1 rounded-full">
                     <i class="fas fa-clock mr-1"></i>${course.duration}
                   </span>
                 </div>
@@ -252,7 +252,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           <div class="hidden md:block absolute top-16 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-cafe-wood via-cafe-caramel to-cafe-wood"></div>
           
           <div class="relative">
-            <div class="card-hover bg-cafe-cream p-8 text-center border border-cafe-beige shadow-md">
+            <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
               <div class="w-16 h-16 bg-cafe-wood rounded-full flex items-center justify-center mx-auto mb-6 text-white font-bold text-2xl shadow-lg relative z-10">1</div>
               <h3 class="text-xl font-bold text-cafe-text mb-3">講座を選ぶ</h3>
               <p class="text-cafe-textLight">目的やレベルに合わせて最適な講座を選択</p>
@@ -260,7 +260,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           </div>
           
           <div class="relative">
-            <div class="card-hover bg-cafe-cream p-8 text-center border border-cafe-beige shadow-md">
+            <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
               <div class="w-16 h-16 bg-cafe-wood rounded-full flex items-center justify-center mx-auto mb-6 text-white font-bold text-2xl shadow-lg relative z-10">2</div>
               <h3 class="text-xl font-bold text-cafe-text mb-3">日程を予約</h3>
               <p class="text-cafe-textLight">カレンダーから都合の良い日程を選択</p>
@@ -268,7 +268,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           </div>
           
           <div class="relative">
-            <div class="card-hover bg-cafe-cream p-8 text-center border border-cafe-beige shadow-md">
+            <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
               <div class="w-16 h-16 bg-cafe-wood rounded-full flex items-center justify-center mx-auto mb-6 text-white font-bold text-2xl shadow-lg relative z-10">3</div>
               <h3 class="text-xl font-bold text-cafe-text mb-3">決済して参加</h3>
               <p class="text-cafe-textLight">安全なStripe決済でオンライン受講</p>
@@ -301,7 +301,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
           ${recentPosts.map(post => `
-            <a href="/blog/${post.id}" class="card-hover bg-cafe-ivory overflow-hidden shadow-lg border border-cafe-beige block">
+            <a href="/blog/${post.id}" class="card-hover bg-white overflow-hidden shadow-lg border border-cafe-beige block">
               <div class="aspect-video overflow-hidden">
                 <img src="${post.image}" alt="${post.title}" class="w-full h-full object-cover hover:scale-110 transition-transform duration-700">
               </div>
