@@ -18,6 +18,14 @@ import { renderCoursesList, renderCourseForm } from './admin/courses'
 import { renderReviewsList } from './admin/reviews'
 import { renderContactsList, renderContactDetail } from './admin/contacts'
 
+// Services
+import { 
+  sendContactNotificationToAdmin,
+  sendReservationNotificationToAdmin,
+  sendReservationConfirmationToCustomer,
+  sendReviewNotificationToAdmin
+} from './services/email'
+
 // Data
 import { courses, blogPosts, schedules } from './data'
 
@@ -25,6 +33,7 @@ import { courses, blogPosts, schedules } from './data'
 type Bindings = {
   DB: D1Database
   R2_BUCKET: R2Bucket
+  RESEND_API_KEY?: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -112,6 +121,10 @@ app.post('/api/reservations', async (c) => {
     return c.json({ error: 'Missing required fields' }, 400)
   }
   
+  // 講座情報を取得
+  const course = courses.find(c => c.id === courseId)
+  const schedule = schedules.find(s => s.id === scheduleId)
+  
   const reservation = {
     id: `res_${Date.now()}`,
     courseId,
@@ -121,6 +134,30 @@ app.post('/api/reservations', async (c) => {
     phone,
     status: 'pending_payment',
     createdAt: new Date().toISOString()
+  }
+  
+  // メール通知データを準備
+  if (course && schedule) {
+    const reservationEmailData = {
+      name,
+      email,
+      phone,
+      courseName: course.title,
+      courseId: course.id,
+      scheduleDate: schedule.date,
+      scheduleTime: `${schedule.startTime} - ${schedule.endTime}`,
+      location: schedule.location,
+      price: course.price,
+      reservationId: reservation.id
+    }
+    
+    // 管理者への通知（非同期・ノンブロッキング）
+    sendReservationNotificationToAdmin(c.env, reservationEmailData)
+      .catch(err => console.error('Failed to send reservation notification to admin:', err))
+    
+    // 予約者への確認メール（非同期・ノンブロッキング）
+    sendReservationConfirmationToCustomer(c.env, reservationEmailData)
+      .catch(err => console.error('Failed to send reservation confirmation to customer:', err))
   }
   
   return c.json({ success: true, reservation })
@@ -220,6 +257,16 @@ app.post('/api/contacts', async (c) => {
       subject.trim(),
       message.trim()
     ).run()
+
+    // Send email notification to admin (non-blocking)
+    sendContactNotificationToAdmin(c.env, {
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone ? phone.trim() : undefined,
+      type: type.trim(),
+      subject: subject.trim(),
+      message: message.trim()
+    }).catch(err => console.error('Failed to send contact notification email:', err))
 
     return c.json({ 
       success: true, 
@@ -340,6 +387,20 @@ app.post('/api/reviews', async (c) => {
       INSERT INTO reviews (course_id, reviewer_name, reviewer_email, rating, comment, status)
       VALUES (?, ?, ?, ?, ?, 'pending')
     `).bind(courseId, reviewerName, reviewerEmail, rating, comment).run()
+
+    // 講座名を取得
+    const course = courses.find(c => c.id === courseId)
+    const courseName = course ? course.title : courseId
+
+    // 管理者への口コミ通知メール（非同期・ノンブロッキング）
+    sendReviewNotificationToAdmin(c.env, {
+      courseId,
+      courseName,
+      reviewerName,
+      reviewerEmail,
+      rating,
+      comment
+    }).catch(err => console.error('Failed to send review notification email:', err))
 
     return c.json({ 
       success: true, 
