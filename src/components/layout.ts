@@ -71,7 +71,7 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     
     /* AI/Future Theme Gradients */
     .gradient-ai {
-      background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+      background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%) !important;
     }
     .gradient-ai-text {
       background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
@@ -88,6 +88,7 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       background: rgba(255, 255, 255, 0.9);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
+      color: #1E293B; /* future-text color for visibility */
     }
     
     /* AI Button style */
@@ -97,6 +98,12 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     .btn-ai:hover {
       transform: translateY(-2px);
       box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+    }
+    
+    /* Warm button style for cafe theme */
+    .btn-cafe {
+      background: linear-gradient(135deg, #B8956A 0%, #C4A574 100%) !important;
+      color: white !important;
     }
     
     /* Decorative orbs */

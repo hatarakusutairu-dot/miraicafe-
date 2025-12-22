@@ -133,7 +133,7 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
                 </div>
               </div>
 
-              <button id="checkout-btn" disabled class="btn-ai w-full gradient-ai text-white py-4 rounded-full font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+              <button id="checkout-btn" disabled class="btn-ai w-full text-white py-4 rounded-full font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
                 <i class="fas fa-credit-card mr-2"></i>決済に進む
               </button>
 

@@ -99,15 +99,16 @@ export const renderBlogPage = (posts: BlogPost[]) => {
               </div>
 
               <!-- タグクラウド -->
-              <div class="glass rounded-2xl p-5 border border-white/50">
-                <h3 class="text-lg font-bold text-future-text mb-4 flex items-center">
-                  <i class="fas fa-tags mr-2 text-ai-purple"></i>タグ
+              <div class="rounded-2xl p-5 border" style="background: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.5);">
+                <h3 class="text-lg font-bold mb-4 flex items-center" style="color: #1E293B;">
+                  <i class="fas fa-tags mr-2" style="color: #8B5CF6;"></i>タグ
                 </h3>
                 <div class="flex flex-wrap gap-2">
                   ${allTags.map(tag => `
                     <a href="/blog?tag=${encodeURIComponent(tag.name)}" 
-                       class="tag-link inline-flex items-center px-3 py-1.5 rounded-full text-sm bg-ai-blue/10 text-ai-blue hover:bg-ai-blue hover:text-white transition-all cursor-pointer"
-                       data-tag="${tag.name}">
+                       class="tag-link inline-flex items-center px-3 py-1.5 rounded-full text-sm transition-all cursor-pointer"
+                       data-tag="${tag.name}"
+                       style="background: rgba(59, 130, 246, 0.1); color: #3B82F6;">
                       #${tag.name}
                       <span class="ml-1 text-xs opacity-70">${tag.count}</span>
                     </a>
@@ -222,16 +223,16 @@ export const renderBlogPage = (posts: BlogPost[]) => {
     <!-- Newsletter Section -->
     <section class="py-10 bg-white">
       <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="glass rounded-3xl p-8 border border-ai-blue/20">
+        <div class="rounded-3xl p-8 border" style="background: rgba(255,255,255,0.9); border-color: rgba(59, 130, 246, 0.2);">
           <div class="text-center">
-            <div class="w-14 h-14 gradient-ai rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg pulse-glow">
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg pulse-glow" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
               <i class="fas fa-envelope text-white text-xl"></i>
             </div>
-            <h2 class="text-xl font-bold text-future-text mb-2">最新情報をお届け</h2>
-            <p class="text-future-textLight text-sm mb-4">メールマガジンに登録して、AI学習の最新情報を受け取りましょう</p>
+            <h2 class="text-xl font-bold mb-2" style="color: #1E293B;">最新情報をお届け</h2>
+            <p class="text-sm mb-4" style="color: #64748B;">メールマガジンに登録して、AI学習の最新情報を受け取りましょう</p>
             <form class="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <input type="email" placeholder="メールアドレス" class="flex-1 p-3 border-2 border-future-sky rounded-xl focus:border-ai-blue focus:outline-none transition-colors bg-white text-sm">
-              <button type="submit" class="btn-ai gradient-ai text-white px-5 py-3 rounded-xl font-medium shadow-lg text-sm">
+              <input type="email" placeholder="メールアドレス" class="flex-1 p-3 border-2 rounded-xl focus:outline-none transition-colors bg-white text-sm" style="border-color: #E2E8F0;">
+              <button type="submit" class="btn-ai text-white px-5 py-3 rounded-xl font-medium shadow-lg text-sm" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
                 登録する
               </button>
             </form>

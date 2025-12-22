@@ -188,17 +188,17 @@ export const renderCoursesPage = (courses: Course[]) => {
     <!-- CTA Section -->
     <section class="py-16 bg-white">
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <div class="glass rounded-3xl p-8 border border-ai-blue/20">
-          <div class="w-16 h-16 gradient-ai rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+        <div class="rounded-3xl p-8 border" style="background: rgba(255,255,255,0.9); border-color: rgba(59, 130, 246, 0.2);">
+          <div class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
             <i class="fas fa-question text-white text-2xl"></i>
           </div>
-          <h2 class="text-2xl font-bold text-future-text mb-4">
+          <h2 class="text-2xl font-bold mb-4" style="color: #1E293B;">
             どの講座を選べばいいかわからない？
           </h2>
-          <p class="text-future-textLight mb-6">
+          <p class="mb-6" style="color: #64748B;">
             お気軽にお問い合わせください。あなたに最適な講座をご提案いたします。
           </p>
-          <a href="/contact" class="btn-ai inline-flex items-center justify-center gradient-ai text-white px-6 py-3 rounded-full font-bold shadow-lg">
+          <a href="/contact" class="btn-ai inline-flex items-center justify-center text-white px-6 py-3 rounded-full font-bold shadow-lg" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
             <i class="fas fa-envelope mr-2"></i>相談する
           </a>
         </div>
@@ -689,7 +689,7 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
 
               <!-- Write Review Button -->
               <div class="text-center">
-                <button id="btn-write-review" class="btn-ai gradient-ai text-white px-6 py-3 rounded-full font-medium shadow-lg">
+                <button id="btn-write-review" class="btn-ai text-white px-6 py-3 rounded-full font-medium shadow-lg" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
                   <i class="fas fa-pen mr-2"></i>レビューを書く
                 </button>
               </div>
@@ -734,10 +734,10 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
                   </div>
 
                   <div class="flex gap-3">
-                    <button type="submit" class="btn-ai gradient-ai text-white flex-1 py-2.5 rounded-xl font-medium">
+                    <button type="submit" class="btn-ai text-white flex-1 py-2.5 rounded-xl font-medium" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
                       <i class="fas fa-paper-plane mr-2"></i>投稿する
                     </button>
-                    <button type="button" id="btn-cancel-review" class="glass text-future-text flex-1 py-2.5 rounded-xl font-medium border border-future-sky hover:bg-gray-50">
+                    <button type="button" id="btn-cancel-review" class="flex-1 py-2.5 rounded-xl font-medium border hover:bg-gray-50" style="background: rgba(255,255,255,0.9); color: #1E293B; border-color: #E2E8F0;">
                       キャンセル
                     </button>
                   </div>
@@ -824,7 +824,7 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
                             残席 ${remaining}名
                           </span>
                           <a href="/reservation?course=${course.id}&schedule=${schedule.id}" 
-                             class="btn-ai gradient-ai text-white px-5 py-2 rounded-full text-sm font-medium shadow">
+                             class="btn-ai text-white px-5 py-2 rounded-full text-sm font-medium shadow" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
                             予約する
                           </a>
                         `}
@@ -923,13 +923,13 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
               ` : ''}
 
               <!-- CTAボタン -->
-              <a href="/reservation?course=${course.id}" class="btn-ai block w-full gradient-ai text-white text-center py-4 rounded-full font-bold shadow-lg mb-3">
+              <a href="/reservation?course=${course.id}" class="btn-ai block w-full text-white text-center py-4 rounded-full font-bold shadow-lg mb-3" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
                 <i class="fas fa-calendar-check mr-2"></i>日程を選んで予約
               </a>
 
               <!-- 日程セクションへスクロール -->
               ${courseSchedules.length > 0 ? `
-              <button onclick="document.getElementById('schedule-section').scrollIntoView({behavior:'smooth'})" class="block w-full glass text-future-text text-center py-3 rounded-full font-medium border border-future-sky hover:border-ai-blue transition-colors mb-4">
+              <button onclick="document.getElementById('schedule-section').scrollIntoView({behavior:'smooth'})" class="block w-full text-center py-3 rounded-full font-medium border transition-colors mb-4" style="background: rgba(255,255,255,0.9); color: #1E293B; border-color: #E2E8F0;">
                 <i class="fas fa-calendar mr-2"></i>開催日程を見る
               </button>
               ` : ''}
@@ -961,10 +961,10 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
           <h2 class="text-2xl font-bold text-future-text mb-4">今すぐ学び始めませんか？</h2>
           <p class="text-future-textLight mb-6">${course.catchphrase || course.description}</p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/reservation?course=${course.id}" class="btn-ai gradient-ai text-white px-8 py-4 rounded-full font-bold shadow-lg">
+            <a href="/reservation?course=${course.id}" class="btn-ai text-white px-8 py-4 rounded-full font-bold shadow-lg" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
               <i class="fas fa-calendar-check mr-2"></i>今すぐ予約する
             </a>
-            <a href="/contact" class="glass text-future-text px-8 py-4 rounded-full font-bold border border-future-sky hover:border-ai-blue transition-colors">
+            <a href="/contact" class="px-8 py-4 rounded-full font-bold border transition-colors" style="background: rgba(255,255,255,0.9); color: #1E293B; border-color: #E2E8F0;">
               <i class="fas fa-envelope mr-2"></i>まずは相談する
             </a>
           </div>
