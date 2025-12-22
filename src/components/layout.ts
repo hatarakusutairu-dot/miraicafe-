@@ -230,6 +230,110 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       0% { transform: translateX(0); }
       100% { transform: translateX(50%); }
     }
+    
+    /* Floating Characters - Scroll Following */
+    .floating-characters {
+      position: fixed;
+      z-index: 40;
+      pointer-events: none;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: hidden;
+    }
+    
+    .floating-character {
+      position: absolute;
+      transition: transform 0.3s ease-out;
+      filter: drop-shadow(0 10px 20px rgba(0,0,0,0.15));
+      opacity: 0.95;
+    }
+    
+    /* Character 1 - Green Alien (Left) */
+    .char-alien {
+      width: 100px;
+      height: auto;
+      left: 20px;
+      top: 30%;
+      animation: float-alien 6s ease-in-out infinite;
+    }
+    
+    /* Character 2 - Robot Rabbit (Right Top) */
+    .char-rabbit {
+      width: 140px;
+      height: auto;
+      right: 30px;
+      top: 20%;
+      animation: float-rabbit 7s ease-in-out infinite;
+    }
+    
+    /* Character 3 - Pink Girl (Right Bottom) */
+    .char-pink {
+      width: 90px;
+      height: auto;
+      right: 50px;
+      bottom: 25%;
+      animation: float-pink 5s ease-in-out infinite;
+    }
+    
+    @keyframes float-alien {
+      0%, 100% { 
+        transform: translateY(0) rotate(-3deg) scale(1); 
+      }
+      25% {
+        transform: translateY(-20px) rotate(2deg) scale(1.02);
+      }
+      50% { 
+        transform: translateY(-35px) rotate(-2deg) scale(1.05); 
+      }
+      75% {
+        transform: translateY(-15px) rotate(1deg) scale(1.02);
+      }
+    }
+    
+    @keyframes float-rabbit {
+      0%, 100% { 
+        transform: translateY(0) rotate(2deg) scale(1); 
+      }
+      33% { 
+        transform: translateY(-25px) rotate(-3deg) scale(1.03); 
+      }
+      66% { 
+        transform: translateY(-40px) rotate(3deg) scale(1.06); 
+      }
+    }
+    
+    @keyframes float-pink {
+      0%, 100% { 
+        transform: translateY(0) translateX(0) rotate(0deg); 
+      }
+      25% {
+        transform: translateY(-15px) translateX(5px) rotate(3deg);
+      }
+      50% { 
+        transform: translateY(-30px) translateX(-5px) rotate(-3deg); 
+      }
+      75% {
+        transform: translateY(-20px) translateX(8px) rotate(2deg);
+      }
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 1024px) {
+      .char-alien { width: 70px; left: 10px; }
+      .char-rabbit { width: 100px; right: 10px; }
+      .char-pink { width: 65px; right: 20px; }
+    }
+    
+    @media (max-width: 768px) {
+      .floating-characters { display: none; }
+    }
+    
+    /* Parallax effect for characters */
+    .floating-character.parallax {
+      will-change: transform;
+    }
   </style>
 </head>
 <body class="bg-future-ivory min-h-screen flex flex-col overflow-x-hidden">
@@ -301,6 +405,30 @@ export const renderLayout = (title: string, content: string, activeNav: string =
 
   <!-- Spacer for fixed header -->
   <div class="h-20"></div>
+  
+  <!-- Floating Characters (Scroll Following) -->
+  <div class="floating-characters" id="floating-chars">
+    <!-- Green Alien Character -->
+    <img src="https://www.genspark.ai/api/files/s/E7KAqpsk" 
+         alt="AIアシスタント - みどり" 
+         class="floating-character char-alien parallax" 
+         id="char-alien"
+         loading="lazy">
+    
+    <!-- Robot Rabbit Character -->
+    <img src="https://www.genspark.ai/api/files/s/8oe2UcPG" 
+         alt="AIアシスタント - ロボうさぎ" 
+         class="floating-character char-rabbit parallax" 
+         id="char-rabbit"
+         loading="lazy">
+    
+    <!-- Pink Girl Character -->
+    <img src="https://www.genspark.ai/api/files/s/ArUAihXS" 
+         alt="AIアシスタント - ピンク" 
+         class="floating-character char-pink parallax" 
+         id="char-pink"
+         loading="lazy">
+  </div>
 
   <!-- Main Content -->
   <main class="flex-grow">
@@ -380,6 +508,62 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     document.getElementById('mobile-menu-btn')?.addEventListener('click', function() {
       document.getElementById('mobile-menu')?.classList.toggle('hidden');
     });
+    
+    // Floating characters parallax scroll effect
+    (function() {
+      const charAlien = document.getElementById('char-alien');
+      const charRabbit = document.getElementById('char-rabbit');
+      const charPink = document.getElementById('char-pink');
+      
+      let ticking = false;
+      let lastScrollY = 0;
+      
+      function updateCharacterPositions() {
+        const scrollY = window.scrollY;
+        const viewportHeight = window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
+        const scrollProgress = scrollY / (documentHeight - viewportHeight);
+        
+        // Alien - moves slower, stays in upper left area
+        if (charAlien) {
+          const alienY = 30 + (scrollY * 0.05);
+          const alienX = Math.sin(scrollY * 0.002) * 10;
+          charAlien.style.top = alienY + '%';
+          charAlien.style.transform = 'translateX(' + alienX + 'px) rotate(' + (Math.sin(scrollY * 0.003) * 5) + 'deg)';
+        }
+        
+        // Rabbit - moves medium speed, right side
+        if (charRabbit) {
+          const rabbitY = 20 + (scrollY * 0.08);
+          const rabbitX = Math.cos(scrollY * 0.0025) * 15;
+          charRabbit.style.top = Math.min(rabbitY, 60) + '%';
+          charRabbit.style.transform = 'translateX(' + rabbitX + 'px) rotate(' + (Math.cos(scrollY * 0.002) * 4) + 'deg)';
+        }
+        
+        // Pink - moves faster, bottom right
+        if (charPink) {
+          const pinkY = 25 + (scrollY * 0.1);
+          const pinkX = Math.sin(scrollY * 0.003) * 12;
+          charPink.style.bottom = Math.max(25 - (scrollY * 0.02), 10) + '%';
+          charPink.style.transform = 'translateX(' + pinkX + 'px) rotate(' + (Math.sin(scrollY * 0.004) * 6) + 'deg)';
+        }
+        
+        ticking = false;
+      }
+      
+      function onScroll() {
+        lastScrollY = window.scrollY;
+        if (!ticking) {
+          window.requestAnimationFrame(updateCharacterPositions);
+          ticking = true;
+        }
+      }
+      
+      window.addEventListener('scroll', onScroll, { passive: true });
+      
+      // Initial position
+      updateCharacterPositions();
+    })();
   </script>
 </body>
 </html>
