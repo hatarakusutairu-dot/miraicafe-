@@ -161,28 +161,28 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       object-fit: contain;
     }
     
-    /* Character positions - individual images */
+    /* Character positions - moved more inward */
     .char-green {
-      width: 100px;
-      height: 120px;
-      left: 20px;
-      top: 28%;
+      width: 110px;
+      height: 130px;
+      left: 8%;
+      top: 30%;
       animation: float-char1 6s ease-in-out infinite;
     }
     
     .char-rabbit {
-      width: 110px;
-      height: 120px;
-      right: 25px;
-      top: 20%;
+      width: 120px;
+      height: 130px;
+      right: 8%;
+      top: 22%;
       animation: float-char2 7s ease-in-out infinite;
     }
     
     .char-pink {
-      width: 85px;
-      height: 110px;
-      right: 35px;
-      bottom: 25%;
+      width: 95px;
+      height: 120px;
+      right: 10%;
+      bottom: 28%;
       animation: float-char3 5s ease-in-out infinite;
       animation-delay: -4s;
     }
@@ -214,9 +214,9 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     }
     
     @media (max-width: 1024px) {
-      .char-green { width: 75px; height: 90px; left: 10px; }
-      .char-rabbit { width: 85px; height: 95px; right: 10px; }
-      .char-pink { width: 65px; height: 85px; right: 20px; }
+      .char-green { width: 85px; height: 100px; left: 5%; }
+      .char-rabbit { width: 95px; height: 105px; right: 5%; }
+      .char-pink { width: 75px; height: 95px; right: 6%; }
     }
     
     @media (max-width: 768px) {
@@ -232,6 +232,88 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       50% { transform: rotate(3deg); }
     }
     .leaf-sway { animation: sway 4s ease-in-out infinite; }
+    
+    /* ========== Hero Section Animations ========== */
+    
+    /* Background zoom effect */
+    .hero-bg-zoom {
+      animation: hero-zoom 20s ease-out forwards;
+    }
+    @keyframes hero-zoom {
+      0% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    
+    /* Fade in animation */
+    .hero-fade-in {
+      opacity: 0;
+      animation: hero-fade 0.8s ease-out forwards;
+    }
+    @keyframes hero-fade {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Slide up animation */
+    .hero-slide-up {
+      opacity: 0;
+      display: inline-block;
+      animation: hero-slide 0.8s ease-out forwards;
+    }
+    @keyframes hero-slide {
+      0% { opacity: 0; transform: translateY(40px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Button glow effect */
+    .hero-btn-glow {
+      animation: btn-glow 2s ease-in-out infinite;
+    }
+    @keyframes btn-glow {
+      0%, 100% { box-shadow: 0 4px 15px rgba(184, 149, 106, 0.4); }
+      50% { box-shadow: 0 8px 30px rgba(184, 149, 106, 0.6); }
+    }
+    
+    /* Stat counter animation */
+    .hero-stat {
+      animation: stat-pop 0.5s ease-out forwards;
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    @keyframes stat-pop {
+      0% { opacity: 0; transform: scale(0.8); }
+      50% { transform: scale(1.05); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    
+    /* Floating particles in hero */
+    .hero-particle {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: radial-gradient(circle, rgba(184, 149, 106, 0.8) 0%, rgba(196, 165, 116, 0.4) 50%, transparent 70%);
+      border-radius: 50%;
+      animation: hero-particle-float 6s ease-in-out infinite;
+      filter: blur(1px);
+    }
+    @keyframes hero-particle-float {
+      0%, 100% { transform: translateY(0) scale(1); opacity: 0.8; }
+      50% { transform: translateY(-30px) scale(1.3); opacity: 1; }
+    }
+    
+    /* Floating circles in hero */
+    .hero-circle {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(212, 229, 208, 0.4) 0%, rgba(184, 205, 176, 0.2) 50%, transparent 70%);
+      animation: hero-circle-float 10s ease-in-out infinite;
+      filter: blur(40px);
+    }
+    @keyframes hero-circle-float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(30px, -20px) scale(1.1); }
+      66% { transform: translate(-20px, 30px) scale(0.9); }
+    }
     
     /* ========== Background Animations ========== */
     
