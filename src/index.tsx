@@ -502,36 +502,182 @@ app.get('/admin', async (c) => {
 })
 
 // ===== ブログ管理 =====
-app.get('/admin/blog', (c) => {
-  return c.html(renderBlogList(blogPosts))
+
+// D1とstaticデータを統合してブログ記事を取得
+async function getAllBlogPosts(db: D1Database): Promise<any[]> {
+  try {
+    // D1からブログ記事を取得
+    const dbPosts = await db.prepare(`
+      SELECT id, title, excerpt, content, author, date, category, tags, image, read_time as readTime
+      FROM blog_posts
+      WHERE status = 'published'
+      ORDER BY date DESC
+    `).all()
+    
+    // D1のデータをBlogPost形式に変換
+    const d1Posts = (dbPosts.results || []).map((post: any) => ({
+      ...post,
+      tags: post.tags ? JSON.parse(post.tags) : []
+    }))
+    
+    // 静的データとD1データをマージ（D1のIDが優先）
+    const d1Ids = new Set(d1Posts.map((p: any) => p.id))
+    const staticPosts = blogPosts.filter(p => !d1Ids.has(p.id))
+    
+    return [...d1Posts, ...staticPosts]
+  } catch (error) {
+    console.error('Error fetching blog posts from D1:', error)
+    return blogPosts
+  }
+}
+
+// D1からブログ記事を取得（ID指定）
+async function getBlogPostById(db: D1Database, id: string): Promise<any | null> {
+  try {
+    const post = await db.prepare(`
+      SELECT id, title, excerpt, content, author, date, category, tags, image, read_time as readTime
+      FROM blog_posts WHERE id = ?
+    `).bind(id).first()
+    
+    if (post) {
+      return {
+        ...post,
+        tags: (post as any).tags ? JSON.parse((post as any).tags) : []
+      }
+    }
+    
+    // D1にない場合は静的データから探す
+    return blogPosts.find(p => p.id === id) || null
+  } catch (error) {
+    console.error('Error fetching blog post from D1:', error)
+    return blogPosts.find(p => p.id === id) || null
+  }
+}
+
+app.get('/admin/blog', async (c) => {
+  const posts = await getAllBlogPosts(c.env.DB)
+  return c.html(renderBlogList(posts))
 })
 
 app.get('/admin/blog/new', (c) => {
   return c.html(renderBlogForm())
 })
 
-app.get('/admin/blog/edit/:id', (c) => {
+app.get('/admin/blog/edit/:id', async (c) => {
   const id = c.req.param('id')
-  const post = blogPosts.find(p => p.id === id)
+  const post = await getBlogPostById(c.env.DB, id)
   if (!post) return c.notFound()
   return c.html(renderBlogForm(post))
 })
 
-// ブログ作成・更新・削除（静的データのため実際には保存されない - デモ用）
+// ブログ作成
 app.post('/admin/blog/create', async (c) => {
-  // 実際のアプリではD1にINSERT
-  return c.redirect('/admin/blog')
+  try {
+    const body = await c.req.parseBody()
+    const id = generateBlogId(body.title as string)
+    const tags = (body.tags as string || '').split(',').map(t => t.trim()).filter(t => t)
+    
+    await c.env.DB.prepare(`
+      INSERT INTO blog_posts (id, title, excerpt, content, author, date, category, tags, image, read_time)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id,
+      body.title,
+      body.excerpt || '',
+      body.content,
+      body.author || '',
+      body.date || new Date().toISOString().split('T')[0],
+      body.category,
+      JSON.stringify(tags),
+      body.image || '',
+      body.readTime || '5分'
+    ).run()
+    
+    return c.redirect('/admin/blog')
+  } catch (error) {
+    console.error('Error creating blog post:', error)
+    return c.html(renderBlogForm(undefined, '記事の作成に失敗しました。もう一度お試しください。'))
+  }
 })
 
+// ブログ更新
 app.post('/admin/blog/update/:id', async (c) => {
-  // 実際のアプリではD1にUPDATE
-  return c.redirect('/admin/blog')
+  const id = c.req.param('id')
+  try {
+    const body = await c.req.parseBody()
+    const tags = (body.tags as string || '').split(',').map(t => t.trim()).filter(t => t)
+    
+    // まずD1に存在するか確認
+    const existing = await c.env.DB.prepare(`SELECT id FROM blog_posts WHERE id = ?`).bind(id).first()
+    
+    if (existing) {
+      // D1のレコードを更新
+      await c.env.DB.prepare(`
+        UPDATE blog_posts 
+        SET title = ?, excerpt = ?, content = ?, author = ?, date = ?, category = ?, tags = ?, image = ?, read_time = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(
+        body.title,
+        body.excerpt || '',
+        body.content,
+        body.author || '',
+        body.date || new Date().toISOString().split('T')[0],
+        body.category,
+        JSON.stringify(tags),
+        body.image || '',
+        body.readTime || '5分',
+        id
+      ).run()
+    } else {
+      // 静的データからの編集 → D1に新規挿入
+      await c.env.DB.prepare(`
+        INSERT INTO blog_posts (id, title, excerpt, content, author, date, category, tags, image, read_time)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        id,
+        body.title,
+        body.excerpt || '',
+        body.content,
+        body.author || '',
+        body.date || new Date().toISOString().split('T')[0],
+        body.category,
+        JSON.stringify(tags),
+        body.image || '',
+        body.readTime || '5分'
+      ).run()
+    }
+    
+    return c.redirect('/admin/blog')
+  } catch (error) {
+    console.error('Error updating blog post:', error)
+    const post = await getBlogPostById(c.env.DB, id)
+    return c.html(renderBlogForm(post, '記事の更新に失敗しました。もう一度お試しください。'))
+  }
 })
 
+// ブログ削除
 app.post('/admin/blog/delete/:id', async (c) => {
-  // 実際のアプリではD1からDELETE
-  return c.redirect('/admin/blog')
+  const id = c.req.param('id')
+  try {
+    await c.env.DB.prepare(`DELETE FROM blog_posts WHERE id = ?`).bind(id).run()
+    return c.redirect('/admin/blog')
+  } catch (error) {
+    console.error('Error deleting blog post:', error)
+    return c.redirect('/admin/blog')
+  }
 })
+
+// ブログIDを生成（タイトルからスラッグ生成）
+function generateBlogId(title: string): string {
+  const timestamp = Date.now().toString(36)
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .substring(0, 30)
+  return `${slug || 'post'}-${timestamp}`
+}
 
 // ===== 講座管理 =====
 app.get('/admin/courses', (c) => {

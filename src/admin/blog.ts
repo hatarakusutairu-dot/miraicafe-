@@ -1,6 +1,26 @@
 import { renderAdminLayout } from './layout'
 import { BlogPost, blogCategories, BlogCategory } from '../data'
 
+// HTMLエスケープ関数（textarea内のHTML出力用）
+function escapeHtmlForTextarea(text: string): string {
+  if (!text) return ''
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+// 属性値用エスケープ関数
+function escapeAttr(text: string): string {
+  if (!text) return ''
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 // ブログ一覧ページ
 export const renderBlogList = (posts: BlogPost[]) => {
   const content = `
@@ -185,7 +205,7 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">タイトル <span class="text-red-500">*</span></label>
-            <input type="text" name="title" required value="${post?.title || ''}"
+            <input type="text" name="title" required value="${escapeAttr(post?.title || '')}"
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="記事のタイトルを入力">
           </div>
@@ -201,7 +221,7 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">タグ</label>
-              <input type="text" name="tags" value="${post?.tags?.join(', ') || ''}"
+              <input type="text" name="tags" value="${escapeAttr(post?.tags?.join(', ') || '')}"
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 placeholder="AI, ChatGPT, 初心者向け">
               <p class="text-xs text-gray-500 mt-1">カンマ区切りで入力</p>
@@ -212,12 +232,12 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
             <label class="block text-sm font-medium text-gray-700 mb-1">概要（抜粋）</label>
             <textarea name="excerpt" rows="2"
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-              placeholder="記事の概要を入力（一覧表示用）">${post?.excerpt || ''}</textarea>
+              placeholder="記事の概要を入力（一覧表示用）">${escapeHtmlForTextarea(post?.excerpt || '')}</textarea>
           </div>
 
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">アイキャッチ画像URL</label>
-            <input type="url" name="image" value="${post?.image || ''}"
+            <input type="url" name="image" value="${escapeAttr(post?.image || '')}"
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="https://example.com/image.jpg">
           </div>
@@ -229,7 +249,7 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
         <p class="text-sm text-gray-500 mb-2">HTML形式で入力できます（&lt;h2&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;li&gt;など）</p>
         <textarea name="content" rows="20" required
           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-sm"
-          placeholder="<p>記事の本文を入力...</p>">${post?.content || ''}</textarea>
+          placeholder="<p>記事の本文を入力...</p>">${escapeHtmlForTextarea(post?.content || '')}</textarea>
       </div>
 
       <div class="bg-white rounded-xl shadow-sm p-6">
@@ -238,7 +258,7 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">著者名</label>
-            <input type="text" name="author" value="${post?.author || ''}"
+            <input type="text" name="author" value="${escapeAttr(post?.author || '')}"
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="田中 花子">
           </div>
@@ -251,7 +271,7 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
 
         <div class="mt-4">
           <label class="block text-sm font-medium text-gray-700 mb-1">読了時間</label>
-          <input type="text" name="readTime" value="${post?.readTime || '5分'}"
+          <input type="text" name="readTime" value="${escapeAttr(post?.readTime || '5分')}"
             class="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             placeholder="5分">
         </div>
