@@ -161,7 +161,7 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       object-fit: contain;
     }
     
-    /* Character positions - moved more inward */
+    /* Character positions - individual images */
     .char-green {
       width: 110px;
       height: 130px;
@@ -235,22 +235,22 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     
     /* ========== Hero Section Animations ========== */
     
-    /* Background zoom effect */
-    .hero-bg-zoom {
-      animation: hero-zoom 20s ease-out forwards;
+    /* Background zoom */
+    .hero-zoom {
+      animation: heroZoom 25s ease-out forwards;
     }
-    @keyframes hero-zoom {
-      0% { transform: scale(1.1); }
+    @keyframes heroZoom {
+      0% { transform: scale(1.08); }
       100% { transform: scale(1); }
     }
     
     /* Fade in animation */
     .hero-fade-in {
       opacity: 0;
-      animation: hero-fade 0.8s ease-out forwards;
+      animation: heroFadeIn 0.8s ease-out forwards;
     }
-    @keyframes hero-fade {
-      0% { opacity: 0; transform: translateY(20px); }
+    @keyframes heroFadeIn {
+      0% { opacity: 0; transform: translateY(30px); }
       100% { opacity: 1; transform: translateY(0); }
     }
     
@@ -258,118 +258,151 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     .hero-slide-up {
       opacity: 0;
       display: inline-block;
-      animation: hero-slide 0.8s ease-out forwards;
+      animation: heroSlideUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
-    @keyframes hero-slide {
-      0% { opacity: 0; transform: translateY(40px); }
+    @keyframes heroSlideUp {
+      0% { opacity: 0; transform: translateY(60px); }
       100% { opacity: 1; transform: translateY(0); }
     }
     
-    /* Button glow effect */
-    .hero-btn-glow {
-      animation: btn-glow 2s ease-in-out infinite;
+    /* Text glow effect */
+    .hero-text-glow {
+      animation: heroTextGlow 3s ease-in-out infinite;
     }
-    @keyframes btn-glow {
-      0%, 100% { box-shadow: 0 4px 15px rgba(184, 149, 106, 0.4); }
-      50% { box-shadow: 0 8px 30px rgba(184, 149, 106, 0.6); }
-    }
-    
-    /* Stat counter animation */
-    .hero-stat {
-      animation: stat-pop 0.5s ease-out forwards;
-      opacity: 0;
-      transform: scale(0.8);
-    }
-    @keyframes stat-pop {
-      0% { opacity: 0; transform: scale(0.8); }
-      50% { transform: scale(1.05); }
-      100% { opacity: 1; transform: scale(1); }
+    @keyframes heroTextGlow {
+      0%, 100% { filter: drop-shadow(0 0 8px rgba(184, 149, 106, 0.3)); }
+      50% { filter: drop-shadow(0 0 20px rgba(184, 149, 106, 0.6)); }
     }
     
-    /* AI Holographic ring effect */
-    .hero-holo-ring {
-      position: absolute;
-      width: 120px;
-      height: 120px;
-      border: 2px solid transparent;
-      border-radius: 50%;
-      background: linear-gradient(135deg, rgba(184, 149, 106, 0.1), rgba(143, 181, 133, 0.1)) padding-box,
-                  linear-gradient(135deg, rgba(184, 149, 106, 0.4), rgba(143, 181, 133, 0.4)) border-box;
-      animation: holo-rotate 8s linear infinite, holo-pulse 4s ease-in-out infinite;
+    /* Button shine effect */
+    .hero-btn-shine {
+      position: relative;
+      overflow: hidden;
     }
-    .hero-holo-ring::before {
+    .hero-btn-shine::after {
       content: '';
       position: absolute;
-      inset: 15px;
-      border: 1px solid rgba(184, 149, 106, 0.3);
-      border-radius: 50%;
-      animation: holo-rotate 6s linear infinite reverse;
+      top: -50%;
+      left: -100%;
+      width: 60%;
+      height: 200%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transform: skewX(-20deg);
+      animation: heroShine 4s ease-in-out infinite;
     }
-    .hero-holo-ring::after {
+    @keyframes heroShine {
+      0%, 100% { left: -100%; }
+      50%, 60% { left: 150%; }
+    }
+    
+    /* Glowing orbs */
+    .hero-glow-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(40px);
+      animation: heroGlowFloat 8s ease-in-out infinite;
+    }
+    .hero-glow-1 {
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(143, 181, 133, 0.5) 0%, transparent 70%);
+      top: 10%;
+      right: 15%;
+    }
+    .hero-glow-2 {
+      width: 250px;
+      height: 250px;
+      background: radial-gradient(circle, rgba(184, 216, 216, 0.5) 0%, transparent 70%);
+      top: 50%;
+      right: 5%;
+      animation-delay: -3s;
+    }
+    .hero-glow-3 {
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(196, 165, 116, 0.4) 0%, transparent 70%);
+      top: 70%;
+      right: 30%;
+      animation-delay: -6s;
+    }
+    @keyframes heroGlowFloat {
+      0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
+      50% { transform: translate(-30px, 20px) scale(1.2); opacity: 1; }
+    }
+    
+    /* AI rotating rings */
+    .hero-ai-ring {
+      position: absolute;
+      width: 150px;
+      height: 150px;
+      border: 2px solid rgba(184, 149, 106, 0.3);
+      border-radius: 50%;
+      animation: heroRingRotate 12s linear infinite, heroRingPulse 4s ease-in-out infinite;
+    }
+    .hero-ai-ring::before {
       content: '';
       position: absolute;
-      inset: 35px;
-      border: 1px solid rgba(143, 181, 133, 0.3);
+      inset: 20px;
+      border: 1.5px dashed rgba(143, 181, 133, 0.4);
       border-radius: 50%;
-      animation: holo-rotate 4s linear infinite;
+      animation: heroRingRotate 8s linear infinite reverse;
     }
-    @keyframes holo-rotate {
+    .hero-ai-ring::after {
+      content: '';
+      position: absolute;
+      inset: 45px;
+      border: 1px solid rgba(184, 216, 216, 0.4);
+      border-radius: 50%;
+      animation: heroRingRotate 6s linear infinite;
+    }
+    .hero-ai-ring-sm {
+      width: 100px;
+      height: 100px;
+      animation-delay: -2s;
+    }
+    @keyframes heroRingRotate {
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }
     }
-    @keyframes holo-pulse {
-      0%, 100% { opacity: 0.6; }
+    @keyframes heroRingPulse {
+      0%, 100% { opacity: 0.5; }
       50% { opacity: 1; }
     }
     
-    /* Floating data points */
-    .hero-data-point {
+    /* Floating diamonds */
+    .hero-diamond {
       position: absolute;
-      width: 10px;
-      height: 10px;
-      background: linear-gradient(135deg, #B8956A, #8FB585);
-      border-radius: 50%;
-      animation: data-point-float 5s ease-in-out infinite;
-      box-shadow: 0 0 20px rgba(184, 149, 106, 0.5);
+      width: 20px;
+      height: 20px;
+      background: linear-gradient(135deg, rgba(184, 149, 106, 0.6), rgba(143, 181, 133, 0.6));
+      transform: rotate(45deg);
+      animation: heroDiamondFloat 6s ease-in-out infinite;
+      border-radius: 3px;
+      box-shadow: 0 0 20px rgba(184, 149, 106, 0.3);
     }
-    .hero-data-point::before {
-      content: '';
-      position: absolute;
-      inset: -8px;
-      border: 1px solid rgba(184, 149, 106, 0.4);
-      border-radius: 50%;
-      animation: data-ring-expand 2s ease-out infinite;
-    }
-    @keyframes data-point-float {
-      0%, 100% { transform: translateY(0); opacity: 0.7; }
-      50% { transform: translateY(-20px); opacity: 1; }
-    }
-    @keyframes data-ring-expand {
-      0% { transform: scale(1); opacity: 0.6; }
-      100% { transform: scale(2.5); opacity: 0; }
+    @keyframes heroDiamondFloat {
+      0%, 100% { transform: rotate(45deg) translateY(0) scale(1); opacity: 0.7; }
+      50% { transform: rotate(45deg) translateY(-25px) scale(1.1); opacity: 1; }
     }
     
-    /* Binary stream effect */
-    .hero-binary-stream {
+    /* Light beams */
+    .hero-light-beam {
       position: absolute;
-      font-family: monospace;
-      font-size: 11px;
-      color: rgba(184, 149, 106, 0.35);
-      writing-mode: vertical-rl;
-      animation: binary-fall 8s linear infinite;
-      letter-spacing: 2px;
+      width: 3px;
+      height: 150px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.8), rgba(184, 149, 106, 0.3), transparent);
+      animation: heroBeamFall 5s ease-in-out infinite;
+      opacity: 0;
+      border-radius: 2px;
     }
-    .hero-binary-stream::before {
-      content: '1011001010110';
-    }
-    @keyframes binary-fall {
-      0% { transform: translateY(-100px); opacity: 0; }
-      10% { opacity: 0.35; }
-      90% { opacity: 0.35; }
-      100% { transform: translateY(calc(100vh - 100px)); opacity: 0; }
+    @keyframes heroBeamFall {
+      0% { opacity: 0; transform: translateY(-100px); }
+      20% { opacity: 0.8; }
+      80% { opacity: 0.8; }
+      100% { opacity: 0; transform: translateY(200px); }
     }
     
-    /* ========== Background Animations - AI Tech Style ========== */
+    /* ========== Background Animations ========== */
     
     /* Animated background container */
     .bg-animated {
@@ -383,196 +416,182 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       overflow: hidden;
     }
     
-    /* Neural network grid lines */
-    .neural-grid {
-      position: absolute;
-      inset: 0;
-      background-image: 
-        linear-gradient(rgba(184, 149, 106, 0.06) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(184, 149, 106, 0.06) 1px, transparent 1px);
-      background-size: 60px 60px;
-      animation: grid-move 30s linear infinite;
-    }
-    @keyframes grid-move {
-      0% { transform: translate(0, 0); }
-      100% { transform: translate(60px, 60px); }
-    }
-    
-    /* Floating data nodes */
-    .data-node {
-      position: absolute;
-      width: 8px;
-      height: 8px;
-      background: linear-gradient(135deg, #B8956A, #8FB585);
-      border-radius: 50%;
-      opacity: 0.7;
-      animation: node-pulse 4s ease-in-out infinite;
-    }
-    .data-node::before {
-      content: '';
-      position: absolute;
-      inset: -4px;
-      border: 1px solid rgba(184, 149, 106, 0.3);
-      border-radius: 50%;
-      animation: node-ring 4s ease-in-out infinite;
-    }
-    @keyframes node-pulse {
-      0%, 100% { transform: scale(1); opacity: 0.5; }
-      50% { transform: scale(1.5); opacity: 1; }
-    }
-    @keyframes node-ring {
-      0%, 100% { transform: scale(1); opacity: 0; }
-      50% { transform: scale(2.5); opacity: 0.6; }
-    }
-    
-    /* Connection lines between nodes */
-    .connection-line {
-      position: absolute;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(143, 181, 133, 0.5), transparent);
-      animation: line-flow 3s ease-in-out infinite;
-      transform-origin: left center;
-    }
-    @keyframes line-flow {
-      0% { opacity: 0; transform: scaleX(0); }
-      50% { opacity: 1; transform: scaleX(1); }
-      100% { opacity: 0; transform: scaleX(0); }
-    }
-    
-    /* Hexagon patterns */
-    .hex-pattern {
-      position: absolute;
-      width: 100px;
-      height: 115px;
-      opacity: 0;
-      animation: hex-appear 8s ease-in-out infinite;
-    }
-    .hex-pattern svg {
-      width: 100%;
-      height: 100%;
-    }
-    @keyframes hex-appear {
-      0%, 100% { opacity: 0; transform: scale(0.8) rotate(0deg); }
-      50% { opacity: 0.15; transform: scale(1) rotate(30deg); }
-    }
-    
-    /* Floating orbs - softer */
+    /* Floating soft orbs - HIGHLY VISIBLE */
     .bg-orb {
       position: absolute;
       border-radius: 50%;
-      filter: blur(60px);
-      opacity: 0.5;
-      animation: orb-float 20s ease-in-out infinite;
+      filter: blur(30px);
+      opacity: 0.85;
+      animation: orb-float 12s ease-in-out infinite;
     }
+    
     .bg-orb-1 {
-      width: 400px;
-      height: 400px;
-      background: radial-gradient(circle, rgba(212, 229, 208, 0.8) 0%, transparent 70%);
-      top: -100px;
-      left: -50px;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(184, 205, 176, 0.9) 0%, rgba(143, 181, 133, 0.6) 40%, transparent 70%);
+      top: -150px;
+      left: -100px;
+      animation-delay: 0s;
     }
+    
     .bg-orb-2 {
-      width: 350px;
-      height: 350px;
-      background: radial-gradient(circle, rgba(212, 232, 232, 0.8) 0%, transparent 70%);
-      top: 40%;
-      right: -80px;
-      animation-delay: -7s;
+      width: 550px;
+      height: 550px;
+      background: radial-gradient(circle, rgba(232, 220, 200, 0.9) 0%, rgba(196, 165, 116, 0.6) 40%, transparent 70%);
+      top: 25%;
+      right: -100px;
+      animation-delay: -4s;
     }
+    
     .bg-orb-3 {
-      width: 300px;
-      height: 300px;
-      background: radial-gradient(circle, rgba(232, 220, 200, 0.8) 0%, transparent 70%);
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(212, 232, 232, 0.9) 0%, rgba(184, 216, 216, 0.6) 40%, transparent 70%);
       bottom: 10%;
-      left: 30%;
-      animation-delay: -14s;
+      left: 20%;
+      animation-delay: -8s;
     }
+    
+    .bg-orb-4 {
+      width: 450px;
+      height: 450px;
+      background: radial-gradient(circle, rgba(143, 181, 133, 0.9) 0%, rgba(107, 155, 98, 0.6) 40%, transparent 70%);
+      top: 60%;
+      left: -100px;
+      animation-delay: -2s;
+    }
+    
     @keyframes orb-float {
-      0%, 100% { transform: translate(0, 0); }
-      33% { transform: translate(40px, -30px); }
-      66% { transform: translate(-30px, 40px); }
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      25% { transform: translate(80px, -70px) scale(1.15); }
+      50% { transform: translate(-70px, 90px) scale(0.85); }
+      75% { transform: translate(60px, 50px) scale(1.1); }
     }
     
-    /* Circuit paths */
-    .circuit-path {
+    /* Floating leaves - MORE VISIBLE */
+    .bg-leaves {
       position: absolute;
-      stroke: rgba(184, 149, 106, 0.2);
-      stroke-width: 1;
-      fill: none;
-      stroke-dasharray: 10 5;
-      animation: circuit-flow 8s linear infinite;
-    }
-    @keyframes circuit-flow {
-      0% { stroke-dashoffset: 0; }
-      100% { stroke-dashoffset: -100; }
+      inset: 0;
     }
     
-    /* Scanning line effect */
-    .scan-line {
+    .bg-leaf {
       position: absolute;
+      font-size: 32px;
+      opacity: 0.75;
+      color: #6B9B62;
+      animation: leaf-fall 12s linear infinite;
+      text-shadow: 0 3px 6px rgba(0,0,0,0.15);
+      filter: drop-shadow(0 2px 4px rgba(107, 155, 98, 0.3));
+    }
+    
+    @keyframes leaf-fall {
+      0% {
+        transform: translateY(-50px) rotate(0deg) translateX(0);
+        opacity: 0;
+      }
+      5% { opacity: 0.8; }
+      90% { opacity: 0.8; }
+      100% {
+        transform: translateY(100vh) rotate(540deg) translateX(100px);
+        opacity: 0;
+      }
+    }
+    
+    /* Sparkle particles - MORE VISIBLE */
+    .bg-sparkles {
+      position: absolute;
+      inset: 0;
+    }
+    
+    .bg-sparkle {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: radial-gradient(circle, #C4A574 0%, #B8956A 40%, transparent 70%);
+      border-radius: 50%;
+      animation: sparkle 3s ease-in-out infinite;
+      box-shadow: 0 0 10px rgba(196, 165, 116, 0.5);
+    }
+    
+    @keyframes sparkle {
+      0%, 100% { opacity: 0; transform: scale(0.5); }
+      50% { opacity: 1; transform: scale(2); }
+    }
+    
+    /* Gentle wave at bottom - HIGHLY VISIBLE */
+    .bg-wave {
+      position: absolute;
+      bottom: 0;
       left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, rgba(143, 181, 133, 0.4), rgba(184, 149, 106, 0.4), transparent);
-      animation: scan-move 8s ease-in-out infinite;
-      opacity: 0.6;
+      width: 200%;
+      height: 250px;
+      opacity: 0.7;
+      animation: wave-move 15s linear infinite;
     }
-    @keyframes scan-move {
-      0%, 100% { top: -2px; opacity: 0; }
-      10% { opacity: 0.6; }
-      90% { opacity: 0.6; }
-      100% { top: 100%; opacity: 0; }
+    
+    @keyframes wave-move {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
     }
   </style>
 </head>
 <body class="bg-cafe-ivory min-h-screen flex flex-col overflow-x-hidden">
-  <!-- Animated Background - AI Tech Style -->
+  <!-- Animated Background -->
   <div class="bg-animated">
-    <!-- Neural network grid -->
-    <div class="neural-grid"></div>
-    
     <!-- Soft floating orbs -->
     <div class="bg-orb bg-orb-1"></div>
     <div class="bg-orb bg-orb-2"></div>
     <div class="bg-orb bg-orb-3"></div>
+    <div class="bg-orb bg-orb-4"></div>
     
-    <!-- Data nodes with pulse effect -->
-    <div class="data-node" style="top: 15%; left: 20%; animation-delay: 0s;"></div>
-    <div class="data-node" style="top: 25%; left: 80%; animation-delay: -1s;"></div>
-    <div class="data-node" style="top: 45%; left: 10%; animation-delay: -2s;"></div>
-    <div class="data-node" style="top: 55%; left: 90%; animation-delay: -1.5s;"></div>
-    <div class="data-node" style="top: 75%; left: 30%; animation-delay: -2.5s;"></div>
-    <div class="data-node" style="top: 85%; left: 70%; animation-delay: -0.5s;"></div>
-    <div class="data-node" style="top: 35%; left: 50%; animation-delay: -3s;"></div>
-    <div class="data-node" style="top: 65%; left: 60%; animation-delay: -3.5s;"></div>
-    
-    <!-- Connection lines -->
-    <div class="connection-line" style="top: 20%; left: 20%; width: 200px; transform: rotate(25deg); animation-delay: 0s;"></div>
-    <div class="connection-line" style="top: 40%; left: 60%; width: 180px; transform: rotate(-15deg); animation-delay: -1.5s;"></div>
-    <div class="connection-line" style="top: 60%; left: 25%; width: 220px; transform: rotate(10deg); animation-delay: -3s;"></div>
-    <div class="connection-line" style="top: 80%; left: 55%; width: 160px; transform: rotate(-30deg); animation-delay: -4.5s;"></div>
-    
-    <!-- Hexagon patterns -->
-    <div class="hex-pattern" style="top: 10%; right: 15%; animation-delay: 0s;">
-      <svg viewBox="0 0 100 115"><polygon points="50,0 100,28 100,86 50,115 0,86 0,28" stroke="#B8956A" stroke-width="1" fill="none"/></svg>
-    </div>
-    <div class="hex-pattern" style="top: 50%; left: 5%; animation-delay: -2.5s;">
-      <svg viewBox="0 0 100 115"><polygon points="50,0 100,28 100,86 50,115 0,86 0,28" stroke="#8FB585" stroke-width="1" fill="none"/></svg>
-    </div>
-    <div class="hex-pattern" style="bottom: 20%; right: 10%; animation-delay: -5s;">
-      <svg viewBox="0 0 100 115"><polygon points="50,0 100,28 100,86 50,115 0,86 0,28" stroke="#B8D8D8" stroke-width="1" fill="none"/></svg>
+    <!-- Floating leaves - HIGHLY VISIBLE -->
+    <div class="bg-leaves">
+      <i class="fas fa-leaf bg-leaf" style="left: 3%; animation-delay: 0s; font-size: 38px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 10%; animation-delay: -1.5s; font-size: 32px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 18%; animation-delay: -3s; font-size: 28px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 25%; animation-delay: -4.5s; font-size: 36px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 33%; animation-delay: -6s; font-size: 30px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 42%; animation-delay: -7.5s; font-size: 34px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 52%; animation-delay: -9s; font-size: 40px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 62%; animation-delay: -10.5s; font-size: 32px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 72%; animation-delay: -2s; font-size: 36px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 82%; animation-delay: -5s; font-size: 28px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 92%; animation-delay: -8s; font-size: 34px;"></i>
+      <i class="fas fa-seedling bg-leaf" style="left: 8%; animation-delay: -2.5s; font-size: 30px; color: #4A8C3F;"></i>
+      <i class="fas fa-seedling bg-leaf" style="left: 38%; animation-delay: -6.5s; font-size: 28px; color: #4A8C3F;"></i>
+      <i class="fas fa-seedling bg-leaf" style="left: 68%; animation-delay: -11s; font-size: 32px; color: #4A8C3F;"></i>
+      <i class="fas fa-seedling bg-leaf" style="left: 88%; animation-delay: -4s; font-size: 26px; color: #4A8C3F;"></i>
     </div>
     
-    <!-- Circuit SVG paths -->
-    <svg class="absolute inset-0 w-full h-full" style="opacity: 0.3;">
-      <path class="circuit-path" d="M0,200 Q200,180 400,200 T800,200" />
-      <path class="circuit-path" d="M100,400 Q300,380 500,420 T900,400" style="animation-delay: -2s;" />
-      <path class="circuit-path" d="M50,600 Q250,580 450,620 T850,600" style="animation-delay: -4s;" />
+    <!-- Sparkle particles - HIGHLY VISIBLE -->
+    <div class="bg-sparkles">
+      <div class="bg-sparkle" style="top: 8%; left: 10%; animation-delay: 0s;"></div>
+      <div class="bg-sparkle" style="top: 12%; left: 30%; animation-delay: -0.4s;"></div>
+      <div class="bg-sparkle" style="top: 15%; left: 50%; animation-delay: -0.8s;"></div>
+      <div class="bg-sparkle" style="top: 18%; left: 75%; animation-delay: -1.2s;"></div>
+      <div class="bg-sparkle" style="top: 22%; left: 90%; animation-delay: -1.6s;"></div>
+      <div class="bg-sparkle" style="top: 28%; left: 5%; animation-delay: -0.2s;"></div>
+      <div class="bg-sparkle" style="top: 32%; left: 22%; animation-delay: -0.6s;"></div>
+      <div class="bg-sparkle" style="top: 38%; left: 45%; animation-delay: -1s;"></div>
+      <div class="bg-sparkle" style="top: 42%; left: 65%; animation-delay: -1.4s;"></div>
+      <div class="bg-sparkle" style="top: 48%; left: 85%; animation-delay: -1.8s;"></div>
+      <div class="bg-sparkle" style="top: 52%; left: 12%; animation-delay: -0.3s;"></div>
+      <div class="bg-sparkle" style="top: 58%; left: 35%; animation-delay: -0.7s;"></div>
+      <div class="bg-sparkle" style="top: 62%; left: 58%; animation-delay: -1.1s;"></div>
+      <div class="bg-sparkle" style="top: 68%; left: 78%; animation-delay: -1.5s;"></div>
+      <div class="bg-sparkle" style="top: 72%; left: 95%; animation-delay: -1.9s;"></div>
+      <div class="bg-sparkle" style="top: 78%; left: 8%; animation-delay: -0.5s;"></div>
+      <div class="bg-sparkle" style="top: 82%; left: 28%; animation-delay: -0.9s;"></div>
+      <div class="bg-sparkle" style="top: 88%; left: 52%; animation-delay: -1.3s;"></div>
+      <div class="bg-sparkle" style="top: 92%; left: 72%; animation-delay: -1.7s;"></div>
+      <div class="bg-sparkle" style="top: 95%; left: 88%; animation-delay: -2.1s;"></div>
+    </div>
+    
+    <!-- Bottom wave - TWO LAYERS -->
+    <svg class="bg-wave" viewBox="0 0 2880 200" preserveAspectRatio="none">
+      <path fill="#D4E5D0" fill-opacity="0.5" d="M0,80L120,90C240,100,480,120,720,110C960,100,1200,60,1440,50C1680,40,1920,60,2160,80C2400,100,2640,120,2760,130L2880,140L2880,200L0,200Z"></path>
+      <path fill="#B8CDB0" fill-opacity="0.6" d="M0,120L120,110C240,100,480,80,720,90C960,100,1200,130,1440,140C1680,150,1920,130,2160,110C2400,90,2640,80,2760,75L2880,70L2880,200L0,200Z"></path>
     </svg>
-    
-    <!-- Scanning line -->
-    <div class="scan-line" style="animation-delay: 0s;"></div>
-    <div class="scan-line" style="animation-delay: -4s;"></div>
   </div>
 
   <!-- Header -->

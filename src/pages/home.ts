@@ -7,27 +7,30 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
     <section class="relative min-h-[90vh] flex items-center overflow-hidden">
       <!-- Background Image with Warm Overlay -->
       <div class="absolute inset-0">
-        <img src="/static/greenhouse-bg.jpg" alt="温室カフェ" class="w-full h-full object-cover hero-bg-zoom">
+        <img src="/static/greenhouse-bg.jpg" alt="温室カフェ" class="w-full h-full object-cover hero-zoom">
         <div class="absolute inset-0 bg-gradient-to-r from-cafe-ivory/95 via-cafe-ivory/80 to-cafe-ivory/40"></div>
         <div class="absolute inset-0 bg-gradient-to-t from-cafe-ivory via-transparent to-transparent"></div>
       </div>
       
-      <!-- Hero Animated Elements - AI Tech Style -->
+      <!-- ✨ Hero Decorative Animations ✨ -->
       <div class="absolute inset-0 pointer-events-none overflow-hidden">
-        <!-- AI Holographic rings -->
-        <div class="hero-holo-ring" style="top: 20%; right: 20%;"></div>
-        <div class="hero-holo-ring" style="top: 60%; right: 10%; animation-delay: -2s;"></div>
+        <!-- Glowing orbs floating -->
+        <div class="hero-glow-orb hero-glow-1"></div>
+        <div class="hero-glow-orb hero-glow-2"></div>
+        <div class="hero-glow-orb hero-glow-3"></div>
         
-        <!-- Floating data points -->
-        <div class="hero-data-point" style="top: 15%; left: 55%; animation-delay: 0s;"></div>
-        <div class="hero-data-point" style="top: 35%; left: 75%; animation-delay: -1s;"></div>
-        <div class="hero-data-point" style="top: 55%; left: 60%; animation-delay: -2s;"></div>
-        <div class="hero-data-point" style="top: 75%; left: 80%; animation-delay: -3s;"></div>
+        <!-- Rotating AI rings -->
+        <div class="hero-ai-ring" style="top: 15%; right: 18%;"></div>
+        <div class="hero-ai-ring hero-ai-ring-sm" style="top: 55%; right: 8%;"></div>
         
-        <!-- Binary stream lines -->
-        <div class="hero-binary-stream" style="top: 25%; right: 15%;"></div>
-        <div class="hero-binary-stream" style="top: 50%; right: 25%; animation-delay: -1.5s;"></div>
-        <div class="hero-binary-stream" style="top: 70%; right: 8%; animation-delay: -3s;"></div>
+        <!-- Floating diamonds -->
+        <div class="hero-diamond" style="top: 25%; right: 35%; animation-delay: 0s;"></div>
+        <div class="hero-diamond" style="top: 45%; right: 15%; animation-delay: -2s;"></div>
+        <div class="hero-diamond" style="top: 70%; right: 28%; animation-delay: -4s;"></div>
+        
+        <!-- Light beams -->
+        <div class="hero-light-beam" style="top: 0; right: 25%; animation-delay: 0s;"></div>
+        <div class="hero-light-beam" style="top: 0; right: 45%; animation-delay: -3s;"></div>
       </div>
       
       <!-- Wood Wave Decoration -->
@@ -52,7 +55,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           <!-- Main Heading -->
           <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold text-cafe-text mb-6 leading-tight">
             <span class="block hero-slide-up" style="animation-delay: 0.4s;">温かな空間で、</span>
-            <span class="text-wood-gradient hero-slide-up" style="animation-delay: 0.6s;">AIを学ぼう。</span>
+            <span class="text-wood-gradient hero-slide-up hero-text-glow" style="animation-delay: 0.6s;">AIを学ぼう。</span>
           </h1>
           
           <p class="text-xl text-cafe-textLight mb-8 leading-relaxed hero-fade-in" style="animation-delay: 0.8s;">
@@ -62,7 +65,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           
           <!-- CTA Buttons -->
           <div class="flex flex-col sm:flex-row gap-4 hero-fade-in" style="animation-delay: 1s;">
-            <a href="/courses" class="btn-warm inline-flex items-center justify-center px-8 py-4 font-bold shadow-lg hero-btn-glow">
+            <a href="/courses" class="btn-warm inline-flex items-center justify-center px-8 py-4 font-bold shadow-lg hero-btn-shine">
               <i class="fas fa-book-open mr-2"></i>講座を探す
             </a>
             <a href="/reservation" class="btn-outline inline-flex items-center justify-center px-8 py-4 font-bold">
@@ -72,15 +75,15 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           
           <!-- Stats -->
           <div class="flex flex-wrap gap-8 mt-12 pt-8 border-t border-cafe-beige hero-fade-in" style="animation-delay: 1.2s;">
-            <div class="hero-stat">
+            <div>
               <div class="text-3xl font-bold text-cafe-wood">500+</div>
               <div class="text-sm text-cafe-textLight">受講生</div>
             </div>
-            <div class="hero-stat" style="animation-delay: 0.1s;">
+            <div>
               <div class="text-3xl font-bold text-cafe-wood">6</div>
               <div class="text-sm text-cafe-textLight">講座数</div>
             </div>
-            <div class="hero-stat" style="animation-delay: 0.2s;">
+            <div>
               <div class="text-3xl font-bold text-cafe-wood">98%</div>
               <div class="text-sm text-cafe-textLight">満足度</div>
             </div>
