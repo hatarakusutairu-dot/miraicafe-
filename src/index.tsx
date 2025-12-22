@@ -24,12 +24,14 @@ import { courses, blogPosts, schedules } from './data'
 // Types
 type Bindings = {
   DB: D1Database
+  R2_BUCKET: R2Bucket
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
 
 // CORS for API
 app.use('/api/*', cors())
+app.use('/admin/api/*', cors())
 
 // Static files
 app.use('/static/*', serveStatic({ root: './public' }))
@@ -1090,6 +1092,185 @@ app.post('/admin/contacts/:id/status', async (c) => {
   }
   
   return c.redirect(`/admin/contacts/${id}`)
+})
+
+// ===== 画像アップロードAPI =====
+
+// 許可されるMIMEタイプ
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+
+// ファイル名を生成
+function generateFileName(originalName: string): string {
+  const timestamp = Date.now()
+  const random = Math.random().toString(36).substring(2, 9)
+  const ext = originalName.split('.').pop()?.toLowerCase() || 'jpg'
+  return `${timestamp}_${random}.${ext}`
+}
+
+// 画像アップロードエンドポイント
+app.post('/admin/api/upload', async (c) => {
+  // 認証チェック
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSession(sessionId)) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+
+  try {
+    const formData = await c.req.formData()
+    const file = formData.get('file') as File | null
+
+    if (!file) {
+      return c.json({ error: 'ファイルが選択されていません' }, 400)
+    }
+
+    // MIMEタイプチェック
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      return c.json({ error: '対応していないファイル形式です。JPG, PNG, GIF, WebPのみ対応しています。' }, 400)
+    }
+
+    // ファイルサイズチェック
+    if (file.size > MAX_FILE_SIZE) {
+      return c.json({ error: 'ファイルサイズが大きすぎます（最大5MB）' }, 400)
+    }
+
+    // ファイル名を生成
+    const fileName = generateFileName(file.name)
+    const key = `uploads/${fileName}`
+
+    // R2にアップロード
+    const arrayBuffer = await file.arrayBuffer()
+    
+    await c.env.R2_BUCKET.put(key, arrayBuffer, {
+      httpMetadata: {
+        contentType: file.type,
+      },
+    })
+
+    // 公開URLを生成（R2パブリックバケットまたはWorker経由）
+    const url = `/images/${fileName}`
+
+    return c.json({ 
+      success: true, 
+      url,
+      fileName,
+      size: file.size,
+      type: file.type
+    })
+  } catch (error) {
+    console.error('Upload error:', error)
+    return c.json({ error: 'アップロードに失敗しました' }, 500)
+  }
+})
+
+// 複数画像アップロードエンドポイント
+app.post('/admin/api/upload-multiple', async (c) => {
+  // 認証チェック
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSession(sessionId)) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+
+  try {
+    const formData = await c.req.formData()
+    const files = formData.getAll('files') as File[]
+
+    if (!files || files.length === 0) {
+      return c.json({ error: 'ファイルが選択されていません' }, 400)
+    }
+
+    const results: { url: string; fileName: string; size: number; type: string }[] = []
+    const errors: string[] = []
+
+    for (const file of files) {
+      // MIMEタイプチェック
+      if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+        errors.push(`${file.name}: 対応していないファイル形式です`)
+        continue
+      }
+
+      // ファイルサイズチェック
+      if (file.size > MAX_FILE_SIZE) {
+        errors.push(`${file.name}: ファイルサイズが大きすぎます（最大5MB）`)
+        continue
+      }
+
+      try {
+        const fileName = generateFileName(file.name)
+        const key = `uploads/${fileName}`
+        const arrayBuffer = await file.arrayBuffer()
+        
+        await c.env.R2_BUCKET.put(key, arrayBuffer, {
+          httpMetadata: {
+            contentType: file.type,
+          },
+        })
+
+        results.push({
+          url: `/images/${fileName}`,
+          fileName,
+          size: file.size,
+          type: file.type
+        })
+      } catch (err) {
+        errors.push(`${file.name}: アップロードに失敗しました`)
+      }
+    }
+
+    return c.json({ 
+      success: true, 
+      uploaded: results,
+      errors: errors.length > 0 ? errors : undefined
+    })
+  } catch (error) {
+    console.error('Upload error:', error)
+    return c.json({ error: 'アップロードに失敗しました' }, 500)
+  }
+})
+
+// 画像削除エンドポイント
+app.delete('/admin/api/upload/:fileName', async (c) => {
+  // 認証チェック
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSession(sessionId)) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+
+  try {
+    const fileName = c.req.param('fileName')
+    const key = `uploads/${fileName}`
+    
+    await c.env.R2_BUCKET.delete(key)
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Delete error:', error)
+    return c.json({ error: '削除に失敗しました' }, 500)
+  }
+})
+
+// 画像配信エンドポイント（R2から直接配信）
+app.get('/images/:fileName', async (c) => {
+  try {
+    const fileName = c.req.param('fileName')
+    const key = `uploads/${fileName}`
+    
+    const object = await c.env.R2_BUCKET.get(key)
+    
+    if (!object) {
+      return c.notFound()
+    }
+
+    const headers = new Headers()
+    headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg')
+    headers.set('Cache-Control', 'public, max-age=31536000') // 1年キャッシュ
+    headers.set('ETag', object.etag)
+
+    return new Response(object.body, { headers })
+  } catch (error) {
+    console.error('Image serve error:', error)
+    return c.notFound()
+  }
 })
 
 export default app

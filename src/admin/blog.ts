@@ -236,10 +236,10 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">アイキャッチ画像URL</label>
-            <input type="url" name="image" value="${escapeAttr(post?.image || '')}"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="https://example.com/image.jpg">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-image mr-1"></i>アイキャッチ画像
+            </label>
+            <div id="blog-image-upload"></div>
           </div>
         </div>
       </div>
@@ -287,6 +287,13 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
         </button>
       </div>
     </form>
+    
+    <script>
+      // 画像アップロードコンポーネントを初期化
+      document.addEventListener('DOMContentLoaded', function() {
+        initImageUpload('blog-image-upload', 'image', '${escapeAttr(post?.image || '')}');
+      });
+    </script>
   `
 
   return renderAdminLayout(title, content, 'blog')

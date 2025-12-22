@@ -295,10 +295,10 @@ export const renderCourseForm = (course?: Course, error?: string) => {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">講師画像URL</label>
-            <input type="url" name="instructor_image" value="${course?.instructorInfo?.image || ''}"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="https://example.com/instructor.jpg">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-user-circle mr-1"></i>講師画像
+            </label>
+            <div id="instructor-image-upload"></div>
           </div>
         </div>
       </div>
@@ -309,19 +309,19 @@ export const renderCourseForm = (course?: Course, error?: string) => {
           <i class="fas fa-images text-blue-500 mr-2"></i>画像設定
         </h2>
         
-        <div class="space-y-4">
+        <div class="space-y-6">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">メイン画像URL</label>
-            <input type="url" name="image" value="${course?.image || ''}"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="https://example.com/course-image.jpg">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-image mr-1"></i>メイン画像
+            </label>
+            <div id="course-main-image-upload"></div>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">ギャラリー画像（改行区切り）</label>
-            <textarea name="gallery" rows="4"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-              placeholder="1行に1つのURLを入力&#10;https://example.com/gallery1.jpg&#10;https://example.com/gallery2.jpg">${course?.gallery?.join('\n') || ''}</textarea>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-images mr-1"></i>ギャラリー画像（複数可）
+            </label>
+            <div id="course-gallery-upload"></div>
           </div>
         </div>
       </div>
@@ -454,6 +454,19 @@ export const renderCourseForm = (course?: Course, error?: string) => {
           btn.closest('.faq-item').remove();
         }
       }
+      
+      // 画像アップロードコンポーネントを初期化
+      document.addEventListener('DOMContentLoaded', function() {
+        // 講師画像（単一）
+        initImageUpload('instructor-image-upload', 'instructor_image', '${escapeAttr(course?.instructorInfo?.image || '')}');
+        
+        // メイン画像（単一）
+        initImageUpload('course-main-image-upload', 'image', '${escapeAttr(course?.image || '')}');
+        
+        // ギャラリー画像（複数）
+        const galleryUrls = ${JSON.stringify(course?.gallery || [])};
+        initMultiImageUpload('course-gallery-upload', 'gallery', galleryUrls);
+      });
     </script>
   `
 
