@@ -176,9 +176,9 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           </div>
           <div class="relative flex justify-center items-end gap-4">
             <div class="absolute inset-0 bg-nature-mint rounded-3xl opacity-30 blur-2xl"></div>
-            <img src="/static/char-green.png" alt="リーフ" class="relative w-28 md:w-36 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char1 6s ease-in-out infinite;">
-            <img src="/static/char-rabbit.png" alt="ロボうさぎ" class="relative w-32 md:w-40 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char2 7s ease-in-out infinite;">
-            <img src="/static/char-pink.png" alt="ピンク" class="relative w-24 md:w-32 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char3 5s ease-in-out infinite;">
+            <img src="/static/companion-green.png" alt="リーフ" class="relative w-28 md:w-36 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char1 6s ease-in-out infinite;">
+            <img src="/static/companion-rabbit.png" alt="ロボうさぎ" class="relative w-32 md:w-40 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char2 7s ease-in-out infinite;">
+            <img src="/static/companion-pink.png" alt="ピンク" class="relative w-24 md:w-32 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char3 5s ease-in-out infinite;">
           </div>
         </div>
       </div>
