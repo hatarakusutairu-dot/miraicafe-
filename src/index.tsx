@@ -38,40 +38,47 @@ app.use('/static/*', serveStatic({ root: './public' }))
 
 // ===== Pages =====
 
-// Home
-app.get('/', (c) => {
-  return c.html(renderHomePage(courses.slice(0, 3), blogPosts.slice(0, 3)))
+// Home（DBと静的データをマージ）
+app.get('/', async (c) => {
+  const allCourses = await getAllCoursesForFront(c.env.DB)
+  const allPosts = await getAllBlogPosts(c.env.DB)
+  return c.html(renderHomePage(allCourses.slice(0, 3), allPosts.slice(0, 3)))
 })
 
-// Courses
-app.get('/courses', (c) => {
-  return c.html(renderCoursesPage(courses))
+// Courses（DBと静的データをマージ）
+app.get('/courses', async (c) => {
+  const allCourses = await getAllCoursesForFront(c.env.DB)
+  return c.html(renderCoursesPage(allCourses))
 })
 
-app.get('/courses/:id', (c) => {
+app.get('/courses/:id', async (c) => {
   const id = c.req.param('id')
-  const course = courses.find(c => c.id === id)
+  const allCourses = await getAllCoursesForFront(c.env.DB)
+  const course = allCourses.find((c: any) => c.id === id)
   if (!course) return c.notFound()
-  return c.html(renderCourseDetailPage(course, schedules, courses))
+  return c.html(renderCourseDetailPage(course, schedules, allCourses))
 })
 
-// Reservation
-app.get('/reservation', (c) => {
+// Reservation（DBと静的データをマージ）
+app.get('/reservation', async (c) => {
   const courseId = c.req.query('course')
-  const course = courseId ? courses.find(c => c.id === courseId) : null
-  return c.html(renderReservationPage(courses, schedules, course))
+  const allCourses = await getAllCoursesForFront(c.env.DB)
+  const course = courseId ? allCourses.find((c: any) => c.id === courseId) : null
+  return c.html(renderReservationPage(allCourses, schedules, course))
 })
 
-// Blog
-app.get('/blog', (c) => {
-  return c.html(renderBlogPage(blogPosts))
+// Blog（DBと静的データをマージ）
+app.get('/blog', async (c) => {
+  const allPosts = await getAllBlogPosts(c.env.DB)
+  return c.html(renderBlogPage(allPosts))
 })
 
-app.get('/blog/:id', (c) => {
+app.get('/blog/:id', async (c) => {
   const id = c.req.param('id')
-  const post = blogPosts.find(p => p.id === id)
+  const post = await getBlogPostById(c.env.DB, id)
   if (!post) return c.notFound()
-  return c.html(renderBlogPostPage(post, blogPosts))
+  const allPosts = await getAllBlogPosts(c.env.DB)
+  return c.html(renderBlogPostPage(post, allPosts))
 })
 
 // Contact
@@ -733,6 +740,11 @@ async function getAllCourses(db: D1Database): Promise<any[]> {
     console.error('Error fetching courses from D1:', error)
     return courses
   }
+}
+
+// フロント用：DBと静的データをマージして講座を取得（getAllCoursesと同じ）
+async function getAllCoursesForFront(db: D1Database): Promise<any[]> {
+  return getAllCourses(db)
 }
 
 // D1から講座を取得（ID指定）

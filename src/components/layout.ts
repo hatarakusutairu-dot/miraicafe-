@@ -194,6 +194,36 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       color: white;
     }
     
+    /* Filter button styles for /courses page */
+    .filter-btn {
+      background-color: #F3F4F6; /* gray-100 */
+      color: #374151; /* gray-700 */
+      transition: all 0.2s ease;
+    }
+    .filter-btn:hover {
+      background-color: rgba(59, 130, 246, 0.15); /* ai-blue/15 */
+      color: #1D4ED8; /* darker blue */
+    }
+    .filter-btn.active {
+      background-color: #3B82F6 !important; /* ai-blue */
+      color: #FFFFFF !important;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+    .filter-btn.active:hover {
+      background-color: #2563EB !important; /* darker ai-blue */
+    }
+    
+    /* Course card clickable styles */
+    .course-card {
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .course-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(59, 130, 246, 0.15);
+      border-color: rgba(59, 130, 246, 0.4) !important;
+    }
+    
     /* Navigation */
     .nav-link {
       position: relative;
