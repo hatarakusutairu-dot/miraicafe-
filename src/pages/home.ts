@@ -3,151 +3,207 @@ import { Course, BlogPost } from '../data'
 
 export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[]) => {
   const content = `
-    <!-- Hero Section with Wave Animation -->
-    <section class="relative overflow-hidden min-h-[600px] gradient-hero">
-      <!-- Wave animations -->
-      <div class="wave-bg"></div>
-      <div class="wave-bg wave-bg-2"></div>
-      <div class="wave-bg wave-bg-3"></div>
+    <!-- Hero Section - Futuristic Greenhouse Style -->
+    <section class="relative min-h-[90vh] flex items-center overflow-hidden">
+      <!-- Background Image with Overlay -->
+      <div class="absolute inset-0">
+        <img src="https://www.genspark.ai/api/files/s/13WjWC6J" alt="Futuristic greenhouse" class="w-full h-full object-cover">
+        <div class="absolute inset-0 bg-gradient-to-r from-white/90 via-white/70 to-transparent"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-future-ivory via-transparent to-transparent"></div>
+      </div>
       
-      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <!-- Left: Text Content -->
-          <div class="text-center lg:text-left z-10">
-            <div class="inline-flex items-center bg-white/70 backdrop-blur-sm rounded-full px-4 py-2 mb-6 shadow-sm">
-              <i class="fas fa-seedling text-character-green mr-2"></i>
-              <span class="text-greenhouse-text text-sm font-medium">新規登録で初回10%OFF</span>
-            </div>
-            <h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-greenhouse-text mb-6 leading-tight">
-              温室カフェで、<br>
-              <span class="text-character-green">AI</span>を学ぼう。
-            </h1>
-            <p class="text-lg md:text-xl text-greenhouse-textLight mb-8 max-w-xl">
-              mirAIcafeは、明るく開放的な雰囲気で<br class="hidden md:inline">
-              AIスキルを身につけられるオンライン学習プラットフォームです。
-            </p>
-            <div class="flex flex-col sm:flex-row justify-center lg:justify-start gap-4">
-              <a href="/courses" class="btn-primary inline-flex items-center justify-center gradient-button text-white px-8 py-4 rounded-full font-bold shadow-lg">
-                <i class="fas fa-book-open mr-2"></i>講座を探す
-              </a>
-              <a href="/reservation" class="btn-primary inline-flex items-center justify-center bg-white text-greenhouse-text px-8 py-4 rounded-full font-bold shadow-md hover:shadow-lg border-2 border-greenhouse-sage">
-                <i class="fas fa-calendar-check mr-2"></i>今すぐ予約
-              </a>
-            </div>
+      <!-- Animated Orbs -->
+      <div class="absolute inset-0 pointer-events-none">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+      </div>
+      
+      <!-- Floating Particles -->
+      <div class="particles">
+        ${Array.from({length: 20}, (_, i) => `
+          <div class="particle" style="left: ${Math.random() * 100}%; animation-delay: ${Math.random() * 15}s; animation-duration: ${15 + Math.random() * 10}s;"></div>
+        `).join('')}
+      </div>
+      
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div class="max-w-2xl">
+          <!-- Badge -->
+          <div class="inline-flex items-center glass rounded-full px-4 py-2 mb-6 border border-ai-cyan/30">
+            <span class="relative flex h-2 w-2 mr-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-ai-cyan opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-ai-cyan"></span>
+            </span>
+            <span class="text-future-text text-sm font-medium">新規登録で初回10%OFF</span>
           </div>
           
-          <!-- Right: Characters -->
-          <div class="relative flex justify-center items-end lg:justify-end z-10">
-            <!-- Character images -->
-            <div class="relative w-full max-w-lg h-80">
-              <!-- Green Robot Character -->
-              <div class="absolute left-0 bottom-0 float-animation">
-                <img src="https://www.genspark.ai/api/files/s/c01SJapp" alt="AI Characters" class="w-full max-w-sm mx-auto drop-shadow-xl">
-              </div>
+          <!-- Main Heading -->
+          <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold text-future-text mb-6 leading-tight">
+            <span class="block">未来の学びを、</span>
+            <span class="gradient-ai-text glow-text">AIと共に。</span>
+          </h1>
+          
+          <p class="text-xl text-future-textLight mb-8 leading-relaxed">
+            mirAIcafeは、最先端のAIスキルを<br class="hidden md:inline">
+            明るく開放的な空間で学べるオンラインプラットフォームです。
+          </p>
+          
+          <!-- CTA Buttons -->
+          <div class="flex flex-col sm:flex-row gap-4">
+            <a href="/courses" class="btn-ai inline-flex items-center justify-center gradient-ai text-white px-8 py-4 rounded-full font-bold shadow-lg">
+              <i class="fas fa-rocket mr-2"></i>講座を探す
+            </a>
+            <a href="/reservation" class="btn-ai inline-flex items-center justify-center glass text-future-text px-8 py-4 rounded-full font-bold border border-ai-blue/30 hover:border-ai-blue">
+              <i class="fas fa-calendar-check mr-2"></i>今すぐ予約
+            </a>
+          </div>
+          
+          <!-- Stats -->
+          <div class="flex flex-wrap gap-8 mt-12 pt-8 border-t border-future-sky">
+            <div>
+              <div class="text-3xl font-bold gradient-ai-text">500+</div>
+              <div class="text-sm text-future-textLight">受講生</div>
+            </div>
+            <div>
+              <div class="text-3xl font-bold gradient-ai-text">6</div>
+              <div class="text-sm text-future-textLight">講座数</div>
+            </div>
+            <div>
+              <div class="text-3xl font-bold gradient-ai-text">98%</div>
+              <div class="text-sm text-future-textLight">満足度</div>
             </div>
           </div>
         </div>
       </div>
       
-      <!-- Greenhouse decoration -->
-      <div class="absolute top-0 left-0 w-32 h-32 opacity-20">
-        <i class="fas fa-leaf text-character-green" style="font-size: 8rem; transform: rotate(-30deg);"></i>
-      </div>
-      <div class="absolute top-20 right-10 w-20 h-20 opacity-15">
-        <i class="fas fa-spa text-character-green" style="font-size: 5rem;"></i>
+      <!-- Scroll indicator -->
+      <div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+        <div class="w-8 h-12 rounded-full border-2 border-ai-blue/50 flex items-start justify-center p-2">
+          <div class="w-1 h-3 bg-ai-blue rounded-full animate-pulse"></div>
+        </div>
       </div>
     </section>
 
     <!-- Features Section -->
-    <section class="py-20 bg-white relative overflow-hidden">
-      <!-- Decorative elements -->
-      <div class="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-greenhouse-cream/50 to-transparent"></div>
+    <section class="py-24 relative overflow-hidden">
+      <div class="absolute inset-0 gradient-ai-light"></div>
+      <div class="wave-organic"></div>
       
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
-          <span class="inline-block bg-greenhouse-sage/30 text-character-green font-medium px-4 py-2 rounded-full text-sm mb-4">
-            <i class="fas fa-star mr-2"></i>mirAIcafeの特徴
+          <span class="inline-flex items-center gradient-ai text-white font-medium px-4 py-2 rounded-full text-sm mb-4">
+            <i class="fas fa-sparkles mr-2"></i>WHY mirAIcafe?
           </span>
-          <h2 class="font-display text-3xl md:text-4xl font-bold text-greenhouse-text mb-4">
-            温室カフェのような学習体験
+          <h2 class="text-4xl md:text-5xl font-bold text-future-text mb-4">
+            学びを、もっと<span class="gradient-ai-text">スマート</span>に
           </h2>
-          <p class="text-greenhouse-textLight max-w-2xl mx-auto">
-            明るく開放的な雰囲気で、楽しみながらAIスキルを身につけましょう
+          <p class="text-future-textLight max-w-2xl mx-auto text-lg">
+            最新のAI技術と洗練された学習体験で、あなたのスキルアップをサポートします
           </p>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div class="card-hover bg-gradient-to-br from-character-green/10 to-greenhouse-sage/20 p-8 text-center">
-            <div class="w-20 h-20 gradient-button rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <i class="fas fa-user-friends text-white text-2xl"></i>
+          <div class="card-hover glass p-8 text-center border border-white/50">
+            <div class="w-20 h-20 gradient-ai rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg pulse-glow">
+              <i class="fas fa-users text-white text-2xl"></i>
             </div>
-            <h3 class="text-xl font-bold text-greenhouse-text mb-3">少人数制</h3>
-            <p class="text-greenhouse-textLight text-sm leading-relaxed">
-              最大10名の少人数制で、一人ひとりに寄り添った丁寧な指導を行います。
+            <h3 class="text-xl font-bold text-future-text mb-3">少人数制</h3>
+            <p class="text-future-textLight">
+              最大10名の少人数制で、一人ひとりに合わせた丁寧な指導を実現
             </p>
           </div>
           
-          <div class="card-hover bg-gradient-to-br from-character-orange/10 to-greenhouse-wood/20 p-8 text-center">
-            <div class="w-20 h-20 gradient-button-warm rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <i class="fas fa-laptop-house text-white text-2xl"></i>
+          <div class="card-hover glass p-8 text-center border border-white/50">
+            <div class="w-20 h-20 gradient-ai rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg pulse-glow" style="animation-delay: 1s;">
+              <i class="fas fa-globe text-white text-2xl"></i>
             </div>
-            <h3 class="text-xl font-bold text-greenhouse-text mb-3">完全オンライン</h3>
-            <p class="text-greenhouse-textLight text-sm leading-relaxed">
-              自宅やカフェなど、お好きな場所から参加できます。移動時間ゼロで効率的。
+            <h3 class="text-xl font-bold text-future-text mb-3">完全オンライン</h3>
+            <p class="text-future-textLight">
+              どこからでも参加可能。自宅やカフェから快適に学習できます
             </p>
           </div>
           
-          <div class="card-hover bg-gradient-to-br from-character-pink/10 to-greenhouse-sky/20 p-8 text-center">
-            <div class="w-20 h-20 bg-gradient-to-br from-character-pink to-pink-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <i class="fas fa-certificate text-white text-2xl"></i>
+          <div class="card-hover glass p-8 text-center border border-white/50">
+            <div class="w-20 h-20 gradient-ai rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg pulse-glow" style="animation-delay: 2s;">
+              <i class="fas fa-award text-white text-2xl"></i>
             </div>
-            <h3 class="text-xl font-bold text-greenhouse-text mb-3">修了証明</h3>
-            <p class="text-greenhouse-textLight text-sm leading-relaxed">
-              講座修了時にデジタル修了証を発行。スキルの証明にご活用いただけます。
+            <h3 class="text-xl font-bold text-future-text mb-3">修了証明</h3>
+            <p class="text-future-textLight">
+              講座修了時にデジタル証明書を発行。キャリアの証明に活用可能
             </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Characters Section -->
+    <section class="py-16 bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div>
+            <span class="inline-flex items-center bg-ai-purple/10 text-ai-purple font-medium px-4 py-2 rounded-full text-sm mb-4">
+              <i class="fas fa-robot mr-2"></i>AI COMPANIONS
+            </span>
+            <h2 class="text-4xl font-bold text-future-text mb-6">
+              あなたの学習を<br><span class="gradient-ai-text">サポートする仲間たち</span>
+            </h2>
+            <p class="text-future-textLight text-lg mb-8 leading-relaxed">
+              mirAIcafeのAIキャラクターたちが、あなたの学習をサポート。
+              楽しみながら、着実にスキルアップできる環境を提供します。
+            </p>
+            <a href="/courses" class="btn-ai inline-flex items-center gradient-ai text-white px-6 py-3 rounded-full font-bold">
+              <i class="fas fa-arrow-right mr-2"></i>講座を見る
+            </a>
+          </div>
+          <div class="relative">
+            <div class="absolute inset-0 gradient-ai rounded-3xl opacity-10 blur-3xl"></div>
+            <img src="https://www.genspark.ai/api/files/s/c01SJapp" alt="AI Characters" class="relative w-full max-w-md mx-auto drop-shadow-2xl hover:scale-105 transition-transform duration-500">
           </div>
         </div>
       </div>
     </section>
 
     <!-- Featured Courses Section -->
-    <section class="py-20 gradient-soft">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section class="py-24 bg-future-light relative overflow-hidden">
+      <div class="absolute top-0 right-0 w-96 h-96 gradient-ai rounded-full opacity-10 blur-3xl"></div>
+      
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col md:flex-row justify-between items-center mb-12">
           <div class="text-center md:text-left mb-6 md:mb-0">
-            <span class="inline-block bg-character-green/20 text-character-green font-medium px-4 py-2 rounded-full text-sm mb-4">
-              <i class="fas fa-fire mr-2"></i>人気の講座
+            <span class="inline-flex items-center bg-ai-cyan/10 text-ai-cyan font-medium px-4 py-2 rounded-full text-sm mb-4">
+              <i class="fas fa-fire mr-2"></i>POPULAR COURSES
             </span>
-            <h2 class="font-display text-3xl md:text-4xl font-bold text-greenhouse-text">今月のおすすめ</h2>
+            <h2 class="text-4xl font-bold text-future-text">人気の講座</h2>
           </div>
-          <a href="/courses" class="inline-flex items-center text-character-green hover:text-green-600 font-medium transition-colors">
-            すべての講座を見る <i class="fas fa-arrow-right ml-2"></i>
+          <a href="/courses" class="btn-ai inline-flex items-center glass text-future-text px-6 py-3 rounded-full font-medium border border-ai-blue/30">
+            すべて見る <i class="fas fa-arrow-right ml-2"></i>
           </a>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
           ${featuredCourses.map((course, index) => `
-            <div class="card-hover bg-white overflow-hidden shadow-md">
-              <div class="aspect-video bg-greenhouse-beige relative overflow-hidden">
-                <img src="${course.image}" alt="${course.title}" class="w-full h-full object-cover">
+            <div class="card-hover bg-white overflow-hidden shadow-lg border border-future-sky/50">
+              <div class="aspect-video relative overflow-hidden">
+                <img src="${course.image}" alt="${course.title}" class="w-full h-full object-cover hover:scale-110 transition-transform duration-700">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                 <div class="absolute top-4 left-4 flex gap-2">
-                  <span class="bg-character-${index === 0 ? 'green' : index === 1 ? 'orange' : 'pink'} text-white text-xs font-bold px-3 py-1 rounded-full shadow">${course.level}</span>
+                  <span class="gradient-ai text-white text-xs font-bold px-3 py-1 rounded-full shadow">${course.level}</span>
                 </div>
-                <div class="absolute top-4 right-4">
-                  <span class="bg-white/90 text-greenhouse-text text-xs font-bold px-3 py-1 rounded-full shadow">
+                <div class="absolute bottom-4 right-4">
+                  <span class="glass text-future-text text-xs font-bold px-3 py-1 rounded-full">
                     <i class="fas fa-clock mr-1"></i>${course.duration}
                   </span>
                 </div>
               </div>
               <div class="p-6">
-                <div class="flex items-center text-sm text-greenhouse-textLight mb-2">
-                  <i class="fas fa-tag mr-2 text-character-green"></i>${course.category}
+                <div class="flex items-center text-sm text-future-textLight mb-2">
+                  <i class="fas fa-tag mr-2 text-ai-blue"></i>${course.category}
                 </div>
-                <h3 class="text-xl font-bold text-greenhouse-text mb-2">${course.title}</h3>
-                <p class="text-greenhouse-textLight text-sm mb-4 line-clamp-2">${course.description}</p>
-                <div class="flex items-center justify-between pt-4 border-t border-greenhouse-beige">
-                  <span class="text-2xl font-bold text-character-green">¥${course.price.toLocaleString()}</span>
-                  <a href="/courses/${course.id}" class="btn-primary gradient-button text-white px-5 py-2 rounded-full text-sm font-medium">
+                <h3 class="text-xl font-bold text-future-text mb-2">${course.title}</h3>
+                <p class="text-future-textLight text-sm mb-4 line-clamp-2">${course.description}</p>
+                <div class="flex items-center justify-between pt-4 border-t border-future-sky">
+                  <span class="text-2xl font-bold gradient-ai-text">¥${course.price.toLocaleString()}</span>
+                  <a href="/courses/${course.id}" class="btn-ai gradient-ai text-white px-5 py-2 rounded-full text-sm font-medium">
                     詳細を見る
                   </a>
                 </div>
@@ -159,48 +215,48 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
     </section>
 
     <!-- How It Works Section -->
-    <section class="py-20 bg-white relative overflow-hidden">
+    <section class="py-24 bg-white relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
-          <span class="inline-block bg-character-orange/20 text-character-orange font-medium px-4 py-2 rounded-full text-sm mb-4">
-            <i class="fas fa-route mr-2"></i>ご利用の流れ
+          <span class="inline-flex items-center bg-ai-blue/10 text-ai-blue font-medium px-4 py-2 rounded-full text-sm mb-4">
+            <i class="fas fa-route mr-2"></i>HOW IT WORKS
           </span>
-          <h2 class="font-display text-3xl md:text-4xl font-bold text-greenhouse-text mb-4">
-            簡単3ステップでAI学習をスタート
+          <h2 class="text-4xl font-bold text-future-text mb-4">
+            <span class="gradient-ai-text">3ステップ</span>で始める
           </h2>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-          <!-- Connecting line (desktop only) -->
-          <div class="hidden md:block absolute top-16 left-1/4 right-1/4 h-1 bg-gradient-to-r from-character-green via-character-orange to-character-pink rounded-full"></div>
+          <!-- Connecting line -->
+          <div class="hidden md:block absolute top-16 left-1/4 right-1/4 h-0.5 gradient-ai"></div>
           
           <div class="relative">
-            <div class="bg-greenhouse-cream rounded-3xl p-8 text-center relative z-10 border-2 border-greenhouse-sage/30">
-              <div class="w-14 h-14 gradient-button rounded-full flex items-center justify-center mx-auto mb-4 text-white font-bold text-xl shadow-lg">1</div>
-              <h3 class="text-xl font-bold text-greenhouse-text mb-3">講座を選ぶ</h3>
-              <p class="text-greenhouse-textLight text-sm">目的やレベルに合わせて、お好みの講座を選択してください。</p>
+            <div class="card-hover glass p-8 text-center border border-white/50">
+              <div class="w-16 h-16 gradient-ai rounded-full flex items-center justify-center mx-auto mb-6 text-white font-bold text-2xl shadow-lg relative z-10">1</div>
+              <h3 class="text-xl font-bold text-future-text mb-3">講座を選ぶ</h3>
+              <p class="text-future-textLight">目的やレベルに合わせて最適な講座を選択</p>
             </div>
           </div>
           
           <div class="relative">
-            <div class="bg-greenhouse-cream rounded-3xl p-8 text-center relative z-10 border-2 border-character-orange/30">
-              <div class="w-14 h-14 gradient-button-warm rounded-full flex items-center justify-center mx-auto mb-4 text-white font-bold text-xl shadow-lg">2</div>
-              <h3 class="text-xl font-bold text-greenhouse-text mb-3">日程を予約</h3>
-              <p class="text-greenhouse-textLight text-sm">カレンダーから都合の良い日程を選んで予約します。</p>
+            <div class="card-hover glass p-8 text-center border border-white/50">
+              <div class="w-16 h-16 gradient-ai rounded-full flex items-center justify-center mx-auto mb-6 text-white font-bold text-2xl shadow-lg relative z-10">2</div>
+              <h3 class="text-xl font-bold text-future-text mb-3">日程を予約</h3>
+              <p class="text-future-textLight">カレンダーから都合の良い日程を選択</p>
             </div>
           </div>
           
           <div class="relative">
-            <div class="bg-greenhouse-cream rounded-3xl p-8 text-center relative z-10 border-2 border-character-pink/30">
-              <div class="w-14 h-14 bg-gradient-to-br from-character-pink to-pink-400 rounded-full flex items-center justify-center mx-auto mb-4 text-white font-bold text-xl shadow-lg">3</div>
-              <h3 class="text-xl font-bold text-greenhouse-text mb-3">決済して参加</h3>
-              <p class="text-greenhouse-textLight text-sm">安全なStripe決済後、オンラインで講座に参加できます。</p>
+            <div class="card-hover glass p-8 text-center border border-white/50">
+              <div class="w-16 h-16 gradient-ai rounded-full flex items-center justify-center mx-auto mb-6 text-white font-bold text-2xl shadow-lg relative z-10">3</div>
+              <h3 class="text-xl font-bold text-future-text mb-3">決済して参加</h3>
+              <p class="text-future-textLight">安全なStripe決済でオンライン受講</p>
             </div>
           </div>
         </div>
         
         <div class="text-center mt-12">
-          <a href="/reservation" class="btn-primary inline-flex items-center justify-center gradient-button text-white px-8 py-4 rounded-full font-bold shadow-lg">
+          <a href="/reservation" class="btn-ai inline-flex items-center gradient-ai text-white px-8 py-4 rounded-full font-bold shadow-lg">
             <i class="fas fa-calendar-check mr-2"></i>今すぐ予約する
           </a>
         </div>
@@ -208,34 +264,33 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
     </section>
 
     <!-- Blog Section -->
-    <section class="py-20 gradient-soft">
+    <section class="py-24 bg-future-light">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col md:flex-row justify-between items-center mb-12">
           <div class="text-center md:text-left mb-6 md:mb-0">
-            <span class="inline-block bg-greenhouse-sky/40 text-blue-600 font-medium px-4 py-2 rounded-full text-sm mb-4">
-              <i class="fas fa-newspaper mr-2"></i>AI学習ブログ
+            <span class="inline-flex items-center bg-ai-purple/10 text-ai-purple font-medium px-4 py-2 rounded-full text-sm mb-4">
+              <i class="fas fa-newspaper mr-2"></i>BLOG
             </span>
-            <h2 class="font-display text-3xl md:text-4xl font-bold text-greenhouse-text">最新のAI情報をお届け</h2>
+            <h2 class="text-4xl font-bold text-future-text">最新のAI情報</h2>
           </div>
-          <a href="/blog" class="inline-flex items-center text-character-green hover:text-green-600 font-medium transition-colors">
-            すべての記事を見る <i class="fas fa-arrow-right ml-2"></i>
+          <a href="/blog" class="btn-ai inline-flex items-center glass text-future-text px-6 py-3 rounded-full font-medium border border-ai-purple/30">
+            すべて見る <i class="fas fa-arrow-right ml-2"></i>
           </a>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
           ${recentPosts.map(post => `
-            <a href="/blog/${post.id}" class="card-hover bg-white overflow-hidden shadow-md block">
-              <div class="aspect-video bg-greenhouse-beige overflow-hidden">
-                <img src="${post.image}" alt="${post.title}" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500">
+            <a href="/blog/${post.id}" class="card-hover bg-white overflow-hidden shadow-lg border border-future-sky/50 block">
+              <div class="aspect-video overflow-hidden">
+                <img src="${post.image}" alt="${post.title}" class="w-full h-full object-cover hover:scale-110 transition-transform duration-700">
               </div>
               <div class="p-6">
-                <div class="flex items-center text-sm text-greenhouse-textLight mb-2">
-                  <span class="bg-greenhouse-sage/30 text-character-green text-xs font-medium px-2 py-1 rounded">${post.category}</span>
-                  <span class="mx-2">•</span>
-                  <i class="fas fa-clock mr-1"></i>${post.readTime}
+                <div class="flex items-center gap-3 text-sm text-future-textLight mb-2">
+                  <span class="bg-ai-blue/10 text-ai-blue font-medium px-2 py-1 rounded">${post.category}</span>
+                  <span><i class="fas fa-clock mr-1"></i>${post.readTime}</span>
                 </div>
-                <h3 class="text-lg font-bold text-greenhouse-text mb-2 line-clamp-2">${post.title}</h3>
-                <p class="text-greenhouse-textLight text-sm line-clamp-2">${post.excerpt}</p>
+                <h3 class="text-lg font-bold text-future-text mb-2 line-clamp-2">${post.title}</h3>
+                <p class="text-future-textLight text-sm line-clamp-2">${post.excerpt}</p>
               </div>
             </a>
           `).join('')}
@@ -244,30 +299,36 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
     </section>
 
     <!-- CTA Section -->
-    <section class="py-20 relative overflow-hidden">
-      <!-- Background with greenhouse image overlay -->
+    <section class="py-24 relative overflow-hidden">
+      <div class="absolute inset-0 gradient-ai"></div>
       <div class="absolute inset-0">
-        <img src="https://www.genspark.ai/api/files/s/DRjCjM32" alt="Greenhouse cafe" class="w-full h-full object-cover">
-        <div class="absolute inset-0 bg-gradient-to-r from-greenhouse-text/90 to-greenhouse-text/70"></div>
+        <div class="orb orb-1 opacity-30"></div>
+        <div class="orb orb-2 opacity-30"></div>
+        <div class="orb orb-3 opacity-30"></div>
+      </div>
+      <div class="particles">
+        ${Array.from({length: 15}, (_, i) => `
+          <div class="particle" style="left: ${Math.random() * 100}%; animation-delay: ${Math.random() * 15}s; background: white;"></div>
+        `).join('')}
       </div>
       
       <div class="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <div class="inline-flex items-center bg-character-green/30 backdrop-blur-sm rounded-full px-4 py-2 mb-6">
-          <i class="fas fa-gift text-character-green mr-2"></i>
-          <span class="text-greenhouse-cream text-sm font-medium">期間限定キャンペーン実施中</span>
+        <div class="inline-flex items-center bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 mb-6">
+          <i class="fas fa-gift text-white mr-2"></i>
+          <span class="text-white text-sm font-medium">期間限定キャンペーン実施中</span>
         </div>
-        <h2 class="font-display text-3xl md:text-4xl font-bold text-white mb-4">
-          AIスキルで、未来を切り拓こう
+        <h2 class="text-4xl md:text-5xl font-bold text-white mb-6">
+          AIスキルで、<br>未来を切り拓こう
         </h2>
-        <p class="text-greenhouse-cream/90 mb-8 text-lg">
+        <p class="text-white/90 mb-8 text-lg">
           まずは気軽に、入門講座から始めてみませんか？<br>
           あなたのAI学習を全力でサポートします。
         </p>
         <div class="flex flex-col sm:flex-row justify-center gap-4">
-          <a href="/courses" class="btn-primary inline-flex items-center justify-center gradient-button text-white px-8 py-4 rounded-full font-bold shadow-lg">
+          <a href="/courses" class="btn-ai inline-flex items-center justify-center bg-white text-ai-blue px-8 py-4 rounded-full font-bold shadow-lg hover:shadow-xl">
             <i class="fas fa-rocket mr-2"></i>講座を探す
           </a>
-          <a href="/contact" class="btn-primary inline-flex items-center justify-center bg-white/20 backdrop-blur-sm text-white border-2 border-white/50 px-8 py-4 rounded-full font-bold hover:bg-white/30">
+          <a href="/contact" class="btn-ai inline-flex items-center justify-center bg-white/20 backdrop-blur-sm text-white border-2 border-white/50 px-8 py-4 rounded-full font-bold hover:bg-white/30">
             <i class="fas fa-envelope mr-2"></i>相談する
           </a>
         </div>
