@@ -22,19 +22,111 @@ export const renderCoursesPage = (courses: Course[]) => {
     </section>
 
     <!-- Filter Section -->
-    <section class="py-4 bg-white/80 backdrop-blur-sm sticky top-20 z-40 border-b border-future-sky">
+    <section class="py-4 bg-white/95 backdrop-blur-sm sticky top-20 z-40 border-b border-future-sky shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex flex-wrap items-center gap-4">
-          <span class="text-future-textLight font-medium">絞り込み:</span>
-          <button class="filter-btn active gradient-ai text-white px-5 py-2 rounded-full text-sm font-medium transition-all shadow-sm" data-filter="all">
-            すべて
+        
+        <!-- Mobile Filter Toggle -->
+        <div class="lg:hidden mb-4">
+          <button id="filter-toggle" class="w-full flex items-center justify-between glass text-future-text px-4 py-3 rounded-xl font-medium">
+            <span class="flex items-center">
+              <i class="fas fa-filter mr-2 text-ai-blue"></i>
+              フィルター・検索
+            </span>
+            <i class="fas fa-chevron-down transition-transform" id="filter-toggle-icon"></i>
           </button>
-          <button class="filter-btn glass text-future-text px-5 py-2 rounded-full text-sm font-medium hover:bg-ai-cyan/10 transition-all border border-transparent hover:border-ai-cyan/30" data-filter="初級">
-            <i class="fas fa-seedling mr-1 text-ai-cyan"></i>初級
-          </button>
-          <button class="filter-btn glass text-future-text px-5 py-2 rounded-full text-sm font-medium hover:bg-ai-blue/10 transition-all border border-transparent hover:border-ai-blue/30" data-filter="中級">
-            <i class="fas fa-leaf mr-1 text-ai-blue"></i>中級
-          </button>
+        </div>
+
+        <!-- Filter Content (collapsible on mobile) -->
+        <div id="filter-content" class="hidden lg:block space-y-4">
+          
+          <!-- Search Bar -->
+          <div class="relative">
+            <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-future-textLight"></i>
+            <input type="text" id="search-input" 
+              class="w-full pl-12 pr-4 py-3 border-2 border-future-sky rounded-2xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light"
+              placeholder="講座名やキーワードで検索...">
+            <button id="search-clear" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-future-textLight hover:text-future-text hidden">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+
+          <!-- Category Filter -->
+          <div>
+            <span class="text-future-textLight text-sm font-medium mb-2 block">カテゴリ:</span>
+            <div class="flex flex-wrap gap-2" id="category-filters">
+              <button class="filter-btn category-btn active gradient-ai text-white px-4 py-2 rounded-full text-sm font-medium transition-all shadow-sm" data-category="all">
+                すべて
+              </button>
+              <button class="filter-btn category-btn glass text-future-text px-4 py-2 rounded-full text-sm font-medium hover:bg-ai-cyan/10 transition-all border border-transparent hover:border-ai-cyan/30" data-category="AI基礎">
+                <i class="fas fa-brain mr-1 text-ai-cyan"></i>AI基礎
+              </button>
+              <button class="filter-btn category-btn glass text-future-text px-4 py-2 rounded-full text-sm font-medium hover:bg-ai-blue/10 transition-all border border-transparent hover:border-ai-blue/30" data-category="プログラミング">
+                <i class="fas fa-code mr-1 text-ai-blue"></i>プログラミング
+              </button>
+              <button class="filter-btn category-btn glass text-future-text px-4 py-2 rounded-full text-sm font-medium hover:bg-ai-purple/10 transition-all border border-transparent hover:border-ai-purple/30" data-category="データ分析">
+                <i class="fas fa-chart-bar mr-1 text-ai-purple"></i>データ分析
+              </button>
+              <button class="filter-btn category-btn glass text-future-text px-4 py-2 rounded-full text-sm font-medium hover:bg-ai-pink/10 transition-all border border-transparent hover:border-ai-pink/30" data-category="資格対策">
+                <i class="fas fa-certificate mr-1 text-ai-pink"></i>資格対策
+              </button>
+              <button class="filter-btn category-btn glass text-future-text px-4 py-2 rounded-full text-sm font-medium hover:bg-nature-forest/10 transition-all border border-transparent hover:border-nature-forest/30" data-category="教育者向け">
+                <i class="fas fa-chalkboard-teacher mr-1 text-nature-forest"></i>教育者向け
+              </button>
+            </div>
+          </div>
+
+          <!-- Price Filter -->
+          <div>
+            <span class="text-future-textLight text-sm font-medium mb-2 block">価格帯:</span>
+            <div class="flex flex-wrap gap-2" id="price-filters">
+              <button class="filter-btn price-btn active gradient-ai text-white px-4 py-2 rounded-full text-sm font-medium transition-all shadow-sm" data-price="all">
+                すべて
+              </button>
+              <button class="filter-btn price-btn glass text-future-text px-4 py-2 rounded-full text-sm font-medium hover:bg-green-500/10 transition-all border border-transparent hover:border-green-500/30" data-price="free">
+                <i class="fas fa-gift mr-1 text-green-500"></i>無料
+              </button>
+              <button class="filter-btn price-btn glass text-future-text px-4 py-2 rounded-full text-sm font-medium hover:bg-ai-cyan/10 transition-all border border-transparent hover:border-ai-cyan/30" data-price="under5000">
+                <i class="fas fa-yen-sign mr-1 text-ai-cyan"></i>5,000円以下
+              </button>
+              <button class="filter-btn price-btn glass text-future-text px-4 py-2 rounded-full text-sm font-medium hover:bg-ai-blue/10 transition-all border border-transparent hover:border-ai-blue/30" data-price="under10000">
+                <i class="fas fa-yen-sign mr-1 text-ai-blue"></i>10,000円以下
+              </button>
+              <button class="filter-btn price-btn glass text-future-text px-4 py-2 rounded-full text-sm font-medium hover:bg-ai-purple/10 transition-all border border-transparent hover:border-ai-purple/30" data-price="over10000">
+                <i class="fas fa-yen-sign mr-1 text-ai-purple"></i>10,000円以上
+              </button>
+            </div>
+          </div>
+
+          <!-- Sort Dropdown -->
+          <div class="flex flex-wrap items-center gap-4">
+            <div class="flex items-center gap-2">
+              <span class="text-future-textLight text-sm font-medium">並び替え:</span>
+              <select id="sort-select" class="px-4 py-2 border-2 border-future-sky rounded-xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light text-future-text text-sm">
+                <option value="newest">新着順</option>
+                <option value="popular">人気順（レビュー数）</option>
+                <option value="price-asc">料金が安い順</option>
+                <option value="price-desc">料金が高い順</option>
+                <option value="rating">評価が高い順</option>
+              </select>
+            </div>
+            
+            <!-- Reset Filters -->
+            <button id="reset-filters" class="text-ai-blue text-sm font-medium hover:text-ai-purple transition-colors hidden">
+              <i class="fas fa-redo mr-1"></i>フィルターをリセット
+            </button>
+          </div>
+        </div>
+
+        <!-- Results Count -->
+        <div class="mt-4 pt-4 border-t border-future-sky/50 flex items-center justify-between">
+          <p class="text-future-textLight text-sm" id="results-count">
+            全<span class="font-bold text-future-text">${courses.length}</span>件中<span class="font-bold text-future-text" id="filtered-count">${courses.length}</span>件を表示
+          </p>
+          <div class="lg:hidden">
+            <span id="active-filters-count" class="text-ai-blue text-sm font-medium hidden">
+              <i class="fas fa-filter mr-1"></i><span id="filter-count">0</span>個のフィルター適用中
+            </span>
+          </div>
         </div>
       </div>
     </section>
@@ -42,9 +134,27 @@ export const renderCoursesPage = (courses: Course[]) => {
     <!-- Courses Grid -->
     <section class="py-16 bg-future-light">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- No Results Message -->
+        <div id="no-results" class="hidden text-center py-16">
+          <div class="w-20 h-20 gradient-ai rounded-2xl flex items-center justify-center mx-auto mb-6 opacity-50">
+            <i class="fas fa-search text-white text-3xl"></i>
+          </div>
+          <h3 class="text-xl font-bold text-future-text mb-2">条件に合う講座が見つかりませんでした</h3>
+          <p class="text-future-textLight mb-6">検索条件を変更してお試しください</p>
+          <button id="reset-from-empty" class="btn-ai gradient-ai text-white px-6 py-3 rounded-full font-medium">
+            <i class="fas fa-redo mr-2"></i>フィルターをリセット
+          </button>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="courses-grid">
           ${courses.map((course, index) => `
-            <div class="card-hover bg-white overflow-hidden shadow-lg border border-future-sky/50 course-card" data-level="${course.level}">
+            <div class="card-hover bg-white overflow-hidden shadow-lg border border-future-sky/50 course-card" 
+                 data-level="${course.level}" 
+                 data-category="${course.category}"
+                 data-price="${course.price}"
+                 data-title="${course.title}"
+                 data-description="${course.description}"
+                 data-index="${index}">
               <div class="aspect-video relative overflow-hidden">
                 <img src="${course.image}" alt="${course.title}" class="w-full h-full object-cover hover:scale-110 transition-transform duration-700">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
@@ -112,25 +222,248 @@ export const renderCoursesPage = (courses: Course[]) => {
     </section>
 
     <script>
-      document.querySelectorAll('.filter-btn').forEach(btn => {
+    (function() {
+      // Elements
+      const searchInput = document.getElementById('search-input');
+      const searchClear = document.getElementById('search-clear');
+      const categoryBtns = document.querySelectorAll('.category-btn');
+      const priceBtns = document.querySelectorAll('.price-btn');
+      const sortSelect = document.getElementById('sort-select');
+      const resetFilters = document.getElementById('reset-filters');
+      const resetFromEmpty = document.getElementById('reset-from-empty');
+      const coursesGrid = document.getElementById('courses-grid');
+      const noResults = document.getElementById('no-results');
+      const filteredCountEl = document.getElementById('filtered-count');
+      const filterToggle = document.getElementById('filter-toggle');
+      const filterContent = document.getElementById('filter-content');
+      const filterToggleIcon = document.getElementById('filter-toggle-icon');
+      const activeFiltersCount = document.getElementById('active-filters-count');
+      const filterCountEl = document.getElementById('filter-count');
+      
+      // Course cards
+      const courseCards = Array.from(document.querySelectorAll('.course-card'));
+      const totalCourses = ${courses.length};
+      
+      // Current filter state
+      let currentFilters = {
+        search: '',
+        category: 'all',
+        price: 'all',
+        sort: 'newest'
+      };
+
+      // Mobile filter toggle
+      if (filterToggle) {
+        filterToggle.addEventListener('click', function() {
+          const isHidden = filterContent.classList.contains('hidden');
+          filterContent.classList.toggle('hidden');
+          filterToggleIcon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+        });
+      }
+
+      // Search functionality with debounce
+      let searchTimeout;
+      searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const value = this.value.trim();
+        
+        // Show/hide clear button
+        searchClear.classList.toggle('hidden', !value);
+        
+        searchTimeout = setTimeout(function() {
+          currentFilters.search = value.toLowerCase();
+          applyFilters();
+        }, 300);
+      });
+
+      searchClear.addEventListener('click', function() {
+        searchInput.value = '';
+        searchClear.classList.add('hidden');
+        currentFilters.search = '';
+        applyFilters();
+      });
+
+      // Category filter
+      categoryBtns.forEach(function(btn) {
         btn.addEventListener('click', function() {
-          document.querySelectorAll('.filter-btn').forEach(b => {
+          categoryBtns.forEach(function(b) {
             b.classList.remove('active', 'gradient-ai', 'text-white', 'shadow-sm');
             b.classList.add('glass', 'text-future-text');
           });
           this.classList.remove('glass', 'text-future-text');
           this.classList.add('active', 'gradient-ai', 'text-white', 'shadow-sm');
           
-          const filter = this.dataset.filter;
-          document.querySelectorAll('.course-card').forEach(card => {
-            if (filter === 'all' || card.dataset.level.includes(filter)) {
-              card.style.display = 'block';
-            } else {
-              card.style.display = 'none';
-            }
-          });
+          currentFilters.category = this.dataset.category;
+          applyFilters();
         });
       });
+
+      // Price filter
+      priceBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          priceBtns.forEach(function(b) {
+            b.classList.remove('active', 'gradient-ai', 'text-white', 'shadow-sm');
+            b.classList.add('glass', 'text-future-text');
+          });
+          this.classList.remove('glass', 'text-future-text');
+          this.classList.add('active', 'gradient-ai', 'text-white', 'shadow-sm');
+          
+          currentFilters.price = this.dataset.price;
+          applyFilters();
+        });
+      });
+
+      // Sort functionality
+      sortSelect.addEventListener('change', function() {
+        currentFilters.sort = this.value;
+        applyFilters();
+      });
+
+      // Reset filters
+      function resetAllFilters() {
+        searchInput.value = '';
+        searchClear.classList.add('hidden');
+        currentFilters = {
+          search: '',
+          category: 'all',
+          price: 'all',
+          sort: 'newest'
+        };
+        
+        // Reset button styles
+        categoryBtns.forEach(function(b, i) {
+          b.classList.remove('active', 'gradient-ai', 'text-white', 'shadow-sm', 'glass', 'text-future-text');
+          if (i === 0) {
+            b.classList.add('active', 'gradient-ai', 'text-white', 'shadow-sm');
+          } else {
+            b.classList.add('glass', 'text-future-text');
+          }
+        });
+        
+        priceBtns.forEach(function(b, i) {
+          b.classList.remove('active', 'gradient-ai', 'text-white', 'shadow-sm', 'glass', 'text-future-text');
+          if (i === 0) {
+            b.classList.add('active', 'gradient-ai', 'text-white', 'shadow-sm');
+          } else {
+            b.classList.add('glass', 'text-future-text');
+          }
+        });
+        
+        sortSelect.value = 'newest';
+        applyFilters();
+      }
+
+      resetFilters.addEventListener('click', resetAllFilters);
+      resetFromEmpty.addEventListener('click', resetAllFilters);
+
+      // Apply filters
+      function applyFilters() {
+        let visibleCount = 0;
+        let activeFilterCount = 0;
+        
+        // Count active filters
+        if (currentFilters.search) activeFilterCount++;
+        if (currentFilters.category !== 'all') activeFilterCount++;
+        if (currentFilters.price !== 'all') activeFilterCount++;
+        if (currentFilters.sort !== 'newest') activeFilterCount++;
+        
+        // Show/hide reset button and active filter count
+        resetFilters.classList.toggle('hidden', activeFilterCount === 0);
+        if (activeFiltersCount) {
+          activeFiltersCount.classList.toggle('hidden', activeFilterCount === 0);
+          filterCountEl.textContent = activeFilterCount;
+        }
+
+        // Filter and sort cards
+        let filteredCards = courseCards.filter(function(card) {
+          const title = card.dataset.title.toLowerCase();
+          const description = card.dataset.description.toLowerCase();
+          const category = card.dataset.category;
+          const price = parseInt(card.dataset.price);
+          
+          // Search filter
+          if (currentFilters.search) {
+            const searchTerm = currentFilters.search;
+            if (!title.includes(searchTerm) && !description.includes(searchTerm)) {
+              return false;
+            }
+          }
+          
+          // Category filter
+          if (currentFilters.category !== 'all') {
+            if (category !== currentFilters.category) {
+              return false;
+            }
+          }
+          
+          // Price filter
+          if (currentFilters.price !== 'all') {
+            switch (currentFilters.price) {
+              case 'free':
+                if (price !== 0) return false;
+                break;
+              case 'under5000':
+                if (price > 5000) return false;
+                break;
+              case 'under10000':
+                if (price > 10000) return false;
+                break;
+              case 'over10000':
+                if (price <= 10000) return false;
+                break;
+            }
+          }
+          
+          return true;
+        });
+
+        // Sort cards
+        filteredCards.sort(function(a, b) {
+          const priceA = parseInt(a.dataset.price);
+          const priceB = parseInt(b.dataset.price);
+          const indexA = parseInt(a.dataset.index);
+          const indexB = parseInt(b.dataset.index);
+          
+          switch (currentFilters.sort) {
+            case 'newest':
+              return indexA - indexB; // Original order (assuming newest first)
+            case 'popular':
+              return indexA - indexB; // Placeholder - would use review count
+            case 'price-asc':
+              return priceA - priceB;
+            case 'price-desc':
+              return priceB - priceA;
+            case 'rating':
+              return indexA - indexB; // Placeholder - would use rating
+            default:
+              return 0;
+          }
+        });
+
+        // Hide all cards first
+        courseCards.forEach(function(card) {
+          card.style.display = 'none';
+          card.style.order = '';
+        });
+
+        // Show and reorder filtered cards
+        filteredCards.forEach(function(card, index) {
+          card.style.display = 'block';
+          card.style.order = index;
+          visibleCount++;
+        });
+
+        // Update count display
+        filteredCountEl.textContent = visibleCount;
+        
+        // Show/hide no results message
+        noResults.classList.toggle('hidden', visibleCount > 0);
+        coursesGrid.classList.toggle('hidden', visibleCount === 0);
+      }
+
+      // Initial application
+      applyFilters();
+    })();
     </script>
   `
 
