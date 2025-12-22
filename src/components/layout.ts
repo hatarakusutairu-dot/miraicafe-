@@ -34,6 +34,19 @@ export const renderLayout = (title: string, content: string, activeNav: string =
               sky: '#D4E8E8',
               aqua: '#B8D8D8',
               blue: '#8BBCBC'
+            },
+            // Future/AI theme colors for compatibility
+            future: {
+              text: '#1E293B',
+              textLight: '#64748B',
+              light: '#F8FAFC',
+              sky: '#E2E8F0'
+            },
+            ai: {
+              blue: '#3B82F6',
+              cyan: '#06B6D4',
+              purple: '#8B5CF6',
+              pink: '#EC4899'
             }
           }
         }
@@ -54,6 +67,66 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     }
     .gradient-cream {
       background: linear-gradient(135deg, #FAF8F3 0%, #F5F0E6 50%, #E8DCC8 100%);
+    }
+    
+    /* AI/Future Theme Gradients */
+    .gradient-ai {
+      background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+    }
+    .gradient-ai-text {
+      background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .gradient-ai-light {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+    }
+    
+    /* Glass effect for AI theme */
+    .glass {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    
+    /* AI Button style */
+    .btn-ai {
+      transition: all 0.3s ease;
+    }
+    .btn-ai:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+    }
+    
+    /* Decorative orbs */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(60px);
+    }
+    .orb-1 {
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%);
+      top: -100px;
+      right: -100px;
+    }
+    .orb-2 {
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%);
+      bottom: -50px;
+      left: -50px;
+    }
+    
+    /* Pulse glow animation */
+    .pulse-glow {
+      animation: pulseGlow 2s ease-in-out infinite;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+      50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.5); }
     }
     
     /* Wood accent text */
