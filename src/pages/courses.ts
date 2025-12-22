@@ -253,6 +253,380 @@ export const renderCourseDetailPage = (course: Course) => {
         </div>
       </div>
     </section>
+
+    <!-- Reviews Section -->
+    <section class="py-16 bg-white" id="reviews-section">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-cafe-cream rounded-3xl p-8 shadow-lg border border-cafe-beige">
+          <h2 class="text-2xl font-bold text-cafe-text mb-8 flex items-center">
+            <span class="w-10 h-10 bg-cafe-wood rounded-xl flex items-center justify-center mr-3">
+              <i class="fas fa-star text-white"></i>
+            </span>
+            受講者の声・レビュー
+          </h2>
+
+          <!-- Review Summary -->
+          <div id="review-summary" class="mb-8 p-6 bg-cafe-ivory rounded-2xl border border-cafe-beige">
+            <div class="flex flex-col md:flex-row items-center gap-8">
+              <div class="text-center">
+                <div class="text-5xl font-bold text-cafe-wood" id="avg-rating">-</div>
+                <div class="flex justify-center mt-2" id="avg-stars">
+                  <i class="fas fa-star text-gray-300"></i>
+                  <i class="fas fa-star text-gray-300"></i>
+                  <i class="fas fa-star text-gray-300"></i>
+                  <i class="fas fa-star text-gray-300"></i>
+                  <i class="fas fa-star text-gray-300"></i>
+                </div>
+                <div class="text-cafe-textLight text-sm mt-1"><span id="total-reviews">0</span>件のレビュー</div>
+              </div>
+              <div class="flex-1 w-full">
+                <div class="space-y-2" id="rating-distribution">
+                  <div class="flex items-center gap-3">
+                    <span class="text-sm text-cafe-textLight w-16">5つ星</span>
+                    <div class="flex-1 h-3 bg-cafe-beige rounded-full overflow-hidden">
+                      <div class="h-full bg-yellow-400 rounded-full transition-all duration-500" id="bar-5" style="width: 0%"></div>
+                    </div>
+                    <span class="text-sm text-cafe-textLight w-12 text-right" id="count-5">0件</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-sm text-cafe-textLight w-16">4つ星</span>
+                    <div class="flex-1 h-3 bg-cafe-beige rounded-full overflow-hidden">
+                      <div class="h-full bg-yellow-400 rounded-full transition-all duration-500" id="bar-4" style="width: 0%"></div>
+                    </div>
+                    <span class="text-sm text-cafe-textLight w-12 text-right" id="count-4">0件</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-sm text-cafe-textLight w-16">3つ星</span>
+                    <div class="flex-1 h-3 bg-cafe-beige rounded-full overflow-hidden">
+                      <div class="h-full bg-yellow-400 rounded-full transition-all duration-500" id="bar-3" style="width: 0%"></div>
+                    </div>
+                    <span class="text-sm text-cafe-textLight w-12 text-right" id="count-3">0件</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-sm text-cafe-textLight w-16">2つ星</span>
+                    <div class="flex-1 h-3 bg-cafe-beige rounded-full overflow-hidden">
+                      <div class="h-full bg-yellow-400 rounded-full transition-all duration-500" id="bar-2" style="width: 0%"></div>
+                    </div>
+                    <span class="text-sm text-cafe-textLight w-12 text-right" id="count-2">0件</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-sm text-cafe-textLight w-16">1つ星</span>
+                    <div class="flex-1 h-3 bg-cafe-beige rounded-full overflow-hidden">
+                      <div class="h-full bg-yellow-400 rounded-full transition-all duration-500" id="bar-1" style="width: 0%"></div>
+                    </div>
+                    <span class="text-sm text-cafe-textLight w-12 text-right" id="count-1">0件</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Review List -->
+          <div id="reviews-list" class="space-y-4 mb-8">
+            <div class="text-center py-8 text-cafe-textLight">
+              <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+              <p>レビューを読み込み中...</p>
+            </div>
+          </div>
+
+          <!-- Pagination -->
+          <div id="reviews-pagination" class="flex justify-center gap-2 mb-8 hidden">
+          </div>
+
+          <!-- Write Review Button -->
+          <div class="text-center">
+            <button id="btn-write-review" class="btn-warm inline-flex items-center justify-center px-8 py-4 font-bold shadow-lg">
+              <i class="fas fa-pen mr-2"></i>レビューを書く
+            </button>
+          </div>
+
+          <!-- Review Form (Hidden by default) -->
+          <div id="review-form-container" class="hidden mt-8 p-6 bg-cafe-ivory rounded-2xl border border-cafe-beige">
+            <h3 class="text-xl font-bold text-cafe-text mb-6 flex items-center">
+              <i class="fas fa-edit text-cafe-wood mr-2"></i>レビューを投稿
+            </h3>
+            <form id="review-form" class="space-y-6">
+              <input type="hidden" name="courseId" value="${course.id}">
+              
+              <div>
+                <label class="block text-cafe-text font-medium mb-2">お名前（ニックネーム可）<span class="text-red-500">*</span></label>
+                <input type="text" name="reviewerName" required maxlength="50"
+                  class="w-full px-4 py-3 rounded-xl border border-cafe-beige focus:border-cafe-wood focus:ring-2 focus:ring-cafe-wood/20 outline-none transition-all"
+                  placeholder="山田 太郎">
+              </div>
+
+              <div>
+                <label class="block text-cafe-text font-medium mb-2">メールアドレス（非公開）<span class="text-red-500">*</span></label>
+                <input type="email" name="reviewerEmail" required
+                  class="w-full px-4 py-3 rounded-xl border border-cafe-beige focus:border-cafe-wood focus:ring-2 focus:ring-cafe-wood/20 outline-none transition-all"
+                  placeholder="example@email.com">
+              </div>
+
+              <div>
+                <label class="block text-cafe-text font-medium mb-2">評価<span class="text-red-500">*</span></label>
+                <div class="flex gap-2" id="star-rating">
+                  <button type="button" class="star-btn text-3xl text-gray-300 hover:text-yellow-400 transition-colors" data-rating="1"><i class="fas fa-star"></i></button>
+                  <button type="button" class="star-btn text-3xl text-gray-300 hover:text-yellow-400 transition-colors" data-rating="2"><i class="fas fa-star"></i></button>
+                  <button type="button" class="star-btn text-3xl text-gray-300 hover:text-yellow-400 transition-colors" data-rating="3"><i class="fas fa-star"></i></button>
+                  <button type="button" class="star-btn text-3xl text-gray-300 hover:text-yellow-400 transition-colors" data-rating="4"><i class="fas fa-star"></i></button>
+                  <button type="button" class="star-btn text-3xl text-gray-300 hover:text-yellow-400 transition-colors" data-rating="5"><i class="fas fa-star"></i></button>
+                </div>
+                <input type="hidden" name="rating" id="rating-input" required>
+              </div>
+
+              <div>
+                <label class="block text-cafe-text font-medium mb-2">コメント（500文字まで）<span class="text-red-500">*</span></label>
+                <textarea name="comment" required maxlength="500" rows="5"
+                  class="w-full px-4 py-3 rounded-xl border border-cafe-beige focus:border-cafe-wood focus:ring-2 focus:ring-cafe-wood/20 outline-none transition-all resize-none"
+                  placeholder="講座の感想をお聞かせください..."></textarea>
+                <div class="text-right text-sm text-cafe-textLight mt-1">
+                  <span id="char-count">0</span>/500
+                </div>
+              </div>
+
+              <div class="flex gap-4">
+                <button type="submit" class="btn-warm flex-1 py-3 font-bold">
+                  <i class="fas fa-paper-plane mr-2"></i>投稿する
+                </button>
+                <button type="button" id="btn-cancel-review" class="btn-outline flex-1 py-3 font-bold">
+                  キャンセル
+                </button>
+              </div>
+            </form>
+
+            <!-- Success Message -->
+            <div id="review-success" class="hidden text-center py-8">
+              <div class="w-16 h-16 bg-nature-mint rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check text-nature-forest text-2xl"></i>
+              </div>
+              <h4 class="text-xl font-bold text-cafe-text mb-2">ありがとうございます！</h4>
+              <p class="text-cafe-textLight">レビューを投稿いただきありがとうございます。<br>承認後に表示されます。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <style>
+      .star-btn.active { color: #FBBF24; }
+      .review-card { transition: transform 0.2s; }
+      .review-card:hover { transform: translateY(-2px); }
+    </style>
+
+    <script>
+      (function() {
+        var courseId = '${course.id}';
+        var currentPage = 1;
+
+        // Load reviews
+        function loadReviews(page) {
+          page = page || 1;
+          currentPage = page;
+          fetch('/api/reviews/' + courseId + '?page=' + page)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+              renderSummary(data.stats);
+              renderReviews(data.reviews);
+              renderPagination(data.pagination);
+            })
+            .catch(function(err) {
+              console.error('Failed to load reviews:', err);
+              document.getElementById('reviews-list').innerHTML = 
+                '<p class="text-center text-cafe-textLight py-8">レビューの読み込みに失敗しました</p>';
+            });
+        }
+
+        // Render summary
+        function renderSummary(stats) {
+          document.getElementById('avg-rating').textContent = stats.average || '-';
+          document.getElementById('total-reviews').textContent = stats.total;
+          
+          // Render average stars
+          var avgStars = document.getElementById('avg-stars');
+          avgStars.innerHTML = '';
+          for (var i = 1; i <= 5; i++) {
+            var star = document.createElement('i');
+            if (i <= Math.floor(stats.average)) {
+              star.className = 'fas fa-star text-yellow-400';
+            } else if (i - 0.5 <= stats.average) {
+              star.className = 'fas fa-star-half-alt text-yellow-400';
+            } else {
+              star.className = 'fas fa-star text-gray-300';
+            }
+            avgStars.appendChild(star);
+          }
+
+          // Render distribution bars
+          var total = stats.total || 1;
+          [5,4,3,2,1].forEach(function(star) {
+            var count = stats.distribution[star] || 0;
+            var percent = (count / total) * 100;
+            document.getElementById('bar-' + star).style.width = percent + '%';
+            document.getElementById('count-' + star).textContent = count + '件';
+          });
+        }
+
+        // Render review cards
+        function renderReviews(reviews) {
+          var container = document.getElementById('reviews-list');
+          if (!reviews || reviews.length === 0) {
+            container.innerHTML = '<p class="text-center text-cafe-textLight py-8">まだレビューがありません。最初のレビューを投稿してみませんか？</p>';
+            return;
+          }
+
+          container.innerHTML = reviews.map(function(review) {
+            return '<div class="review-card bg-cafe-ivory rounded-2xl p-6 border border-cafe-beige shadow-sm">' +
+              '<div class="flex items-start justify-between mb-3">' +
+              '<div>' +
+              '<h4 class="font-bold text-cafe-text">' + escapeHtml(review.reviewer_name) + '</h4>' +
+              '<div class="flex items-center gap-2 mt-1">' +
+              '<div class="flex">' + renderStars(review.rating) + '</div>' +
+              '<span class="text-sm text-cafe-textLight">' + formatDate(review.created_at) + '</span>' +
+              '</div></div></div>' +
+              '<p class="text-cafe-text leading-relaxed">' + escapeHtml(review.comment) + '</p>' +
+              '</div>';
+          }).join('');
+        }
+
+        // Render pagination
+        function renderPagination(pagination) {
+          var container = document.getElementById('reviews-pagination');
+          if (pagination.totalPages <= 1) {
+            container.classList.add('hidden');
+            return;
+          }
+          container.classList.remove('hidden');
+
+          var html = '';
+          if (pagination.hasPrev) {
+            html += '<button onclick="window.reviewsLoadPage(' + (pagination.page - 1) + ')" class="px-4 py-2 rounded-lg bg-cafe-beige hover:bg-cafe-latte transition-colors"><i class="fas fa-chevron-left"></i></button>';
+          }
+          
+          for (var i = 1; i <= pagination.totalPages; i++) {
+            var active = i === pagination.page ? 'bg-cafe-wood text-white' : 'bg-cafe-beige hover:bg-cafe-latte';
+            html += '<button onclick="window.reviewsLoadPage(' + i + ')" class="px-4 py-2 rounded-lg ' + active + ' transition-colors">' + i + '</button>';
+          }
+
+          if (pagination.hasNext) {
+            html += '<button onclick="window.reviewsLoadPage(' + (pagination.page + 1) + ')" class="px-4 py-2 rounded-lg bg-cafe-beige hover:bg-cafe-latte transition-colors"><i class="fas fa-chevron-right"></i></button>';
+          }
+
+          container.innerHTML = html;
+        }
+
+        // Helper functions
+        function renderStars(rating) {
+          var html = '';
+          for (var i = 0; i < 5; i++) {
+            html += '<i class="fas fa-star ' + (i < rating ? 'text-yellow-400' : 'text-gray-300') + '"></i>';
+          }
+          return html;
+        }
+
+        function formatDate(dateStr) {
+          var date = new Date(dateStr);
+          return date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        function escapeHtml(text) {
+          var div = document.createElement('div');
+          div.textContent = text;
+          return div.innerHTML;
+        }
+
+        // Form handling
+        var formContainer = document.getElementById('review-form-container');
+        var form = document.getElementById('review-form');
+        var successMsg = document.getElementById('review-success');
+        var starBtns = document.querySelectorAll('.star-btn');
+        var ratingInput = document.getElementById('rating-input');
+        var commentInput = form.querySelector('textarea[name="comment"]');
+        var charCount = document.getElementById('char-count');
+
+        // Show/hide form
+        document.getElementById('btn-write-review').addEventListener('click', function() {
+          formContainer.classList.remove('hidden');
+          form.classList.remove('hidden');
+          successMsg.classList.add('hidden');
+          formContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        document.getElementById('btn-cancel-review').addEventListener('click', function() {
+          formContainer.classList.add('hidden');
+          form.reset();
+          resetStars();
+          charCount.textContent = '0';
+        });
+
+        // Star rating
+        starBtns.forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var rating = parseInt(btn.dataset.rating);
+            ratingInput.value = rating;
+            starBtns.forEach(function(b, i) {
+              b.classList.toggle('active', i < rating);
+            });
+          });
+        });
+
+        function resetStars() {
+          ratingInput.value = '';
+          starBtns.forEach(function(b) { b.classList.remove('active'); });
+        }
+
+        // Character count
+        commentInput.addEventListener('input', function() {
+          charCount.textContent = commentInput.value.length;
+        });
+
+        // Form submit
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          
+          if (!ratingInput.value) {
+            alert('評価を選択してください');
+            return;
+          }
+
+          var formData = new FormData(form);
+          var data = {
+            courseId: formData.get('courseId'),
+            reviewerName: formData.get('reviewerName'),
+            reviewerEmail: formData.get('reviewerEmail'),
+            rating: parseInt(formData.get('rating')),
+            comment: formData.get('comment')
+          };
+
+          fetch('/api/reviews', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          })
+          .then(function(res) {
+            return res.json().then(function(result) {
+              if (res.ok) {
+                form.classList.add('hidden');
+                successMsg.classList.remove('hidden');
+                form.reset();
+                resetStars();
+                charCount.textContent = '0';
+              } else {
+                alert(result.error || 'エラーが発生しました');
+              }
+            });
+          })
+          .catch(function(err) {
+            alert('送信に失敗しました。もう一度お試しください。');
+          });
+        });
+
+        // Expose for pagination
+        window.reviewsLoadPage = loadReviews;
+
+        // Initial load
+        loadReviews();
+      })();
+    </script>
   `
 
   return renderLayout(course.title, content, 'courses')

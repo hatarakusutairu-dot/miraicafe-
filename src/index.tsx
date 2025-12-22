@@ -12,7 +12,12 @@ import { renderContactPage } from './pages/contact'
 // Data
 import { courses, blogPosts, schedules } from './data'
 
-const app = new Hono()
+// Types
+type Bindings = {
+  DB: D1Database
+}
+
+const app = new Hono<{ Bindings: Bindings }>()
 
 // CORS for API
 app.use('/api/*', cors())
@@ -142,6 +147,121 @@ app.post('/api/contact', async (c) => {
 // Blog posts API
 app.get('/api/blog', (c) => {
   return c.json(blogPosts)
+})
+
+// ===== Reviews API =====
+
+// Get reviews for a course (only approved ones)
+app.get('/api/reviews/:courseId', async (c) => {
+  const courseId = c.req.param('courseId')
+  const page = parseInt(c.req.query('page') || '1')
+  const limit = 10
+  const offset = (page - 1) * limit
+
+  try {
+    // Get approved reviews with pagination
+    const reviews = await c.env.DB.prepare(`
+      SELECT id, course_id, reviewer_name, rating, comment, created_at
+      FROM reviews 
+      WHERE course_id = ? AND status = 'approved'
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(courseId, limit, offset).all()
+
+    // Get total count
+    const countResult = await c.env.DB.prepare(`
+      SELECT COUNT(*) as total FROM reviews 
+      WHERE course_id = ? AND status = 'approved'
+    `).bind(courseId).first()
+
+    // Get rating stats
+    const statsResult = await c.env.DB.prepare(`
+      SELECT 
+        AVG(rating) as average,
+        COUNT(*) as total,
+        SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as star5,
+        SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as star4,
+        SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as star3,
+        SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as star2,
+        SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as star1
+      FROM reviews 
+      WHERE course_id = ? AND status = 'approved'
+    `).bind(courseId).first()
+
+    const total = (countResult as any)?.total || 0
+    const totalPages = Math.ceil(total / limit)
+
+    return c.json({
+      reviews: reviews.results,
+      stats: {
+        average: statsResult ? Math.round((statsResult as any).average * 10) / 10 : 0,
+        total: (statsResult as any)?.total || 0,
+        distribution: {
+          5: (statsResult as any)?.star5 || 0,
+          4: (statsResult as any)?.star4 || 0,
+          3: (statsResult as any)?.star3 || 0,
+          2: (statsResult as any)?.star2 || 0,
+          1: (statsResult as any)?.star1 || 0
+        }
+      },
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching reviews:', error)
+    return c.json({ 
+      reviews: [], 
+      stats: { average: 0, total: 0, distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } },
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
+    })
+  }
+})
+
+// Post a new review
+app.post('/api/reviews', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { courseId, reviewerName, reviewerEmail, rating, comment } = body
+
+    // Validation
+    if (!courseId || !reviewerName || !reviewerEmail || !rating || !comment) {
+      return c.json({ error: '必須項目を入力してください' }, 400)
+    }
+
+    if (rating < 1 || rating > 5) {
+      return c.json({ error: '評価は1〜5で選択してください' }, 400)
+    }
+
+    if (comment.length > 500) {
+      return c.json({ error: 'コメントは500文字以内で入力してください' }, 400)
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(reviewerEmail)) {
+      return c.json({ error: '有効なメールアドレスを入力してください' }, 400)
+    }
+
+    // Insert review (status defaults to 'pending')
+    await c.env.DB.prepare(`
+      INSERT INTO reviews (course_id, reviewer_name, reviewer_email, rating, comment, status)
+      VALUES (?, ?, ?, ?, ?, 'pending')
+    `).bind(courseId, reviewerName, reviewerEmail, rating, comment).run()
+
+    return c.json({ 
+      success: true, 
+      message: 'レビューを投稿いただきありがとうございます。承認後に表示されます。' 
+    })
+  } catch (error) {
+    console.error('Error posting review:', error)
+    return c.json({ error: 'レビューの投稿に失敗しました。もう一度お試しください。' }, 500)
+  }
 })
 
 export default app
