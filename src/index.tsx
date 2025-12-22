@@ -41,7 +41,7 @@ app.get('/courses/:id', (c) => {
   const id = c.req.param('id')
   const course = courses.find(c => c.id === id)
   if (!course) return c.notFound()
-  return c.html(renderCourseDetailPage(course))
+  return c.html(renderCourseDetailPage(course, schedules, courses))
 })
 
 // Reservation
