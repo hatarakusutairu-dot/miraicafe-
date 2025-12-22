@@ -149,54 +149,41 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       overflow: hidden;
     }
     
-    .char-container {
+    .floating-char {
       position: absolute;
-      overflow: hidden;
       transition: transform 0.3s ease-out;
-      filter: drop-shadow(0 8px 20px rgba(93, 78, 58, 0.25));
+      filter: drop-shadow(0 8px 20px rgba(93, 78, 58, 0.2));
     }
     
-    .char-container img {
-      position: absolute;
-      max-width: none;
+    .floating-char img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
     
-    /* Character positions */
-    .char-alien {
+    /* Character positions - individual images */
+    .char-green {
       width: 100px;
-      height: 130px;
-      left: 15px;
-      top: 30%;
-      animation: float-char 6s ease-in-out infinite;
-    }
-    .char-alien img {
-      width: 350px;
-      height: auto;
-      left: 5px;
-      top: 5px;
+      height: 120px;
+      left: 20px;
+      top: 28%;
+      animation: float-char1 6s ease-in-out infinite;
     }
     
     .char-rabbit {
       width: 110px;
-      height: 140px;
-      right: 20px;
-      top: 18%;
-      animation: float-char 7s ease-in-out infinite;
-      animation-delay: -2s;
-    }
-    .char-rabbit img {
-      width: 350px;
-      height: auto;
-      left: -110px;
-      top: 0;
+      height: 120px;
+      right: 25px;
+      top: 20%;
+      animation: float-char2 7s ease-in-out infinite;
     }
     
     .char-pink {
-      width: 90px;
-      height: 125px;
-      right: 30px;
-      bottom: 22%;
-      animation: float-char 5s ease-in-out infinite;
+      width: 85px;
+      height: 110px;
+      right: 35px;
+      bottom: 25%;
+      animation: float-char3 5s ease-in-out infinite;
       animation-delay: -4s;
     }
     .char-pink img {
@@ -206,18 +193,30 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       top: 5px;
     }
     
-    @keyframes float-char {
-      0%, 100% { transform: translateY(0) rotate(-2deg); }
-      50% { transform: translateY(-20px) rotate(2deg); }
+    @keyframes float-char1 {
+      0%, 100% { transform: translateY(0) rotate(-3deg); }
+      25% { transform: translateY(-15px) rotate(0deg); }
+      50% { transform: translateY(-25px) rotate(3deg); }
+      75% { transform: translateY(-10px) rotate(0deg); }
+    }
+    
+    @keyframes float-char2 {
+      0%, 100% { transform: translateY(0) rotate(2deg); }
+      33% { transform: translateY(-20px) rotate(-2deg); }
+      66% { transform: translateY(-30px) rotate(3deg); }
+    }
+    
+    @keyframes float-char3 {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      25% { transform: translateY(-12px) rotate(3deg); }
+      50% { transform: translateY(-22px) rotate(-2deg); }
+      75% { transform: translateY(-8px) rotate(2deg); }
     }
     
     @media (max-width: 1024px) {
-      .char-alien { width: 75px; height: 100px; left: 8px; }
-      .char-alien img { width: 270px; }
-      .char-rabbit { width: 85px; height: 110px; right: 8px; }
-      .char-rabbit img { width: 270px; left: -85px; }
-      .char-pink { width: 70px; height: 95px; right: 15px; }
-      .char-pink img { width: 270px; left: -190px; }
+      .char-green { width: 75px; height: 90px; left: 10px; }
+      .char-rabbit { width: 85px; height: 95px; right: 10px; }
+      .char-pink { width: 65px; height: 85px; right: 20px; }
     }
     
     @media (max-width: 768px) {
@@ -306,14 +305,14 @@ export const renderLayout = (title: string, content: string, activeNav: string =
   
   <!-- Floating Characters -->
   <div class="floating-characters" id="floating-chars">
-    <div class="char-container char-alien parallax" id="char-alien">
-      <img src="/static/characters.png" alt="AIアシスタント - みどり" loading="lazy">
+    <div class="floating-char char-green" id="char-green">
+      <img src="/static/char-green.png" alt="AIアシスタント - リーフ" loading="lazy">
     </div>
-    <div class="char-container char-rabbit parallax" id="char-rabbit">
-      <img src="/static/characters.png" alt="AIアシスタント - ロボうさぎ" loading="lazy">
+    <div class="floating-char char-rabbit" id="char-rabbit">
+      <img src="/static/char-rabbit.png" alt="AIアシスタント - ロボうさぎ" loading="lazy">
     </div>
-    <div class="char-container char-pink parallax" id="char-pink">
-      <img src="/static/characters.png" alt="AIアシスタント - ピンク" loading="lazy">
+    <div class="floating-char char-pink" id="char-pink">
+      <img src="/static/char-pink.png" alt="AIアシスタント - ピンク" loading="lazy">
     </div>
   </div>
 
@@ -390,7 +389,7 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     
     // Floating characters parallax scroll effect
     (function() {
-      const charAlien = document.getElementById('char-alien');
+      const charGreen = document.getElementById('char-green');
       const charRabbit = document.getElementById('char-rabbit');
       const charPink = document.getElementById('char-pink');
       
@@ -399,18 +398,18 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       function updateCharacterPositions() {
         const scrollY = window.scrollY;
         
-        if (charAlien) {
-          const alienY = 30 + (scrollY * 0.03);
-          charAlien.style.top = Math.min(alienY, 50) + '%';
+        if (charGreen) {
+          const greenY = 28 + (scrollY * 0.03);
+          charGreen.style.top = Math.min(greenY, 50) + '%';
         }
         
         if (charRabbit) {
-          const rabbitY = 18 + (scrollY * 0.05);
+          const rabbitY = 20 + (scrollY * 0.04);
           charRabbit.style.top = Math.min(rabbitY, 55) + '%';
         }
         
         if (charPink) {
-          charPink.style.bottom = Math.max(22 - (scrollY * 0.02), 10) + '%';
+          charPink.style.bottom = Math.max(25 - (scrollY * 0.02), 12) + '%';
         }
         
         ticking = false;
