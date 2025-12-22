@@ -57,12 +57,12 @@ export const renderCoursesPage = (courses: Course[]) => {
             <!-- Category Filter - Inline -->
             <div class="flex items-center gap-3 flex-wrap" id="category-filters">
               <span class="text-future-textLight font-medium">カテゴリ:</span>
-              <button class="filter-btn category-btn active gradient-ai text-white px-5 py-2 rounded-full font-medium transition-all shadow-sm" data-category="all">すべて</button>
-              <button class="filter-btn category-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-ai-cyan/10 transition-all" data-category="AI基礎">AI基礎</button>
-              <button class="filter-btn category-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-ai-blue/10 transition-all" data-category="プログラミング">プログラミング</button>
-              <button class="filter-btn category-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-ai-purple/10 transition-all" data-category="データ分析">データ分析</button>
-              <button class="filter-btn category-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-ai-pink/10 transition-all" data-category="資格対策">資格対策</button>
-              <button class="filter-btn category-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-nature-forest/10 transition-all" data-category="教育者向け">教育者向け</button>
+              <button class="filter-btn category-btn active bg-ai-blue text-white px-5 py-2 rounded-full font-medium transition-all shadow-sm hover:bg-ai-blue/90" data-category="all">すべて</button>
+              <button class="filter-btn category-btn bg-gray-100 text-gray-700 px-5 py-2 rounded-full font-medium hover:bg-ai-blue/20 transition-all" data-category="AI基礎">AI基礎</button>
+              <button class="filter-btn category-btn bg-gray-100 text-gray-700 px-5 py-2 rounded-full font-medium hover:bg-ai-blue/20 transition-all" data-category="プログラミング">プログラミング</button>
+              <button class="filter-btn category-btn bg-gray-100 text-gray-700 px-5 py-2 rounded-full font-medium hover:bg-ai-blue/20 transition-all" data-category="データ分析">データ分析</button>
+              <button class="filter-btn category-btn bg-gray-100 text-gray-700 px-5 py-2 rounded-full font-medium hover:bg-ai-blue/20 transition-all" data-category="資格対策">資格対策</button>
+              <button class="filter-btn category-btn bg-gray-100 text-gray-700 px-5 py-2 rounded-full font-medium hover:bg-ai-blue/20 transition-all" data-category="教育者向け">教育者向け</button>
             </div>
           </div>
 
@@ -72,11 +72,11 @@ export const renderCoursesPage = (courses: Course[]) => {
               <!-- Price Filter - Inline -->
               <div class="flex items-center gap-3" id="price-filters">
                 <span class="text-future-textLight font-medium">価格:</span>
-                <button class="filter-btn price-btn active gradient-ai text-white px-5 py-2 rounded-full font-medium transition-all shadow-sm" data-price="all">すべて</button>
-                <button class="filter-btn price-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-green-500/10 transition-all" data-price="free">無料</button>
-                <button class="filter-btn price-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-ai-cyan/10 transition-all" data-price="under5000">〜5千円</button>
-                <button class="filter-btn price-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-ai-blue/10 transition-all" data-price="under10000">〜1万円</button>
-                <button class="filter-btn price-btn glass text-future-text px-5 py-2 rounded-full font-medium hover:bg-ai-purple/10 transition-all" data-price="over10000">1万円〜</button>
+                <button class="filter-btn price-btn active bg-ai-blue text-white px-5 py-2 rounded-full font-medium transition-all shadow-sm hover:bg-ai-blue/90" data-price="all">すべて</button>
+                <button class="filter-btn price-btn bg-gray-100 text-gray-700 px-5 py-2 rounded-full font-medium hover:bg-ai-blue/20 transition-all" data-price="free">無料</button>
+                <button class="filter-btn price-btn bg-gray-100 text-gray-700 px-5 py-2 rounded-full font-medium hover:bg-ai-blue/20 transition-all" data-price="under5000">〜5千円</button>
+                <button class="filter-btn price-btn bg-gray-100 text-gray-700 px-5 py-2 rounded-full font-medium hover:bg-ai-blue/20 transition-all" data-price="under10000">〜1万円</button>
+                <button class="filter-btn price-btn bg-gray-100 text-gray-700 px-5 py-2 rounded-full font-medium hover:bg-ai-blue/20 transition-all" data-price="over10000">1万円〜</button>
               </div>
 
               <!-- Sort Dropdown -->
@@ -130,13 +130,15 @@ export const renderCoursesPage = (courses: Course[]) => {
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="courses-grid">
           ${courses.map((course, index) => `
-            <div class="card-hover bg-white overflow-hidden shadow-lg border border-future-sky/50 course-card" 
+            <div class="card-hover bg-white overflow-hidden shadow-lg border border-future-sky/50 course-card cursor-pointer rounded-2xl transition-all duration-300 hover:shadow-2xl hover:border-ai-blue/50 hover:-translate-y-1" 
                  data-level="${course.level}" 
                  data-category="${course.category}"
                  data-price="${course.price}"
                  data-title="${course.title}"
                  data-description="${course.description}"
-                 data-index="${index}">
+                 data-index="${index}"
+                 data-course-id="${course.id}"
+                 onclick="window.location.href='/courses/${course.id}'">
               <div class="aspect-video relative overflow-hidden">
                 <img src="${course.image}" alt="${course.title}" class="w-full h-full object-cover hover:scale-110 transition-transform duration-700">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
@@ -168,10 +170,10 @@ export const renderCoursesPage = (courses: Course[]) => {
                 <div class="flex items-center justify-between pt-4 border-t border-future-sky">
                   <span class="text-2xl font-bold gradient-ai-text">¥${course.price.toLocaleString()}</span>
                   <div class="flex gap-2">
-                    <a href="/courses/${course.id}" class="btn-ai glass text-future-text px-4 py-2 rounded-full text-sm font-medium border border-ai-blue/30 hover:border-ai-blue">
+                    <span class="btn-ai glass text-future-text px-4 py-2 rounded-full text-sm font-medium border border-ai-blue/30 hover:border-ai-blue course-detail-btn" onclick="event.stopPropagation(); window.location.href='/courses/${course.id}'">
                       詳細
-                    </a>
-                    <a href="/reservation?course=${course.id}" class="btn-ai gradient-ai text-white px-4 py-2 rounded-full text-sm font-medium">
+                    </span>
+                    <a href="/reservation?course=${course.id}" class="btn-ai gradient-ai text-white px-4 py-2 rounded-full text-sm font-medium course-reserve-btn" onclick="event.stopPropagation();">
                       予約
                     </a>
                   </div>
@@ -269,11 +271,11 @@ export const renderCoursesPage = (courses: Course[]) => {
       categoryBtns.forEach(function(btn) {
         btn.addEventListener('click', function() {
           categoryBtns.forEach(function(b) {
-            b.classList.remove('active', 'gradient-ai', 'text-white', 'shadow-sm');
-            b.classList.add('glass', 'text-future-text');
+            b.classList.remove('active', 'bg-ai-blue', 'text-white', 'shadow-sm');
+            b.classList.add('bg-gray-100', 'text-gray-700');
           });
-          this.classList.remove('glass', 'text-future-text');
-          this.classList.add('active', 'gradient-ai', 'text-white', 'shadow-sm');
+          this.classList.remove('bg-gray-100', 'text-gray-700');
+          this.classList.add('active', 'bg-ai-blue', 'text-white', 'shadow-sm');
           
           currentFilters.category = this.dataset.category;
           applyFilters();
@@ -284,11 +286,11 @@ export const renderCoursesPage = (courses: Course[]) => {
       priceBtns.forEach(function(btn) {
         btn.addEventListener('click', function() {
           priceBtns.forEach(function(b) {
-            b.classList.remove('active', 'gradient-ai', 'text-white', 'shadow-sm');
-            b.classList.add('glass', 'text-future-text');
+            b.classList.remove('active', 'bg-ai-blue', 'text-white', 'shadow-sm');
+            b.classList.add('bg-gray-100', 'text-gray-700');
           });
-          this.classList.remove('glass', 'text-future-text');
-          this.classList.add('active', 'gradient-ai', 'text-white', 'shadow-sm');
+          this.classList.remove('bg-gray-100', 'text-gray-700');
+          this.classList.add('active', 'bg-ai-blue', 'text-white', 'shadow-sm');
           
           currentFilters.price = this.dataset.price;
           applyFilters();
@@ -314,20 +316,20 @@ export const renderCoursesPage = (courses: Course[]) => {
         
         // Reset button styles
         categoryBtns.forEach(function(b, i) {
-          b.classList.remove('active', 'gradient-ai', 'text-white', 'shadow-sm', 'glass', 'text-future-text');
+          b.classList.remove('active', 'bg-ai-blue', 'text-white', 'shadow-sm', 'bg-gray-100', 'text-gray-700');
           if (i === 0) {
-            b.classList.add('active', 'gradient-ai', 'text-white', 'shadow-sm');
+            b.classList.add('active', 'bg-ai-blue', 'text-white', 'shadow-sm');
           } else {
-            b.classList.add('glass', 'text-future-text');
+            b.classList.add('bg-gray-100', 'text-gray-700');
           }
         });
         
         priceBtns.forEach(function(b, i) {
-          b.classList.remove('active', 'gradient-ai', 'text-white', 'shadow-sm', 'glass', 'text-future-text');
+          b.classList.remove('active', 'bg-ai-blue', 'text-white', 'shadow-sm', 'bg-gray-100', 'text-gray-700');
           if (i === 0) {
-            b.classList.add('active', 'gradient-ai', 'text-white', 'shadow-sm');
+            b.classList.add('active', 'bg-ai-blue', 'text-white', 'shadow-sm');
           } else {
-            b.classList.add('glass', 'text-future-text');
+            b.classList.add('bg-gray-100', 'text-gray-700');
           }
         });
         
