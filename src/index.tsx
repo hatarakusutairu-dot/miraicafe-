@@ -409,9 +409,11 @@ app.post('/admin/login', async (c) => {
       expiresAt: Date.now() + SESSION_DURATION
     })
     
+    // 本番環境ではSecure、開発環境では無効
+    const isProduction = c.req.url.startsWith('https://')
     setCookie(c, 'admin_session', sessionId, {
       httpOnly: true,
-      secure: true,
+      secure: isProduction,
       sameSite: 'Lax',
       path: '/admin',
       maxAge: SESSION_DURATION / 1000
