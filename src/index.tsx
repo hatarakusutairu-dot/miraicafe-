@@ -131,17 +131,86 @@ app.post('/api/create-checkout-session', async (c) => {
   return c.json(checkoutSession)
 })
 
-// Contact form submission
-app.post('/api/contact', async (c) => {
-  const body = await c.req.json()
-  const { name, email, subject, message } = body
-  
-  if (!name || !email || !message) {
-    return c.json({ error: 'Missing required fields' }, 400)
+// Contact form submission - Save to D1 database
+app.post('/api/contacts', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { name, email, phone, type, subject, message } = body
+
+    // Validation errors object
+    const errors: Record<string, string> = {}
+
+    // Name validation (required, max 50 chars)
+    if (!name || name.trim() === '') {
+      errors.name = 'お名前は必須です'
+    } else if (name.length > 50) {
+      errors.name = 'お名前は50文字以内で入力してください'
+    }
+
+    // Email validation (required, format check)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!email || email.trim() === '') {
+      errors.email = 'メールアドレスは必須です'
+    } else if (!emailRegex.test(email)) {
+      errors.email = '有効なメールアドレスを入力してください'
+    }
+
+    // Phone validation (optional, format check if provided)
+    if (phone && phone.trim() !== '') {
+      const phoneRegex = /^[0-9-+()\s]+$/
+      if (!phoneRegex.test(phone)) {
+        errors.phone = '有効な電話番号を入力してください'
+      }
+    }
+
+    // Type validation (required, must be valid option)
+    const validTypes = ['講座について', '予約について', '法人研修のご相談', 'その他']
+    if (!type || type.trim() === '') {
+      errors.type = 'お問い合わせ種別を選択してください'
+    } else if (!validTypes.includes(type)) {
+      errors.type = '有効なお問い合わせ種別を選択してください'
+    }
+
+    // Subject validation (required, max 100 chars)
+    if (!subject || subject.trim() === '') {
+      errors.subject = '件名は必須です'
+    } else if (subject.length > 100) {
+      errors.subject = '件名は100文字以内で入力してください'
+    }
+
+    // Message validation (required, max 1000 chars)
+    if (!message || message.trim() === '') {
+      errors.message = 'お問い合わせ内容は必須です'
+    } else if (message.length > 1000) {
+      errors.message = 'お問い合わせ内容は1000文字以内で入力してください'
+    }
+
+    // Return validation errors if any
+    if (Object.keys(errors).length > 0) {
+      return c.json({ error: 'バリデーションエラー', errors }, 400)
+    }
+
+    // Insert into database
+    await c.env.DB.prepare(`
+      INSERT INTO contacts (name, email, phone, type, subject, message, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'new')
+    `).bind(
+      name.trim(),
+      email.trim(),
+      phone ? phone.trim() : null,
+      type.trim(),
+      subject.trim(),
+      message.trim()
+    ).run()
+
+    return c.json({ 
+      success: true, 
+      message: 'お問い合わせありがとうございます。2営業日以内に返信いたします。' 
+    })
+  } catch (error) {
+    console.error('Error saving contact:', error)
+    return c.json({ error: 'お問い合わせの送信に失敗しました。もう一度お試しください。' }, 500)
   }
-  
-  // In production, this would send an email
-  return c.json({ success: true, message: 'お問い合わせを受け付けました' })
 })
 
 // Blog posts API
