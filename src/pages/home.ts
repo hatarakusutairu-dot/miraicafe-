@@ -156,7 +156,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
     </section>
 
     <!-- Characters Section -->
-    <section class="py-20 bg-cafe-ivory/60">
+    <section class="py-20 bg-cafe-ivory">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div>
@@ -236,7 +236,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
     </section>
 
     <!-- How It Works Section -->
-    <section class="py-24 bg-cafe-ivory/60 relative overflow-hidden">
+    <section class="py-24 bg-cafe-ivory relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <span class="inline-flex items-center bg-nature-sage/50 text-nature-forest font-medium px-4 py-2 rounded-full text-sm mb-4">
