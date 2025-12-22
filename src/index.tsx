@@ -682,27 +682,309 @@ function generateBlogId(title: string): string {
 }
 
 // ===== 講座管理 =====
-app.get('/admin/courses', (c) => {
-  return c.html(renderCoursesList(courses))
+
+// D1から全講座を取得
+async function getAllCourses(db: D1Database): Promise<any[]> {
+  try {
+    const dbCourses = await db.prepare(`
+      SELECT id, title, catchphrase, description, price, duration, level, category, image,
+             instructor, instructor_title, instructor_bio, instructor_image,
+             target_audience, curriculum, faq, gallery, features, includes,
+             max_capacity, cancellation_policy, status
+      FROM courses
+      ORDER BY created_at DESC
+    `).all()
+    
+    const d1Courses = (dbCourses.results || []).map((course: any) => ({
+      id: course.id,
+      title: course.title,
+      catchphrase: course.catchphrase,
+      description: course.description,
+      price: course.price,
+      duration: course.duration,
+      level: course.level,
+      category: course.category,
+      image: course.image,
+      instructor: course.instructor,
+      instructorInfo: course.instructor_title || course.instructor_bio || course.instructor_image ? {
+        title: course.instructor_title,
+        bio: course.instructor_bio,
+        image: course.instructor_image
+      } : undefined,
+      targetAudience: course.target_audience ? JSON.parse(course.target_audience) : [],
+      curriculum: course.curriculum ? JSON.parse(course.curriculum) : [],
+      faq: course.faq ? JSON.parse(course.faq) : [],
+      gallery: course.gallery ? JSON.parse(course.gallery) : [],
+      features: course.features ? JSON.parse(course.features) : [],
+      includes: course.includes ? JSON.parse(course.includes) : [],
+      maxCapacity: course.max_capacity,
+      cancellationPolicy: course.cancellation_policy,
+      status: course.status
+    }))
+    
+    // 静的データとD1データをマージ（D1のIDが優先）
+    const d1Ids = new Set(d1Courses.map((c: any) => c.id))
+    const staticCourses = courses.filter(c => !d1Ids.has(c.id))
+    
+    return [...d1Courses, ...staticCourses]
+  } catch (error) {
+    console.error('Error fetching courses from D1:', error)
+    return courses
+  }
+}
+
+// D1から講座を取得（ID指定）
+async function getCourseById(db: D1Database, id: string): Promise<any | null> {
+  try {
+    const course = await db.prepare(`
+      SELECT id, title, catchphrase, description, price, duration, level, category, image,
+             instructor, instructor_title, instructor_bio, instructor_image,
+             target_audience, curriculum, faq, gallery, features, includes,
+             max_capacity, cancellation_policy, status
+      FROM courses WHERE id = ?
+    `).bind(id).first()
+    
+    if (course) {
+      return {
+        id: (course as any).id,
+        title: (course as any).title,
+        catchphrase: (course as any).catchphrase,
+        description: (course as any).description,
+        price: (course as any).price,
+        duration: (course as any).duration,
+        level: (course as any).level,
+        category: (course as any).category,
+        image: (course as any).image,
+        instructor: (course as any).instructor,
+        instructorInfo: (course as any).instructor_title || (course as any).instructor_bio || (course as any).instructor_image ? {
+          title: (course as any).instructor_title,
+          bio: (course as any).instructor_bio,
+          image: (course as any).instructor_image
+        } : undefined,
+        targetAudience: (course as any).target_audience ? JSON.parse((course as any).target_audience) : [],
+        curriculum: (course as any).curriculum ? JSON.parse((course as any).curriculum) : [],
+        faq: (course as any).faq ? JSON.parse((course as any).faq) : [],
+        gallery: (course as any).gallery ? JSON.parse((course as any).gallery) : [],
+        features: (course as any).features ? JSON.parse((course as any).features) : [],
+        includes: (course as any).includes ? JSON.parse((course as any).includes) : [],
+        maxCapacity: (course as any).max_capacity,
+        cancellationPolicy: (course as any).cancellation_policy,
+        status: (course as any).status
+      }
+    }
+    
+    // D1にない場合は静的データから探す
+    return courses.find(c => c.id === id) || null
+  } catch (error) {
+    console.error('Error fetching course from D1:', error)
+    return courses.find(c => c.id === id) || null
+  }
+}
+
+// 講座IDを生成（タイトルからスラッグ生成）
+function generateCourseId(title: string): string {
+  const timestamp = Date.now().toString(36)
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .substring(0, 30)
+  return `${slug || 'course'}-${timestamp}`
+}
+
+app.get('/admin/courses', async (c) => {
+  const allCourses = await getAllCourses(c.env.DB)
+  return c.html(renderCoursesList(allCourses))
 })
 
 app.get('/admin/courses/new', (c) => {
   return c.html(renderCourseForm())
 })
 
-app.get('/admin/courses/edit/:id', (c) => {
+app.get('/admin/courses/edit/:id', async (c) => {
   const id = c.req.param('id')
-  const course = courses.find(c => c.id === id)
+  const course = await getCourseById(c.env.DB, id)
   if (!course) return c.notFound()
   return c.html(renderCourseForm(course))
 })
 
+// 講座作成
 app.post('/admin/courses/create', async (c) => {
-  return c.redirect('/admin/courses')
+  try {
+    const body = await c.req.parseBody()
+    const id = generateCourseId(body.title as string)
+    
+    // 配列データの処理
+    const targetAudience = (body.targetAudience as string || '').split('\n').map(s => s.trim()).filter(s => s)
+    const features = (body.features as string || '').split('\n').map(s => s.trim()).filter(s => s)
+    const galleryUrls = (body.gallery as string || '').split('\n').map(s => s.trim()).filter(s => s)
+    
+    // カリキュラムの処理
+    const curriculumTitles = Array.isArray(body.curriculum_title) ? body.curriculum_title : [body.curriculum_title].filter(Boolean)
+    const curriculumDurations = Array.isArray(body.curriculum_duration) ? body.curriculum_duration : [body.curriculum_duration].filter(Boolean)
+    const curriculumDescriptions = Array.isArray(body.curriculum_description) ? body.curriculum_description : [body.curriculum_description].filter(Boolean)
+    const curriculum = curriculumTitles.map((title: string, i: number) => ({
+      title: title || '',
+      duration: curriculumDurations[i] || '',
+      description: curriculumDescriptions[i] || ''
+    })).filter((item: any) => item.title)
+    
+    // FAQの処理
+    const faqQuestions = Array.isArray(body.faq_question) ? body.faq_question : [body.faq_question].filter(Boolean)
+    const faqAnswers = Array.isArray(body.faq_answer) ? body.faq_answer : [body.faq_answer].filter(Boolean)
+    const faq = faqQuestions.map((question: string, i: number) => ({
+      question: question || '',
+      answer: faqAnswers[i] || ''
+    })).filter((item: any) => item.question)
+    
+    await c.env.DB.prepare(`
+      INSERT INTO courses (id, title, catchphrase, description, price, duration, level, category, image,
+                          instructor, instructor_title, instructor_bio, instructor_image,
+                          target_audience, curriculum, faq, gallery, features, max_capacity, cancellation_policy)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id,
+      body.title,
+      body.catchphrase || '',
+      body.description,
+      parseInt(body.price as string) || 0,
+      body.duration || '',
+      body.level,
+      body.category,
+      body.image || '',
+      body.instructor || '',
+      body.instructor_title || '',
+      body.instructor_bio || '',
+      body.instructor_image || '',
+      JSON.stringify(targetAudience),
+      JSON.stringify(curriculum),
+      JSON.stringify(faq),
+      JSON.stringify(galleryUrls),
+      JSON.stringify(features),
+      parseInt(body.maxCapacity as string) || null,
+      body.cancellationPolicy || ''
+    ).run()
+    
+    return c.redirect('/admin/courses')
+  } catch (error) {
+    console.error('Error creating course:', error)
+    return c.html(renderCourseForm(undefined, '講座の作成に失敗しました。もう一度お試しください。'))
+  }
 })
 
+// 講座更新
 app.post('/admin/courses/update/:id', async (c) => {
-  return c.redirect('/admin/courses')
+  const id = c.req.param('id')
+  try {
+    const body = await c.req.parseBody()
+    
+    // 配列データの処理
+    const targetAudience = (body.targetAudience as string || '').split('\n').map(s => s.trim()).filter(s => s)
+    const features = (body.features as string || '').split('\n').map(s => s.trim()).filter(s => s)
+    const galleryUrls = (body.gallery as string || '').split('\n').map(s => s.trim()).filter(s => s)
+    
+    // カリキュラムの処理
+    const curriculumTitles = Array.isArray(body.curriculum_title) ? body.curriculum_title : [body.curriculum_title].filter(Boolean)
+    const curriculumDurations = Array.isArray(body.curriculum_duration) ? body.curriculum_duration : [body.curriculum_duration].filter(Boolean)
+    const curriculumDescriptions = Array.isArray(body.curriculum_description) ? body.curriculum_description : [body.curriculum_description].filter(Boolean)
+    const curriculum = curriculumTitles.map((title: string, i: number) => ({
+      title: title || '',
+      duration: curriculumDurations[i] || '',
+      description: curriculumDescriptions[i] || ''
+    })).filter((item: any) => item.title)
+    
+    // FAQの処理
+    const faqQuestions = Array.isArray(body.faq_question) ? body.faq_question : [body.faq_question].filter(Boolean)
+    const faqAnswers = Array.isArray(body.faq_answer) ? body.faq_answer : [body.faq_answer].filter(Boolean)
+    const faq = faqQuestions.map((question: string, i: number) => ({
+      question: question || '',
+      answer: faqAnswers[i] || ''
+    })).filter((item: any) => item.question)
+    
+    // まずD1に存在するか確認
+    const existing = await c.env.DB.prepare(`SELECT id FROM courses WHERE id = ?`).bind(id).first()
+    
+    if (existing) {
+      // D1のレコードを更新
+      await c.env.DB.prepare(`
+        UPDATE courses 
+        SET title = ?, catchphrase = ?, description = ?, price = ?, duration = ?, level = ?, category = ?, image = ?,
+            instructor = ?, instructor_title = ?, instructor_bio = ?, instructor_image = ?,
+            target_audience = ?, curriculum = ?, faq = ?, gallery = ?, features = ?,
+            max_capacity = ?, cancellation_policy = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(
+        body.title,
+        body.catchphrase || '',
+        body.description,
+        parseInt(body.price as string) || 0,
+        body.duration || '',
+        body.level,
+        body.category,
+        body.image || '',
+        body.instructor || '',
+        body.instructor_title || '',
+        body.instructor_bio || '',
+        body.instructor_image || '',
+        JSON.stringify(targetAudience),
+        JSON.stringify(curriculum),
+        JSON.stringify(faq),
+        JSON.stringify(galleryUrls),
+        JSON.stringify(features),
+        parseInt(body.maxCapacity as string) || null,
+        body.cancellationPolicy || '',
+        id
+      ).run()
+    } else {
+      // 静的データからの編集 → D1に新規挿入
+      await c.env.DB.prepare(`
+        INSERT INTO courses (id, title, catchphrase, description, price, duration, level, category, image,
+                            instructor, instructor_title, instructor_bio, instructor_image,
+                            target_audience, curriculum, faq, gallery, features, max_capacity, cancellation_policy)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        id,
+        body.title,
+        body.catchphrase || '',
+        body.description,
+        parseInt(body.price as string) || 0,
+        body.duration || '',
+        body.level,
+        body.category,
+        body.image || '',
+        body.instructor || '',
+        body.instructor_title || '',
+        body.instructor_bio || '',
+        body.instructor_image || '',
+        JSON.stringify(targetAudience),
+        JSON.stringify(curriculum),
+        JSON.stringify(faq),
+        JSON.stringify(galleryUrls),
+        JSON.stringify(features),
+        parseInt(body.maxCapacity as string) || null,
+        body.cancellationPolicy || ''
+      ).run()
+    }
+    
+    return c.redirect('/admin/courses')
+  } catch (error) {
+    console.error('Error updating course:', error)
+    const course = await getCourseById(c.env.DB, id)
+    return c.html(renderCourseForm(course, '講座の更新に失敗しました。もう一度お試しください。'))
+  }
+})
+
+// 講座削除
+app.post('/admin/courses/delete/:id', async (c) => {
+  const id = c.req.param('id')
+  try {
+    await c.env.DB.prepare(`DELETE FROM courses WHERE id = ?`).bind(id).run()
+    return c.redirect('/admin/courses')
+  } catch (error) {
+    console.error('Error deleting course:', error)
+    return c.redirect('/admin/courses')
+  }
 })
 
 // ===== 口コミ管理 =====

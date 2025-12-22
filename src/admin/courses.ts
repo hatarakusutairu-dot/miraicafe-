@@ -1,6 +1,17 @@
 import { renderAdminLayout } from './layout'
 import { Course, courseCategories } from '../data'
 
+// HTMLエスケープ関数
+function escapeAttr(text: string): string {
+  if (!text) return ''
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 // 講座一覧ページ
 export const renderCoursesList = (courses: Course[]) => {
   const content = `
@@ -20,9 +31,15 @@ export const renderCoursesList = (courses: Course[]) => {
       ${courses.map(course => `
         <div class="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition">
           <div class="h-40 overflow-hidden relative">
-            <img src="${course.image}" alt="${course.title}" class="w-full h-full object-cover">
+            <img src="${course.image}" alt="${escapeAttr(course.title)}" class="w-full h-full object-cover">
             <div class="absolute top-3 right-3">
               <span class="px-2 py-1 text-xs rounded bg-white/90 text-gray-700">${course.category}</span>
+            </div>
+            <div class="absolute top-3 left-3">
+              <button onclick="confirmDelete('${course.id}', '${escapeAttr(course.title).replace(/'/g, "\\'")}')" 
+                class="w-8 h-8 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center text-sm shadow-lg transition">
+                <i class="fas fa-trash"></i>
+              </button>
             </div>
           </div>
           <div class="p-4">
@@ -30,8 +47,8 @@ export const renderCoursesList = (courses: Course[]) => {
             <p class="text-sm text-gray-500 line-clamp-2 mb-3">${course.description}</p>
             
             <div class="flex items-center justify-between text-sm text-gray-600 mb-4">
-              <span><i class="fas fa-clock mr-1"></i>${course.duration}</span>
-              <span class="font-bold text-amber-600">¥${course.price.toLocaleString()}</span>
+              <span><i class="fas fa-clock mr-1"></i>${course.duration || '未設定'}</span>
+              <span class="font-bold text-amber-600">¥${(course.price || 0).toLocaleString()}</span>
             </div>
             
             <div class="flex items-center gap-2">
@@ -56,6 +73,43 @@ export const renderCoursesList = (courses: Course[]) => {
         </div>
       ` : ''}
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center">
+      <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+        <h3 class="text-lg font-bold text-gray-800 mb-2">講座を削除</h3>
+        <p class="text-gray-600 mb-4">「<span id="delete-title"></span>」を削除しますか？この操作は取り消せません。</p>
+        <div class="flex gap-3">
+          <form id="delete-form" method="POST" class="flex-1">
+            <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition">
+              削除する
+            </button>
+          </form>
+          <button onclick="closeDeleteModal()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-lg transition">
+            キャンセル
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Delete modal
+      function confirmDelete(id, title) {
+        document.getElementById('delete-title').textContent = title;
+        document.getElementById('delete-form').action = '/admin/courses/delete/' + id;
+        document.getElementById('delete-modal').classList.remove('hidden');
+        document.getElementById('delete-modal').classList.add('flex');
+      }
+
+      function closeDeleteModal() {
+        document.getElementById('delete-modal').classList.add('hidden');
+        document.getElementById('delete-modal').classList.remove('flex');
+      }
+
+      document.getElementById('delete-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeDeleteModal();
+      });
+    </script>
   `
 
   return renderAdminLayout('講座管理', content, 'courses')
