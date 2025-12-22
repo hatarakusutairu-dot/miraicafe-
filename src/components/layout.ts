@@ -45,6 +45,183 @@ export const renderLayout = (title: string, content: string, activeNav: string =
   <style>
     * { font-family: 'Zen Maru Gothic', 'Noto Sans JP', sans-serif; }
     
+    /* ===== Background Animations ===== */
+    
+    /* Floating Leaves */
+    .bg-leaves {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+      overflow: hidden;
+    }
+    
+    .leaf {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: linear-gradient(135deg, #D4E5D0 0%, #B8CDB0 100%);
+      border-radius: 0 70% 0 70%;
+      opacity: 0.4;
+      animation: fall-leaf linear infinite;
+    }
+    
+    .leaf:nth-child(1) { left: 5%; width: 15px; height: 15px; animation-duration: 25s; animation-delay: 0s; }
+    .leaf:nth-child(2) { left: 15%; width: 22px; height: 22px; animation-duration: 30s; animation-delay: -5s; }
+    .leaf:nth-child(3) { left: 25%; width: 18px; height: 18px; animation-duration: 28s; animation-delay: -10s; }
+    .leaf:nth-child(4) { left: 40%; width: 25px; height: 25px; animation-duration: 32s; animation-delay: -3s; }
+    .leaf:nth-child(5) { left: 55%; width: 16px; height: 16px; animation-duration: 26s; animation-delay: -8s; }
+    .leaf:nth-child(6) { left: 70%; width: 20px; height: 20px; animation-duration: 29s; animation-delay: -12s; }
+    .leaf:nth-child(7) { left: 85%; width: 14px; height: 14px; animation-duration: 24s; animation-delay: -6s; }
+    .leaf:nth-child(8) { left: 95%; width: 19px; height: 19px; animation-duration: 31s; animation-delay: -15s; }
+    
+    @keyframes fall-leaf {
+      0% {
+        transform: translateY(-100px) rotate(0deg) translateX(0);
+        opacity: 0;
+      }
+      10% {
+        opacity: 0.4;
+      }
+      90% {
+        opacity: 0.4;
+      }
+      100% {
+        transform: translateY(100vh) rotate(360deg) translateX(100px);
+        opacity: 0;
+      }
+    }
+    
+    /* Floating Orbs - Soft gradient circles */
+    .bg-orbs {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.3;
+      animation: float-orb ease-in-out infinite;
+    }
+    
+    .orb-1 {
+      width: 300px;
+      height: 300px;
+      background: linear-gradient(135deg, #D4E5D0, #B8CDB0);
+      top: 10%;
+      left: -5%;
+      animation-duration: 20s;
+    }
+    
+    .orb-2 {
+      width: 250px;
+      height: 250px;
+      background: linear-gradient(135deg, #E8DCC8, #D4C4A8);
+      top: 60%;
+      right: -5%;
+      animation-duration: 25s;
+      animation-delay: -5s;
+    }
+    
+    .orb-3 {
+      width: 200px;
+      height: 200px;
+      background: linear-gradient(135deg, #D4E8E8, #B8D8D8);
+      bottom: 20%;
+      left: 30%;
+      animation-duration: 22s;
+      animation-delay: -10s;
+    }
+    
+    @keyframes float-orb {
+      0%, 100% {
+        transform: translate(0, 0) scale(1);
+      }
+      25% {
+        transform: translate(30px, -20px) scale(1.05);
+      }
+      50% {
+        transform: translate(-20px, 30px) scale(0.95);
+      }
+      75% {
+        transform: translate(20px, 20px) scale(1.02);
+      }
+    }
+    
+    /* Sparkles / Light particles */
+    .bg-sparkles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+      overflow: hidden;
+    }
+    
+    .sparkle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: #B8956A;
+      border-radius: 50%;
+      opacity: 0;
+      animation: twinkle ease-in-out infinite;
+    }
+    
+    .sparkle:nth-child(1) { left: 10%; top: 20%; animation-duration: 4s; animation-delay: 0s; }
+    .sparkle:nth-child(2) { left: 25%; top: 40%; animation-duration: 5s; animation-delay: -1s; }
+    .sparkle:nth-child(3) { left: 45%; top: 15%; animation-duration: 4.5s; animation-delay: -2s; }
+    .sparkle:nth-child(4) { left: 60%; top: 55%; animation-duration: 5.5s; animation-delay: -0.5s; }
+    .sparkle:nth-child(5) { left: 75%; top: 30%; animation-duration: 4s; animation-delay: -3s; }
+    .sparkle:nth-child(6) { left: 90%; top: 65%; animation-duration: 5s; animation-delay: -1.5s; }
+    .sparkle:nth-child(7) { left: 30%; top: 75%; animation-duration: 4.5s; animation-delay: -2.5s; }
+    .sparkle:nth-child(8) { left: 80%; top: 85%; animation-duration: 5.5s; animation-delay: -3.5s; }
+    .sparkle:nth-child(9) { left: 50%; top: 90%; animation-duration: 4s; animation-delay: -4s; }
+    .sparkle:nth-child(10) { left: 15%; top: 60%; animation-duration: 5s; animation-delay: -0.8s; }
+    
+    @keyframes twinkle {
+      0%, 100% {
+        opacity: 0;
+        transform: scale(0.5);
+      }
+      50% {
+        opacity: 0.6;
+        transform: scale(1.2);
+      }
+    }
+    
+    /* Gentle wave at bottom */
+    .bg-wave {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 200%;
+      height: 100px;
+      pointer-events: none;
+      z-index: 1;
+      animation: wave-move 15s linear infinite;
+    }
+    
+    @keyframes wave-move {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    
+    /* ===== End Background Animations ===== */
+    
     /* Warm Natural Gradients */
     .gradient-warm { 
       background: linear-gradient(135deg, #B8956A 0%, #C4A574 50%, #D4C4A8 100%);
@@ -232,9 +409,180 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       50% { transform: rotate(3deg); }
     }
     .leaf-sway { animation: sway 4s ease-in-out infinite; }
+    
+    /* ========== Background Animations ========== */
+    
+    /* Animated background container */
+    .bg-animated {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    
+    /* Floating soft orbs - warm colors */
+    .bg-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.4;
+      animation: orb-float 25s ease-in-out infinite;
+    }
+    
+    .bg-orb-1 {
+      width: 400px;
+      height: 400px;
+      background: linear-gradient(135deg, #D4E5D0, #B8CDB0);
+      top: -150px;
+      left: -100px;
+      animation-delay: 0s;
+    }
+    
+    .bg-orb-2 {
+      width: 350px;
+      height: 350px;
+      background: linear-gradient(135deg, #E8DCC8, #D4C4A8);
+      top: 40%;
+      right: -100px;
+      animation-delay: -8s;
+    }
+    
+    .bg-orb-3 {
+      width: 300px;
+      height: 300px;
+      background: linear-gradient(135deg, #D4E8E8, #B8D8D8);
+      bottom: 10%;
+      left: 20%;
+      animation-delay: -15s;
+    }
+    
+    .bg-orb-4 {
+      width: 250px;
+      height: 250px;
+      background: linear-gradient(135deg, #D4E5D0, #8FB585);
+      top: 60%;
+      left: -50px;
+      animation-delay: -5s;
+    }
+    
+    @keyframes orb-float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      25% { transform: translate(40px, -30px) scale(1.05); }
+      50% { transform: translate(-30px, 40px) scale(0.95); }
+      75% { transform: translate(20px, 20px) scale(1.02); }
+    }
+    
+    /* Floating leaves */
+    .bg-leaves {
+      position: absolute;
+      inset: 0;
+    }
+    
+    .bg-leaf {
+      position: absolute;
+      font-size: 20px;
+      opacity: 0.15;
+      color: #8FB585;
+      animation: leaf-fall 20s linear infinite;
+    }
+    
+    @keyframes leaf-fall {
+      0% {
+        transform: translateY(-100px) rotate(0deg) translateX(0);
+        opacity: 0;
+      }
+      10% { opacity: 0.15; }
+      90% { opacity: 0.15; }
+      100% {
+        transform: translateY(100vh) rotate(360deg) translateX(100px);
+        opacity: 0;
+      }
+    }
+    
+    /* Sparkle particles */
+    .bg-sparkles {
+      position: absolute;
+      inset: 0;
+    }
+    
+    .bg-sparkle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: #D4C4A8;
+      border-radius: 50%;
+      animation: sparkle 8s ease-in-out infinite;
+    }
+    
+    @keyframes sparkle {
+      0%, 100% { opacity: 0; transform: scale(0); }
+      50% { opacity: 0.6; transform: scale(1); }
+    }
+    
+    /* Gentle wave at bottom */
+    .bg-wave {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 200%;
+      height: 150px;
+      opacity: 0.1;
+      animation: wave-move 30s linear infinite;
+    }
+    
+    @keyframes wave-move {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
   </style>
 </head>
 <body class="bg-cafe-ivory min-h-screen flex flex-col overflow-x-hidden">
+  <!-- Animated Background -->
+  <div class="bg-animated">
+    <!-- Soft floating orbs -->
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+    <div class="bg-orb bg-orb-4"></div>
+    
+    <!-- Floating leaves -->
+    <div class="bg-leaves">
+      <i class="fas fa-leaf bg-leaf" style="left: 10%; animation-delay: 0s;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 20%; animation-delay: -3s;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 35%; animation-delay: -6s;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 50%; animation-delay: -9s;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 65%; animation-delay: -12s;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 80%; animation-delay: -15s;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 90%; animation-delay: -18s;"></i>
+      <i class="fas fa-seedling bg-leaf" style="left: 25%; animation-delay: -4s; font-size: 16px;"></i>
+      <i class="fas fa-seedling bg-leaf" style="left: 55%; animation-delay: -10s; font-size: 16px;"></i>
+      <i class="fas fa-seedling bg-leaf" style="left: 75%; animation-delay: -16s; font-size: 16px;"></i>
+    </div>
+    
+    <!-- Sparkle particles -->
+    <div class="bg-sparkles">
+      <div class="bg-sparkle" style="top: 15%; left: 10%; animation-delay: 0s;"></div>
+      <div class="bg-sparkle" style="top: 25%; left: 30%; animation-delay: -1s;"></div>
+      <div class="bg-sparkle" style="top: 40%; left: 70%; animation-delay: -2s;"></div>
+      <div class="bg-sparkle" style="top: 55%; left: 20%; animation-delay: -3s;"></div>
+      <div class="bg-sparkle" style="top: 65%; left: 85%; animation-delay: -4s;"></div>
+      <div class="bg-sparkle" style="top: 75%; left: 45%; animation-delay: -5s;"></div>
+      <div class="bg-sparkle" style="top: 85%; left: 60%; animation-delay: -6s;"></div>
+      <div class="bg-sparkle" style="top: 30%; left: 90%; animation-delay: -7s;"></div>
+      <div class="bg-sparkle" style="top: 50%; left: 5%; animation-delay: -3.5s;"></div>
+      <div class="bg-sparkle" style="top: 70%; left: 35%; animation-delay: -5.5s;"></div>
+    </div>
+    
+    <!-- Bottom wave -->
+    <svg class="bg-wave" viewBox="0 0 1440 150" preserveAspectRatio="none">
+      <path fill="#B8CDB0" d="M0,60L48,65C96,70,192,80,288,85C384,90,480,90,576,80C672,70,768,50,864,45C960,40,1056,50,1152,60C1248,70,1344,80,1392,85L1440,90L1440,150L0,150Z"></path>
+    </svg>
+  </div>
+
   <!-- Header -->
   <header class="glass-warm fixed top-0 left-0 right-0 z-50 border-b border-cafe-beige/50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
