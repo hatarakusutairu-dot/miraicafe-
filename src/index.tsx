@@ -60,7 +60,7 @@ app.get('/blog/:id', (c) => {
   const id = c.req.param('id')
   const post = blogPosts.find(p => p.id === id)
   if (!post) return c.notFound()
-  return c.html(renderBlogPostPage(post))
+  return c.html(renderBlogPostPage(post, blogPosts))
 })
 
 // Contact

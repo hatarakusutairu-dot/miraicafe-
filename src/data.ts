@@ -122,6 +122,16 @@ export const schedules: Schedule[] = [
 ]
 
 // Blog data
+// カテゴリ定義: '開発日誌' | 'AI情報・ニュース' | 'お役立ち情報' | 'お知らせ'
+export type BlogCategory = '開発日誌' | 'AI情報・ニュース' | 'お役立ち情報' | 'お知らせ'
+
+export const blogCategories: { name: BlogCategory; color: string; bgColor: string }[] = [
+  { name: '開発日誌', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  { name: 'AI情報・ニュース', color: 'text-green-600', bgColor: 'bg-green-100' },
+  { name: 'お役立ち情報', color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  { name: 'お知らせ', color: 'text-orange-600', bgColor: 'bg-orange-100' }
+]
+
 export interface BlogPost {
   id: string
   title: string
@@ -129,7 +139,8 @@ export interface BlogPost {
   content: string
   author: string
   date: string
-  category: string
+  category: BlogCategory
+  tags: string[]
   image: string
   readTime: string
 }
@@ -165,7 +176,8 @@ export const blogPosts: BlogPost[] = [
     `,
     author: '田中 花子',
     date: '2024-12-20',
-    category: 'Tips',
+    category: 'お役立ち情報',
+    tags: ['ChatGPT', 'プロンプト', '活用術', '初心者向け'],
     image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&auto=format&fit=crop&q=60',
     readTime: '5分'
   },
@@ -190,7 +202,8 @@ export const blogPosts: BlogPost[] = [
     `,
     author: '鈴木 太郎',
     date: '2024-12-18',
-    category: 'トレンド',
+    category: 'AI情報・ニュース',
+    tags: ['AIトレンド', 'ビジネス', '2025年予測'],
     image: 'https://images.unsplash.com/photo-1488229297570-58520851e868?w=800&auto=format&fit=crop&q=60',
     readTime: '7分'
   },
@@ -218,7 +231,8 @@ export const blogPosts: BlogPost[] = [
     `,
     author: '山田 明美',
     date: '2024-12-15',
-    category: '学習',
+    category: 'お役立ち情報',
+    tags: ['プロンプト', '入門', '学習'],
     image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=60',
     readTime: '8分'
   },
@@ -248,7 +262,8 @@ export const blogPosts: BlogPost[] = [
     `,
     author: '佐藤 健一',
     date: '2024-12-10',
-    category: 'ツール',
+    category: 'AI情報・ニュース',
+    tags: ['ChatGPT', 'Claude', 'Gemini', 'AIツール比較'],
     image: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&auto=format&fit=crop&q=60',
     readTime: '6分'
   }
