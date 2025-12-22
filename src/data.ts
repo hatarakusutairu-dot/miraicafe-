@@ -52,6 +52,9 @@ export interface Course {
   cancellationPolicy?: string  // キャンセルポリシー
 }
 
+// 講座カテゴリ
+export const courseCategories = ['AI基礎', 'ビジネス活用', 'エンジニア向け', 'クリエイティブ', 'その他']
+
 export const courses: Course[] = [
   {
     id: 'ai-basics',

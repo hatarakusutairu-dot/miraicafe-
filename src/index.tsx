@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/cloudflare-pages'
+import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 
 // Pages
 import { renderHomePage } from './pages/home'
@@ -8,6 +9,14 @@ import { renderCoursesPage, renderCourseDetailPage } from './pages/courses'
 import { renderReservationPage } from './pages/reservation'
 import { renderBlogPage, renderBlogPostPage } from './pages/blog'
 import { renderContactPage } from './pages/contact'
+
+// Admin Pages
+import { renderAdminLayout, renderLoginPage } from './admin/layout'
+import { renderDashboard } from './admin/dashboard'
+import { renderBlogList, renderBlogForm } from './admin/blog'
+import { renderCoursesList, renderCourseForm } from './admin/courses'
+import { renderReviewsList } from './admin/reviews'
+import { renderContactsList, renderContactDetail } from './admin/contacts'
 
 // Data
 import { courses, blogPosts, schedules } from './data'
@@ -331,6 +340,326 @@ app.post('/api/reviews', async (c) => {
     console.error('Error posting review:', error)
     return c.json({ error: 'レビューの投稿に失敗しました。もう一度お試しください。' }, 500)
   }
+})
+
+// ===== Admin Routes =====
+
+// セッション管理用（簡易実装：本番ではKV等を使用）
+const adminSessions = new Map<string, { email: string; expiresAt: number }>()
+const SESSION_DURATION = 24 * 60 * 60 * 1000 // 24時間
+
+function generateSessionId(): string {
+  const array = new Uint8Array(32)
+  crypto.getRandomValues(array)
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
+function validateSession(sessionId: string | undefined): boolean {
+  if (!sessionId) return false
+  const session = adminSessions.get(sessionId)
+  if (!session) return false
+  if (Date.now() > session.expiresAt) {
+    adminSessions.delete(sessionId)
+    return false
+  }
+  return true
+}
+
+// 認証ミドルウェア
+app.use('/admin/*', async (c, next) => {
+  const path = new URL(c.req.url).pathname
+  
+  // ログインページは認証不要
+  if (path === '/admin/login') {
+    return next()
+  }
+  
+  const sessionId = getCookie(c, 'admin_session')
+  
+  if (!validateSession(sessionId)) {
+    return c.redirect('/admin/login')
+  }
+  
+  return next()
+})
+
+// ログインページ
+app.get('/admin/login', (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (validateSession(sessionId)) {
+    return c.redirect('/admin')
+  }
+  return c.html(renderLoginPage())
+})
+
+// ログイン処理
+app.post('/admin/login', async (c) => {
+  const body = await c.req.parseBody()
+  const email = body.email as string
+  const password = body.password as string
+  
+  // 環境変数から認証情報を取得（デフォルト値あり）
+  const adminEmail = (c.env as any)?.ADMIN_EMAIL || 'ai.career@miraicafe.work'
+  const adminPassword = (c.env as any)?.ADMIN_PASSWORD || 'admin123'
+  
+  if (email === adminEmail && password === adminPassword) {
+    const sessionId = generateSessionId()
+    adminSessions.set(sessionId, {
+      email,
+      expiresAt: Date.now() + SESSION_DURATION
+    })
+    
+    setCookie(c, 'admin_session', sessionId, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'Lax',
+      path: '/admin',
+      maxAge: SESSION_DURATION / 1000
+    })
+    
+    return c.redirect('/admin')
+  }
+  
+  return c.html(renderLoginPage('メールアドレスまたはパスワードが違います'))
+})
+
+// ログアウト処理
+app.post('/admin/logout', (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (sessionId) {
+    adminSessions.delete(sessionId)
+    deleteCookie(c, 'admin_session', { path: '/admin' })
+  }
+  return c.redirect('/admin/login')
+})
+
+// ダッシュボード
+app.get('/admin', async (c) => {
+  try {
+    // 統計データを取得
+    const reviewsResult = await c.env.DB.prepare(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending
+      FROM reviews
+    `).first()
+    
+    const contactsResult = await c.env.DB.prepare(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'new' THEN 1 ELSE 0 END) as new
+      FROM contacts
+    `).first()
+    
+    // 最近のお問い合わせ
+    const recentContacts = await c.env.DB.prepare(`
+      SELECT id, name, type, subject, status, created_at
+      FROM contacts
+      ORDER BY created_at DESC
+      LIMIT 5
+    `).all()
+    
+    // 承認待ち口コミ
+    const pendingReviews = await c.env.DB.prepare(`
+      SELECT id, course_id, reviewer_name, rating, comment, created_at
+      FROM reviews
+      WHERE status = 'pending'
+      ORDER BY created_at DESC
+      LIMIT 5
+    `).all()
+    
+    const stats = {
+      courses: courses.length,
+      blogs: blogPosts.length,
+      reviews: {
+        total: (reviewsResult as any)?.total || 0,
+        pending: (reviewsResult as any)?.pending || 0
+      },
+      contacts: {
+        total: (contactsResult as any)?.total || 0,
+        new: (contactsResult as any)?.new || 0
+      }
+    }
+    
+    const recent = {
+      contacts: recentContacts.results as any[],
+      reviews: pendingReviews.results as any[]
+    }
+    
+    return c.html(renderDashboard(stats, recent))
+  } catch (error) {
+    console.error('Dashboard error:', error)
+    // データベースエラー時はデフォルト値で表示
+    const stats = {
+      courses: courses.length,
+      blogs: blogPosts.length,
+      reviews: { total: 0, pending: 0 },
+      contacts: { total: 0, new: 0 }
+    }
+    const recent = { contacts: [], reviews: [] }
+    return c.html(renderDashboard(stats, recent))
+  }
+})
+
+// ===== ブログ管理 =====
+app.get('/admin/blog', (c) => {
+  return c.html(renderBlogList(blogPosts))
+})
+
+app.get('/admin/blog/new', (c) => {
+  return c.html(renderBlogForm())
+})
+
+app.get('/admin/blog/edit/:id', (c) => {
+  const id = c.req.param('id')
+  const post = blogPosts.find(p => p.id === id)
+  if (!post) return c.notFound()
+  return c.html(renderBlogForm(post))
+})
+
+// ブログ作成・更新・削除（静的データのため実際には保存されない - デモ用）
+app.post('/admin/blog/create', async (c) => {
+  // 実際のアプリではD1にINSERT
+  return c.redirect('/admin/blog')
+})
+
+app.post('/admin/blog/update/:id', async (c) => {
+  // 実際のアプリではD1にUPDATE
+  return c.redirect('/admin/blog')
+})
+
+app.post('/admin/blog/delete/:id', async (c) => {
+  // 実際のアプリではD1からDELETE
+  return c.redirect('/admin/blog')
+})
+
+// ===== 講座管理 =====
+app.get('/admin/courses', (c) => {
+  return c.html(renderCoursesList(courses))
+})
+
+app.get('/admin/courses/new', (c) => {
+  return c.html(renderCourseForm())
+})
+
+app.get('/admin/courses/edit/:id', (c) => {
+  const id = c.req.param('id')
+  const course = courses.find(c => c.id === id)
+  if (!course) return c.notFound()
+  return c.html(renderCourseForm(course))
+})
+
+app.post('/admin/courses/create', async (c) => {
+  return c.redirect('/admin/courses')
+})
+
+app.post('/admin/courses/update/:id', async (c) => {
+  return c.redirect('/admin/courses')
+})
+
+// ===== 口コミ管理 =====
+app.get('/admin/reviews', async (c) => {
+  const tab = c.req.query('tab') || 'pending'
+  
+  try {
+    const reviews = await c.env.DB.prepare(`
+      SELECT id, course_id, reviewer_name, reviewer_email, rating, comment, status, created_at
+      FROM reviews
+      ORDER BY created_at DESC
+    `).all()
+    
+    return c.html(renderReviewsList(reviews.results as any[], tab))
+  } catch (error) {
+    console.error('Reviews error:', error)
+    return c.html(renderReviewsList([], tab))
+  }
+})
+
+app.post('/admin/reviews/:id/approve', async (c) => {
+  const id = c.req.param('id')
+  try {
+    await c.env.DB.prepare(`
+      UPDATE reviews SET status = 'approved' WHERE id = ?
+    `).bind(id).run()
+  } catch (error) {
+    console.error('Approve error:', error)
+  }
+  return c.redirect('/admin/reviews')
+})
+
+app.post('/admin/reviews/:id/reject', async (c) => {
+  const id = c.req.param('id')
+  try {
+    await c.env.DB.prepare(`
+      UPDATE reviews SET status = 'rejected' WHERE id = ?
+    `).bind(id).run()
+  } catch (error) {
+    console.error('Reject error:', error)
+  }
+  return c.redirect('/admin/reviews')
+})
+
+app.post('/admin/reviews/:id/delete', async (c) => {
+  const id = c.req.param('id')
+  try {
+    await c.env.DB.prepare(`
+      DELETE FROM reviews WHERE id = ?
+    `).bind(id).run()
+  } catch (error) {
+    console.error('Delete error:', error)
+  }
+  return c.redirect('/admin/reviews')
+})
+
+// ===== お問い合わせ管理 =====
+app.get('/admin/contacts', async (c) => {
+  const tab = c.req.query('tab') || 'new'
+  
+  try {
+    const contacts = await c.env.DB.prepare(`
+      SELECT id, name, email, phone, type, subject, message, status, created_at
+      FROM contacts
+      ORDER BY created_at DESC
+    `).all()
+    
+    return c.html(renderContactsList(contacts.results as any[], tab))
+  } catch (error) {
+    console.error('Contacts error:', error)
+    return c.html(renderContactsList([], tab))
+  }
+})
+
+app.get('/admin/contacts/:id', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    const contact = await c.env.DB.prepare(`
+      SELECT id, name, email, phone, type, subject, message, status, created_at
+      FROM contacts WHERE id = ?
+    `).bind(id).first()
+    
+    if (!contact) return c.notFound()
+    return c.html(renderContactDetail(contact as any))
+  } catch (error) {
+    console.error('Contact detail error:', error)
+    return c.notFound()
+  }
+})
+
+app.post('/admin/contacts/:id/status', async (c) => {
+  const id = c.req.param('id')
+  const body = await c.req.parseBody()
+  const status = body.status as string
+  
+  try {
+    await c.env.DB.prepare(`
+      UPDATE contacts SET status = ? WHERE id = ?
+    `).bind(status, id).run()
+  } catch (error) {
+    console.error('Update status error:', error)
+  }
+  
+  return c.redirect(`/admin/contacts/${id}`)
 })
 
 export default app
