@@ -72,14 +72,22 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       border: 1px solid rgba(232, 220, 200, 0.5);
     }
     
-    /* Card hover effect */
+    /* Card hover effect - always above background animations */
     .card-hover {
       transition: all 0.3s ease;
       border-radius: 20px;
+      position: relative;
+      z-index: 25;
     }
     .card-hover:hover {
       transform: translateY(-5px);
       box-shadow: 0 20px 40px rgba(139, 115, 85, 0.15);
+    }
+    
+    /* Content boxes - always above background animations */
+    .glass, .glass-warm {
+      position: relative;
+      z-index: 25;
     }
     
     /* Button styles */
@@ -404,7 +412,7 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     
     /* ========== Background Animations ========== */
     
-    /* Animated background container - ALWAYS BEHIND content */
+    /* Animated background container - behind cards but visible */
     .bg-animated {
       position: fixed;
       top: 0;
@@ -412,50 +420,50 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       right: 0;
       bottom: 0;
       pointer-events: none;
-      z-index: -1;
+      z-index: 5;
       overflow: hidden;
     }
     
-    /* Floating soft orbs - subtle background decoration */
+    /* Floating soft orbs - visible and prominent */
     .bg-orb {
       position: absolute;
       border-radius: 50%;
-      filter: blur(40px);
-      opacity: 0.5;
-      animation: orb-float 15s ease-in-out infinite;
+      filter: blur(30px);
+      opacity: 0.85;
+      animation: orb-float 12s ease-in-out infinite;
     }
     
     .bg-orb-1 {
-      width: 500px;
-      height: 500px;
-      background: radial-gradient(circle, rgba(184, 205, 176, 0.6) 0%, rgba(143, 181, 133, 0.3) 40%, transparent 70%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(184, 205, 176, 0.9) 0%, rgba(143, 181, 133, 0.6) 40%, transparent 70%);
       top: -150px;
       left: -100px;
       animation-delay: 0s;
     }
     
     .bg-orb-2 {
-      width: 450px;
-      height: 450px;
-      background: radial-gradient(circle, rgba(232, 220, 200, 0.6) 0%, rgba(196, 165, 116, 0.3) 40%, transparent 70%);
+      width: 550px;
+      height: 550px;
+      background: radial-gradient(circle, rgba(232, 220, 200, 0.9) 0%, rgba(196, 165, 116, 0.6) 40%, transparent 70%);
       top: 25%;
       right: -100px;
       animation-delay: -4s;
     }
     
     .bg-orb-3 {
-      width: 400px;
-      height: 400px;
-      background: radial-gradient(circle, rgba(212, 232, 232, 0.6) 0%, rgba(184, 216, 216, 0.3) 40%, transparent 70%);
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(212, 232, 232, 0.9) 0%, rgba(184, 216, 216, 0.6) 40%, transparent 70%);
       bottom: 10%;
       left: 20%;
       animation-delay: -8s;
     }
     
     .bg-orb-4 {
-      width: 350px;
-      height: 350px;
-      background: radial-gradient(circle, rgba(143, 181, 133, 0.6) 0%, rgba(107, 155, 98, 0.3) 40%, transparent 70%);
+      width: 450px;
+      height: 450px;
+      background: radial-gradient(circle, rgba(143, 181, 133, 0.9) 0%, rgba(107, 155, 98, 0.6) 40%, transparent 70%);
       top: 60%;
       left: -100px;
       animation-delay: -2s;
@@ -463,12 +471,12 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     
     @keyframes orb-float {
       0%, 100% { transform: translate(0, 0) scale(1); }
-      25% { transform: translate(40px, -35px) scale(1.05); }
-      50% { transform: translate(-35px, 45px) scale(0.95); }
-      75% { transform: translate(30px, 25px) scale(1.02); }
+      25% { transform: translate(80px, -70px) scale(1.15); }
+      50% { transform: translate(-70px, 90px) scale(0.85); }
+      75% { transform: translate(60px, 50px) scale(1.1); }
     }
     
-    /* Floating leaves - gentle background decoration */
+    /* Floating leaves - visible and prominent */
     .bg-leaves {
       position: absolute;
       inset: 0;
@@ -476,12 +484,12 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     
     .bg-leaf {
       position: absolute;
-      font-size: 24px;
-      opacity: 0.4;
-      color: #8FB585;
-      animation: leaf-fall 18s linear infinite;
-      text-shadow: none;
-      filter: none;
+      font-size: 32px;
+      opacity: 0.75;
+      color: #6B9B62;
+      animation: leaf-fall 12s linear infinite;
+      text-shadow: 0 3px 6px rgba(0,0,0,0.15);
+      filter: drop-shadow(0 2px 4px rgba(107, 155, 98, 0.3));
     }
     
     @keyframes leaf-fall {
@@ -489,15 +497,15 @@ export const renderLayout = (title: string, content: string, activeNav: string =
         transform: translateY(-50px) rotate(0deg) translateX(0);
         opacity: 0;
       }
-      5% { opacity: 0.45; }
-      90% { opacity: 0.45; }
+      5% { opacity: 0.8; }
+      90% { opacity: 0.8; }
       100% {
-        transform: translateY(100vh) rotate(360deg) translateX(60px);
+        transform: translateY(100vh) rotate(540deg) translateX(100px);
         opacity: 0;
       }
     }
     
-    /* Sparkle particles - subtle twinkling */
+    /* Sparkle particles - visible and prominent */
     .bg-sparkles {
       position: absolute;
       inset: 0;
@@ -505,28 +513,28 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     
     .bg-sparkle {
       position: absolute;
-      width: 6px;
-      height: 6px;
-      background: radial-gradient(circle, rgba(196, 165, 116, 0.8) 0%, transparent 70%);
+      width: 12px;
+      height: 12px;
+      background: radial-gradient(circle, #C4A574 0%, #B8956A 40%, transparent 70%);
       border-radius: 50%;
-      animation: sparkle 5s ease-in-out infinite;
-      box-shadow: none;
+      animation: sparkle 3s ease-in-out infinite;
+      box-shadow: 0 0 10px rgba(196, 165, 116, 0.5);
     }
     
     @keyframes sparkle {
-      0%, 100% { opacity: 0; transform: scale(0.3); }
-      50% { opacity: 0.6; transform: scale(1); }
+      0%, 100% { opacity: 0; transform: scale(0.5); }
+      50% { opacity: 1; transform: scale(2); }
     }
     
-    /* Gentle wave at bottom - subtle decoration */
+    /* Gentle wave at bottom - visible */
     .bg-wave {
       position: absolute;
       bottom: 0;
       left: 0;
       width: 200%;
-      height: 180px;
-      opacity: 0.4;
-      animation: wave-move 25s linear infinite;
+      height: 250px;
+      opacity: 0.7;
+      animation: wave-move 15s linear infinite;
     }
     
     @keyframes wave-move {
@@ -544,28 +552,47 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     <div class="bg-orb bg-orb-3"></div>
     <div class="bg-orb bg-orb-4"></div>
     
-    <!-- Floating leaves - gentle background -->
+    <!-- Floating leaves - prominent -->
     <div class="bg-leaves">
-      <i class="fas fa-leaf bg-leaf" style="left: 5%; animation-delay: 0s; font-size: 18px;"></i>
-      <i class="fas fa-leaf bg-leaf" style="left: 20%; animation-delay: -3s; font-size: 16px;"></i>
-      <i class="fas fa-leaf bg-leaf" style="left: 35%; animation-delay: -6s; font-size: 20px;"></i>
-      <i class="fas fa-leaf bg-leaf" style="left: 55%; animation-delay: -9s; font-size: 18px;"></i>
-      <i class="fas fa-leaf bg-leaf" style="left: 75%; animation-delay: -12s; font-size: 16px;"></i>
-      <i class="fas fa-leaf bg-leaf" style="left: 90%; animation-delay: -15s; font-size: 18px;"></i>
-      <i class="fas fa-seedling bg-leaf" style="left: 12%; animation-delay: -4s; font-size: 14px;"></i>
-      <i class="fas fa-seedling bg-leaf" style="left: 65%; animation-delay: -10s; font-size: 14px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 3%; animation-delay: 0s; font-size: 38px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 10%; animation-delay: -1.5s; font-size: 32px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 18%; animation-delay: -3s; font-size: 28px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 25%; animation-delay: -4.5s; font-size: 36px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 33%; animation-delay: -6s; font-size: 30px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 42%; animation-delay: -7.5s; font-size: 34px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 52%; animation-delay: -9s; font-size: 40px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 62%; animation-delay: -10.5s; font-size: 32px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 72%; animation-delay: -2s; font-size: 36px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 82%; animation-delay: -5s; font-size: 28px;"></i>
+      <i class="fas fa-leaf bg-leaf" style="left: 92%; animation-delay: -8s; font-size: 34px;"></i>
+      <i class="fas fa-seedling bg-leaf" style="left: 8%; animation-delay: -2.5s; font-size: 30px; color: #4A8C3F;"></i>
+      <i class="fas fa-seedling bg-leaf" style="left: 38%; animation-delay: -6.5s; font-size: 28px; color: #4A8C3F;"></i>
+      <i class="fas fa-seedling bg-leaf" style="left: 68%; animation-delay: -11s; font-size: 32px; color: #4A8C3F;"></i>
+      <i class="fas fa-seedling bg-leaf" style="left: 88%; animation-delay: -4s; font-size: 26px; color: #4A8C3F;"></i>
     </div>
     
-    <!-- Sparkle particles - subtle twinkling -->
+    <!-- Sparkle particles - prominent -->
     <div class="bg-sparkles">
-      <div class="bg-sparkle" style="top: 15%; left: 15%; animation-delay: 0s;"></div>
-      <div class="bg-sparkle" style="top: 25%; left: 45%; animation-delay: -1s;"></div>
-      <div class="bg-sparkle" style="top: 35%; left: 75%; animation-delay: -2s;"></div>
-      <div class="bg-sparkle" style="top: 50%; left: 25%; animation-delay: -3s;"></div>
-      <div class="bg-sparkle" style="top: 65%; left: 55%; animation-delay: -4s;"></div>
-      <div class="bg-sparkle" style="top: 75%; left: 85%; animation-delay: -2.5s;"></div>
-      <div class="bg-sparkle" style="top: 85%; left: 35%; animation-delay: -1.5s;"></div>
-      <div class="bg-sparkle" style="top: 90%; left: 65%; animation-delay: -3.5s;"></div>
+      <div class="bg-sparkle" style="top: 8%; left: 10%; animation-delay: 0s;"></div>
+      <div class="bg-sparkle" style="top: 12%; left: 30%; animation-delay: -0.4s;"></div>
+      <div class="bg-sparkle" style="top: 15%; left: 50%; animation-delay: -0.8s;"></div>
+      <div class="bg-sparkle" style="top: 18%; left: 75%; animation-delay: -1.2s;"></div>
+      <div class="bg-sparkle" style="top: 22%; left: 90%; animation-delay: -1.6s;"></div>
+      <div class="bg-sparkle" style="top: 28%; left: 5%; animation-delay: -0.2s;"></div>
+      <div class="bg-sparkle" style="top: 32%; left: 22%; animation-delay: -0.6s;"></div>
+      <div class="bg-sparkle" style="top: 38%; left: 45%; animation-delay: -1s;"></div>
+      <div class="bg-sparkle" style="top: 42%; left: 65%; animation-delay: -1.4s;"></div>
+      <div class="bg-sparkle" style="top: 48%; left: 85%; animation-delay: -1.8s;"></div>
+      <div class="bg-sparkle" style="top: 52%; left: 12%; animation-delay: -0.3s;"></div>
+      <div class="bg-sparkle" style="top: 58%; left: 35%; animation-delay: -0.7s;"></div>
+      <div class="bg-sparkle" style="top: 62%; left: 58%; animation-delay: -1.1s;"></div>
+      <div class="bg-sparkle" style="top: 68%; left: 78%; animation-delay: -1.5s;"></div>
+      <div class="bg-sparkle" style="top: 72%; left: 95%; animation-delay: -1.9s;"></div>
+      <div class="bg-sparkle" style="top: 78%; left: 8%; animation-delay: -0.5s;"></div>
+      <div class="bg-sparkle" style="top: 82%; left: 28%; animation-delay: -0.9s;"></div>
+      <div class="bg-sparkle" style="top: 88%; left: 52%; animation-delay: -1.3s;"></div>
+      <div class="bg-sparkle" style="top: 92%; left: 72%; animation-delay: -1.7s;"></div>
+      <div class="bg-sparkle" style="top: 95%; left: 88%; animation-delay: -2.1s;"></div>
     </div>
     
     <!-- Bottom wave - TWO LAYERS -->
@@ -657,12 +684,12 @@ export const renderLayout = (title: string, content: string, activeNav: string =
   </div>
 
   <!-- Main Content -->
-  <main class="flex-grow relative z-10">
+  <main class="flex-grow relative z-20">
     ${content}
   </main>
 
   <!-- Footer -->
-  <footer class="relative z-10 mt-20 overflow-hidden bg-cafe-espresso">
+  <footer class="relative z-20 mt-20 overflow-hidden bg-cafe-espresso">
     <!-- Wave decoration -->
     <div class="absolute top-0 left-0 right-0 h-16 overflow-hidden">
       <svg viewBox="0 0 1440 100" class="w-full h-full" preserveAspectRatio="none">
