@@ -12,22 +12,22 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         <div class="absolute inset-0 bg-gradient-to-t from-cafe-ivory via-transparent to-transparent"></div>
       </div>
       
-      <!-- Hero Animated Elements -->
+      <!-- Hero Animated Elements - AI Tech Style -->
       <div class="absolute inset-0 pointer-events-none overflow-hidden">
-        <!-- Floating light particles -->
-        <div class="hero-particle" style="top: 15%; left: 60%; animation-delay: 0s;"></div>
-        <div class="hero-particle" style="top: 25%; left: 75%; animation-delay: -1s;"></div>
-        <div class="hero-particle" style="top: 40%; left: 55%; animation-delay: -2s;"></div>
-        <div class="hero-particle" style="top: 55%; left: 70%; animation-delay: -3s;"></div>
-        <div class="hero-particle" style="top: 65%; left: 85%; animation-delay: -4s;"></div>
-        <div class="hero-particle" style="top: 30%; left: 90%; animation-delay: -1.5s;"></div>
-        <div class="hero-particle" style="top: 50%; left: 65%; animation-delay: -2.5s;"></div>
-        <div class="hero-particle" style="top: 70%; left: 58%; animation-delay: -3.5s;"></div>
+        <!-- AI Holographic rings -->
+        <div class="hero-holo-ring" style="top: 20%; right: 20%;"></div>
+        <div class="hero-holo-ring" style="top: 60%; right: 10%; animation-delay: -2s;"></div>
         
-        <!-- Floating soft circles -->
-        <div class="hero-circle" style="top: 10%; right: 15%; width: 300px; height: 300px;"></div>
-        <div class="hero-circle" style="top: 45%; right: 5%; width: 200px; height: 200px; animation-delay: -3s;"></div>
-        <div class="hero-circle" style="bottom: 20%; right: 25%; width: 250px; height: 250px; animation-delay: -6s;"></div>
+        <!-- Floating data points -->
+        <div class="hero-data-point" style="top: 15%; left: 55%; animation-delay: 0s;"></div>
+        <div class="hero-data-point" style="top: 35%; left: 75%; animation-delay: -1s;"></div>
+        <div class="hero-data-point" style="top: 55%; left: 60%; animation-delay: -2s;"></div>
+        <div class="hero-data-point" style="top: 75%; left: 80%; animation-delay: -3s;"></div>
+        
+        <!-- Binary stream lines -->
+        <div class="hero-binary-stream" style="top: 25%; right: 15%;"></div>
+        <div class="hero-binary-stream" style="top: 50%; right: 25%; animation-delay: -1.5s;"></div>
+        <div class="hero-binary-stream" style="top: 70%; right: 8%; animation-delay: -3s;"></div>
       </div>
       
       <!-- Wood Wave Decoration -->
