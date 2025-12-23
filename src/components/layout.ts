@@ -19,6 +19,8 @@ export const renderLayout = (title: string, content: string, activeNav: string =
   <meta name="twitter:title" content="${title} | mirAIcafe">
   <meta name="twitter:description" content="mirAIcafeは、リラックスした雰囲気でAI・プログラミングを学べる新しいスタイルの学習カフェです。">
   <link rel="canonical" href="https://miraicafe.work">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="apple-touch-icon" href="/static/favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
