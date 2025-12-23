@@ -2452,11 +2452,42 @@ ${additionalInstructions ? `【追加の指示】\n${additionalInstructions}\n` 
         // JSONを抽出してパース
         const jsonMatch = text.match(/\{[\s\S]*\}/)
         if (!jsonMatch) {
-          console.log(`[AI Writer] ${model}: JSON parse failed`)
+          console.log(`[AI Writer] ${model}: JSON not found in response`)
           continue
         }
         
-        const parsed = JSON.parse(jsonMatch[0])
+        // 制御文字を除去してJSONをクリーンアップ
+        let cleanJson = jsonMatch[0]
+          // 改行・タブ以外の制御文字を除去
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+          // 文字列内の改行をエスケープ（JSONの文字列値内の改行をエスケープ）
+          .replace(/("(?:[^"\\]|\\.)*")/g, (match) => {
+            return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
+          })
+        
+        let parsed: any
+        try {
+          parsed = JSON.parse(cleanJson)
+        } catch (parseError) {
+          console.log(`[AI Writer] ${model}: JSON parse error, attempting repair`)
+          // 最後の手段: 構造化データを手動抽出
+          const titleMatch = text.match(/"title"\s*:\s*"([^"]*)"/)
+          const contentMatch = text.match(/"content"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"metaDescription|"\s*,\s*"categories|"\s*})/)
+          const metaMatch = text.match(/"metaDescription"\s*:\s*"([^"]*)"/)
+          
+          if (titleMatch) {
+            parsed = {
+              title: titleMatch[1],
+              content: contentMatch ? contentMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : '',
+              metaDescription: metaMatch ? metaMatch[1] : '',
+              categories: ['AI活用術'],
+              tags: ['AI']
+            }
+          } else {
+            console.log(`[AI Writer] ${model}: Could not extract data`)
+            continue
+          }
+        }
         
         // Unsplash画像検索
         const images: string[] = []
