@@ -516,3 +516,43 @@ export const blogPosts: BlogPost[] = [
     readTime: '6分'
   }
 ]
+
+// Portfolio data
+export interface Portfolio {
+  id: string
+  title: string
+  description: string
+  image: string
+  technologies: string[]
+  demoUrl?: string
+  githubUrl?: string
+  category: string
+}
+
+export const portfolios: Portfolio[] = [
+  {
+    id: 'miraicafe',
+    title: 'mirAIcafe',
+    description: 'AI学習プラットフォーム。Hono + Cloudflare Workers で構築。予約管理、ブログ、口コミ機能を実装。',
+    image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=60',
+    technologies: ['Hono', 'Cloudflare Workers', 'D1', 'TypeScript', 'TailwindCSS'],
+    demoUrl: 'https://miraicafe.pages.dev',
+    category: 'Webアプリ'
+  },
+  {
+    id: 'ai-chatbot',
+    title: 'AIチャットボット',
+    description: 'カスタマーサポート向けAIチャットボット。FAQ自動応答、オペレーター連携機能搭載。',
+    image: 'https://images.unsplash.com/photo-1531746790731-6c087fecd65a?w=800&auto=format&fit=crop&q=60',
+    technologies: ['OpenAI API', 'Node.js', 'React', 'Socket.io'],
+    category: 'AI開発'
+  },
+  {
+    id: 'data-dashboard',
+    title: 'データ分析ダッシュボード',
+    description: '売上データをリアルタイムで可視化。AIによる売上予測・異常検知機能付き。',
+    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=60',
+    technologies: ['Python', 'Streamlit', 'Pandas', 'scikit-learn'],
+    category: 'データ分析'
+  }
+]

@@ -34,7 +34,7 @@ import {
 } from './services/seo'
 
 // Data
-import { courses, blogPosts, schedules } from './data'
+import { courses, blogPosts, schedules, portfolios } from './data'
 
 // Types
 type Bindings = {
@@ -59,7 +59,7 @@ app.use('/static/*', serveStatic({ root: './public' }))
 app.get('/', async (c) => {
   const allCourses = await getAllCoursesForFront(c.env.DB)
   const allPosts = await getAllBlogPosts(c.env.DB)
-  return c.html(renderHomePage(allCourses.slice(0, 3), allPosts.slice(0, 3)))
+  return c.html(renderHomePage(allCourses.slice(0, 3), allPosts.slice(0, 5), portfolios))
 })
 
 // Courses（DBと静的データをマージ）
@@ -289,6 +289,27 @@ app.post('/api/contacts', async (c) => {
 // Blog posts API
 app.get('/api/blog', (c) => {
   return c.json(blogPosts)
+})
+
+// AI News API
+app.get('/api/ai-news', async (c) => {
+  const limit = parseInt(c.req.query('limit') || '5')
+  const status = c.req.query('status') || 'approved'
+  
+  try {
+    const news = await c.env.DB.prepare(`
+      SELECT id, title, url, summary, source, published_at, status, created_at
+      FROM ai_news 
+      WHERE status = ?
+      ORDER BY published_at DESC, created_at DESC
+      LIMIT ?
+    `).bind(status, limit).all()
+    
+    return c.json(news.results || [])
+  } catch (error) {
+    console.error('Error fetching AI news:', error)
+    return c.json([])
+  }
 })
 
 // ===== Reviews API =====
