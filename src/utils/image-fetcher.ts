@@ -1,30 +1,26 @@
 /**
- * AI News Image Fetcher - Hybrid Strategy
- * Priority: OGP Image → Unsplash API → Category Gradient
+ * AI News Image Fetcher
+ * ハイブリッド方式で画像を取得:
+ * 1. OGP画像（記事の公式サムネイル）
+ * 2. Unsplash API（キーワード検索）
+ * 3. カテゴリ別グラデーション画像（フォールバック）
  */
 
-export type NewsCategory = 'official_announcement' | 'tool_update' | 'how_to' | 'other';
-
-export interface ImageFetchResult {
-  imageUrl: string;
-  imageSource: 'ogp' | 'unsplash' | 'gradient';
-}
-
 /**
- * Fetch OGP image from URL
+ * OGP画像を取得
  */
 export async function fetchOGPImage(url: string): Promise<string | null> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒タイムアウト
 
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'mirAIcafe/1.0 OGP Fetcher',
-        'Accept': 'text/html',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       },
-      signal: controller.signal,
       redirect: 'follow',
+      signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
@@ -35,222 +31,251 @@ export async function fetchOGPImage(url: string): Promise<string | null> {
     }
 
     const html = await response.text();
-    
-    // Try og:image first
-    let match = html.match(/<meta\s+(?:[^>]*?\s)?property=["']og:image["'][^>]*?\s+content=["']([^"']+)["']/i);
-    if (!match) {
-      match = html.match(/<meta\s+(?:[^>]*?\s)?content=["']([^"']+)["'][^>]*?\s+property=["']og:image["']/i);
-    }
-    
-    // Try twitter:image as fallback
-    if (!match) {
-      match = html.match(/<meta\s+(?:[^>]*?\s)?name=["']twitter:image["'][^>]*?\s+content=["']([^"']+)["']/i);
-    }
-    if (!match) {
-      match = html.match(/<meta\s+(?:[^>]*?\s)?content=["']([^"']+)["'][^>]*?\s+name=["']twitter:image["']/i);
-    }
 
-    if (match && match[1]) {
-      let imageUrl = match[1];
-      
-      // Handle relative URLs
-      if (imageUrl.startsWith('//')) {
-        imageUrl = 'https:' + imageUrl;
-      } else if (imageUrl.startsWith('/')) {
-        const urlObj = new URL(url);
-        imageUrl = urlObj.origin + imageUrl;
-      }
-      
-      // Validate URL
-      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-        console.log(`[OGP] Found image: ${imageUrl.substring(0, 80)}...`);
+    // og:image を抽出（複数パターン対応）
+    const patterns = [
+      /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i,
+      /<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i,
+      /<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i,
+      /<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i,
+      /<meta[^>]*property=["']og:image:url["'][^>]*content=["']([^"']+)["']/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = html.match(pattern);
+      if (match && match[1]) {
+        let imageUrl = match[1];
+        
+        // 相対URLを絶対URLに変換
+        if (imageUrl.startsWith('//')) {
+          imageUrl = 'https:' + imageUrl;
+        } else if (imageUrl.startsWith('/')) {
+          const urlObj = new URL(url);
+          imageUrl = urlObj.origin + imageUrl;
+        }
+        
+        // 画像URLの基本的な検証
+        if (imageUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)/i) || 
+            imageUrl.includes('image') || 
+            imageUrl.includes('img') ||
+            imageUrl.includes('photo')) {
+          return imageUrl;
+        }
+        
+        // 拡張子がなくても返す（CDN画像など）
         return imageUrl;
       }
     }
 
-    console.log(`[OGP] No image found for ${url}`);
     return null;
   } catch (error: any) {
     if (error.name === 'AbortError') {
-      console.log(`[OGP] Timeout for ${url}`);
+      console.log(`[OGP] タイムアウト: ${url}`);
     } else {
-      console.log(`[OGP] Error for ${url}: ${error.message || error}`);
+      console.error(`[OGP] エラー (${url}):`, error.message);
     }
     return null;
   }
 }
 
 /**
- * Fetch image from Unsplash API
+ * Unsplash画像を検索
  */
 export async function fetchUnsplashImage(
   keyword: string,
   apiKey: string
 ): Promise<string | null> {
-  if (!apiKey) {
-    console.log('[Unsplash] API key not configured');
-    return null;
-  }
-
   try {
-    // Create search query combining keyword with AI/tech context
-    const searchQuery = encodeURIComponent(`${keyword} technology AI`.substring(0, 100));
-    
+    // キーワードを英語に変換（よく使われるAI関連用語）
+    const keywordMap: Record<string, string> = {
+      'ChatGPT': 'artificial intelligence chat',
+      'GPT': 'artificial intelligence',
+      'Gemini': 'google ai technology',
+      'Claude': 'ai assistant technology',
+      'AI': 'artificial intelligence',
+      'OpenAI': 'ai technology innovation',
+      'Google': 'google technology',
+      'Microsoft': 'microsoft technology',
+      'Apple': 'apple technology',
+      'Meta': 'meta technology',
+      '生成AI': 'generative ai art',
+      '機械学習': 'machine learning',
+      'ツール': 'digital tools',
+      '機能': 'technology feature',
+      '更新': 'software update',
+      'アップデート': 'software update',
+      '発表': 'announcement presentation',
+      'リリース': 'product launch',
+      'ロボット': 'robot technology',
+      '自動化': 'automation technology',
+      'プログラミング': 'programming code',
+      'データ': 'data analytics',
+    };
+
+    let searchQuery = 'artificial intelligence technology'; // デフォルト
+
+    // キーワードマッチング
+    for (const [key, value] of Object.entries(keywordMap)) {
+      if (keyword.toLowerCase().includes(key.toLowerCase())) {
+        searchQuery = value;
+        break;
+      }
+    }
+
+    const encoded = encodeURIComponent(searchQuery);
     const response = await fetch(
-      `https://api.unsplash.com/search/photos?query=${searchQuery}&per_page=1&orientation=landscape`,
+      `https://api.unsplash.com/search/photos?query=${encoded}&per_page=1&orientation=landscape`,
       {
         headers: {
           'Authorization': `Client-ID ${apiKey}`,
-          'Accept-Version': 'v1',
         },
       }
     );
 
     if (!response.ok) {
-      if (response.status === 401) {
-        console.log('[Unsplash] Invalid API key');
-      } else if (response.status === 403) {
-        console.log('[Unsplash] Rate limit exceeded');
-      } else {
-        console.log(`[Unsplash] HTTP ${response.status}`);
-      }
+      console.log(`[Unsplash] API エラー: ${response.status}`);
       return null;
     }
 
     const data = await response.json() as any;
-    
+
     if (data.results && data.results.length > 0) {
-      // Use regular size for performance
-      const imageUrl = data.results[0].urls?.regular || data.results[0].urls?.small;
-      if (imageUrl) {
-        console.log(`[Unsplash] Found image for "${keyword}": ${imageUrl.substring(0, 60)}...`);
-        return imageUrl;
-      }
+      // regular サイズ（1080px幅）を使用
+      return data.results[0].urls.regular;
     }
 
-    console.log(`[Unsplash] No results for "${keyword}"`);
     return null;
-  } catch (error: any) {
-    console.log(`[Unsplash] Error: ${error.message || error}`);
+  } catch (error) {
+    console.error('[Unsplash] エラー:', error);
     return null;
   }
 }
 
 /**
- * Generate SVG gradient image as fallback
+ * カテゴリ別グラデーション画像を生成（SVG Data URL）
  */
-export function generateGradientImage(category: NewsCategory): string {
-  const gradients: Record<NewsCategory, { colors: string[]; icon: string; label: string }> = {
+export function generateGradientImage(category: string): string {
+  const gradients: Record<string, { color1: string; color2: string; icon: string }> = {
     official_announcement: {
-      colors: ['#2563EB', '#7C3AED'], // Blue to Purple
+      color1: '#e74c3c',
+      color2: '#c0392b',
       icon: '📢',
-      label: '公式発表',
     },
     tool_update: {
-      colors: ['#059669', '#10B981'], // Green shades
-      icon: '🔧',
-      label: 'ツール更新',
+      color1: '#3498db',
+      color2: '#2980b9',
+      icon: '🔄',
     },
     how_to: {
-      colors: ['#F59E0B', '#EF4444'], // Orange to Red
+      color1: '#27ae60',
+      color2: '#229954',
       icon: '📚',
-      label: '使い方',
+    },
+    research: {
+      color1: '#9b59b6',
+      color2: '#8e44ad',
+      icon: '🔬',
+    },
+    business: {
+      color1: '#f39c12',
+      color2: '#d68910',
+      icon: '💼',
     },
     other: {
-      colors: ['#6B7280', '#9CA3AF'], // Gray shades
-      icon: '📰',
-      label: 'その他',
+      color1: '#667eea',
+      color2: '#764ba2',
+      icon: '🤖',
     },
   };
 
   const config = gradients[category] || gradients.other;
-  
-  const svg = `
-<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225" viewBox="0 0 400 225">
-  <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:${config.colors[0]};stop-opacity:1" />
-      <stop offset="100%" style="stop-color:${config.colors[1]};stop-opacity:1" />
-    </linearGradient>
-    <pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-      <circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.1)" />
-    </pattern>
-  </defs>
-  <rect width="400" height="225" fill="url(#grad)" />
-  <rect width="400" height="225" fill="url(#dots)" />
-  <text x="200" y="90" text-anchor="middle" font-size="48">${config.icon}</text>
-  <text x="200" y="140" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="600" fill="white">${config.label}</text>
-  <text x="200" y="165" text-anchor="middle" font-family="sans-serif" font-size="12" fill="rgba(255,255,255,0.8)">mirAIcafe AI News</text>
-</svg>`.trim();
 
-  // Convert to data URL
+  // SVG生成
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+    <defs>
+      <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:${config.color1};stop-opacity:1" />
+        <stop offset="100%" style="stop-color:${config.color2};stop-opacity:1" />
+      </linearGradient>
+    </defs>
+    <rect width="800" height="400" fill="url(#grad)"/>
+    <text x="400" y="220" font-size="100" text-anchor="middle" fill="white" opacity="0.9">${config.icon}</text>
+    <text x="400" y="300" font-size="24" text-anchor="middle" fill="white" opacity="0.7" font-family="Arial, sans-serif">AI NEWS</text>
+  </svg>`;
+
+  // Base64エンコード（ブラウザ互換性のため）
   const base64 = btoa(unescape(encodeURIComponent(svg)));
   return `data:image/svg+xml;base64,${base64}`;
 }
 
+// カテゴリ型をエクスポート
+export type NewsCategory = 'official_announcement' | 'tool_update' | 'how_to' | 'research' | 'business' | 'other';
+
+// 画像ソース型
+export type ImageSource = 'ogp' | 'unsplash' | 'gradient';
+
 /**
- * Main function: Fetch news image using hybrid strategy
- * Priority: OGP → Unsplash → Gradient
+ * ハイブリッド画像取得（メイン関数）
  */
 export async function fetchNewsImage(
   url: string,
   title: string,
-  category: NewsCategory,
+  category: NewsCategory | string = 'other',
   unsplashKey?: string
-): Promise<ImageFetchResult> {
-  // 1. Try OGP image first
+): Promise<{ imageUrl: string; imageSource: ImageSource }> {
+  const titlePreview = title.length > 30 ? title.substring(0, 30) + '...' : title;
+  console.log(`[画像取得] ${titlePreview}`);
+
+  // 1. OGP画像を試す
   const ogpImage = await fetchOGPImage(url);
   if (ogpImage) {
-    return {
-      imageUrl: ogpImage,
-      imageSource: 'ogp',
-    };
+    console.log(`  ✓ OGP: ${ogpImage.substring(0, 60)}...`);
+    return { imageUrl: ogpImage, imageSource: 'ogp' };
   }
 
-  // 2. Try Unsplash API
+  // 2. Unsplashを試す
   if (unsplashKey) {
-    // Extract keywords from title for search
-    const keywords = extractKeywords(title);
-    const unsplashImage = await fetchUnsplashImage(keywords, unsplashKey);
+    // タイトルから最初の意味のある単語を抽出
+    const keyword = extractKeyword(title);
+    console.log(`  → Unsplash検索: "${keyword}"`);
+    
+    const unsplashImage = await fetchUnsplashImage(keyword, unsplashKey);
     if (unsplashImage) {
-      return {
-        imageUrl: unsplashImage,
-        imageSource: 'unsplash',
-      };
+      console.log(`  ✓ Unsplash: ${unsplashImage.substring(0, 60)}...`);
+      return { imageUrl: unsplashImage, imageSource: 'unsplash' };
     }
   }
 
-  // 3. Fallback to gradient image
-  return {
-    imageUrl: generateGradientImage(category),
-    imageSource: 'gradient',
-  };
+  // 3. グラデーション画像にフォールバック
+  const gradientImage = generateGradientImage(category);
+  console.log(`  ✓ Gradient: カテゴリ=${category}`);
+  return { imageUrl: gradientImage, imageSource: 'gradient' };
 }
 
 /**
- * Extract meaningful keywords from title for Unsplash search
+ * タイトルからキーワードを抽出
  */
-function extractKeywords(title: string): string {
-  // Common AI-related keywords to look for
-  const aiKeywords = [
-    'ChatGPT', 'GPT', 'Claude', 'Gemini', 'AI', 'OpenAI', 'Google', 'Microsoft',
-    'Anthropic', 'LLM', 'Copilot', '機械学習', '深層学習', 'ニューラル', 
-    'プロンプト', 'チャットボット', '自動化', '生成AI', 'Gen AI'
+function extractKeyword(title: string): string {
+  // AI関連の重要キーワードを優先
+  const priorityKeywords = [
+    'ChatGPT', 'GPT-4', 'GPT-5', 'Gemini', 'Claude', 'OpenAI', 
+    'Google', 'Microsoft', 'Apple', 'Meta', 'Anthropic',
+    '生成AI', 'AI', 'LLM', '機械学習', 'ディープラーニング',
   ];
 
-  // Try to find AI-related keywords in title
-  for (const keyword of aiKeywords) {
-    if (title.toLowerCase().includes(keyword.toLowerCase())) {
-      return keyword;
+  for (const kw of priorityKeywords) {
+    if (title.includes(kw)) {
+      return kw;
     }
   }
 
-  // Fallback: extract first meaningful words
-  const words = title
-    .replace(/[【】「」『』（）\[\]]/g, ' ')
-    .split(/\s+/)
-    .filter(w => w.length > 2 && !/^\d+$/.test(w))
-    .slice(0, 3);
+  // 最初の意味のある単語を抽出
+  const words = title.split(/[\s、。「」『』【】\[\]（）()：:・]/);
+  for (const word of words) {
+    if (word.length >= 2 && !['の', 'は', 'が', 'を', 'に', 'で', 'と', 'や'].includes(word)) {
+      return word;
+    }
+  }
 
-  return words.join(' ') || 'AI technology';
+  return 'AI';
 }

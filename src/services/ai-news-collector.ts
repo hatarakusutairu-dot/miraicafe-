@@ -4,7 +4,7 @@
  */
 
 import { XMLParser } from 'fast-xml-parser';
-import { fetchNewsImage, type NewsCategory as ImageCategory } from '../utils/image-fetcher';
+import { fetchNewsImage, type NewsCategory } from '../utils/image-fetcher';
 
 // RSS フィード一覧（公式ブログ追加）
 const RSS_FEEDS = [
@@ -354,7 +354,7 @@ export async function collectAINews(env: { DB: D1Database; GEMINI_API_KEY: strin
         const imageResult = await fetchNewsImage(
           item.url,
           finalTitle,
-          analysis.category as ImageCategory,
+          analysis.category as NewsCategory,
           env.UNSPLASH_ACCESS_KEY
         );
         console.log(`[Image] 取得完了: ${imageResult.imageSource}`);
