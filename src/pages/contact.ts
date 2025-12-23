@@ -198,12 +198,30 @@ export const renderContactPage = () => {
                   <label class="block text-future-text text-sm font-medium mb-2">
                     お問い合わせ内容 <span class="text-red-500">*</span>
                     <span class="text-future-textLight text-xs ml-1">(1000文字以内)</span>
+                    <span class="text-future-textLight text-xs ml-2"><i class="fas fa-microphone text-ai-blue"></i> 音声入力対応（Chrome/Edge推奨）</span>
                   </label>
-                  <textarea id="contact-message" rows="6" maxlength="1000"
-                    class="w-full p-4 border-2 border-future-sky rounded-2xl focus:border-ai-blue focus:outline-none transition-colors resize-none bg-future-light"
-                    placeholder="お問い合わせ内容をご記入ください..."></textarea>
-                  <p id="message-error" class="text-red-500 text-sm mt-1 hidden"></p>
-                  <p id="message-count" class="text-future-textLight text-xs mt-1 text-right">0/1000</p>
+                  <div class="relative">
+                    <textarea id="contact-message" rows="6" maxlength="1000"
+                      class="w-full p-4 pr-14 border-2 border-future-sky rounded-2xl focus:border-ai-blue focus:outline-none transition-colors resize-none bg-future-light"
+                      placeholder="お問い合わせ内容をご記入ください..."></textarea>
+                    <!-- 音声入力ボタン -->
+                    <button type="button" id="voice-input-btn" 
+                      class="absolute right-3 top-3 w-10 h-10 rounded-full bg-gradient-to-r from-ai-blue to-ai-purple text-white flex items-center justify-center hover:opacity-80 transition-all shadow-md"
+                      title="音声入力">
+                      <i class="fas fa-microphone"></i>
+                    </button>
+                    <!-- 音声認識中インジケーター -->
+                    <div id="voice-indicator" class="hidden absolute right-3 top-3 w-10 h-10 rounded-full bg-red-500 text-white flex items-center justify-center animate-pulse shadow-md">
+                      <i class="fas fa-microphone"></i>
+                    </div>
+                  </div>
+                  <div class="flex justify-between items-center mt-1">
+                    <p id="message-error" class="text-red-500 text-sm hidden"></p>
+                    <p id="voice-status" class="text-future-textLight text-xs hidden">
+                      <i class="fas fa-circle text-red-500 animate-pulse mr-1"></i>音声認識中...
+                    </p>
+                    <p id="message-count" class="text-future-textLight text-xs">0/1000</p>
+                  </div>
                 </div>
 
                 <!-- Privacy Policy Agreement -->
@@ -578,6 +596,87 @@ export const renderContactPage = () => {
           submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>送信する';
         }
       });
+
+      // 音声入力機能
+      const voiceBtn = document.getElementById('voice-input-btn');
+      const voiceIndicator = document.getElementById('voice-indicator');
+      const voiceStatus = document.getElementById('voice-status');
+      let recognition = null;
+      let isRecording = false;
+
+      // Web Speech API対応チェック
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.lang = 'ja-JP';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        let finalTranscript = '';
+
+        recognition.onstart = function() {
+          isRecording = true;
+          voiceBtn.classList.add('hidden');
+          voiceIndicator.classList.remove('hidden');
+          voiceStatus.classList.remove('hidden');
+          finalTranscript = messageInput.value;
+        };
+
+        recognition.onresult = function(event) {
+          let interimTranscript = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript;
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+          messageInput.value = finalTranscript + interimTranscript;
+          messageCount.textContent = messageInput.value.length + '/1000';
+          
+          // バリデーション更新
+          if (messageInput.value.length > 0 && messageInput.value.length <= 1000) {
+            hideError(messageError);
+            setInputValid(messageInput);
+          }
+        };
+
+        recognition.onerror = function(event) {
+          console.error('Speech recognition error:', event.error);
+          stopRecording();
+          if (event.error === 'not-allowed') {
+            alert('マイクへのアクセスが許可されていません。ブラウザの設定でマイクを許可してください。');
+          }
+        };
+
+        recognition.onend = function() {
+          stopRecording();
+        };
+
+        function stopRecording() {
+          isRecording = false;
+          voiceBtn.classList.remove('hidden');
+          voiceIndicator.classList.add('hidden');
+          voiceStatus.classList.add('hidden');
+        }
+
+        voiceBtn.addEventListener('click', function() {
+          if (!isRecording) {
+            recognition.start();
+          }
+        });
+
+        voiceIndicator.addEventListener('click', function() {
+          if (isRecording) {
+            recognition.stop();
+          }
+        });
+      } else {
+        // Web Speech API非対応ブラウザ
+        voiceBtn.style.display = 'none';
+        console.log('このブラウザは音声認識に対応していません');
+      }
 
       // Reset form button
       resetBtn.addEventListener('click', function() {

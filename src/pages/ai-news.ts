@@ -76,6 +76,10 @@ export const renderAINewsPage = (initialNews: any[] = []) => {
     </section>
 
     <style>
+      /* カスタムカーソル - ミオン (動的に設定) */
+      .custom-cursor { cursor: var(--mion-cursor, auto); }
+      .custom-cursor-pointer { cursor: var(--mion-cursor-pointer, pointer); }
+      
       .cat-btn.active { background-color: #1f2937 !important; color: white !important; }
       .cat-btn[data-category="official_announcement"].active { background-color: #DC2626 !important; }
       .cat-btn[data-category="tool_update"].active { background-color: #2563EB !important; }
@@ -90,8 +94,31 @@ export const renderAINewsPage = (initialNews: any[] = []) => {
       let displayCount = 12;
       let isLoading = false;
 
+      // カスタムカーソル設定
+      async function setupCustomCursor() {
+        const cursorUrl = 'https://www.genspark.ai/api/files/s/hgBLGFnl';
+        try {
+          const res = await fetch(cursorUrl);
+          const blob = await res.blob();
+          const reader = new FileReader();
+          reader.onload = function() {
+            const base64 = reader.result;
+            document.documentElement.style.setProperty('--mion-cursor', 'url(' + base64 + '), auto');
+            document.documentElement.style.setProperty('--mion-cursor-pointer', 'url(' + base64 + '), pointer');
+            document.body.classList.add('custom-cursor');
+            document.querySelectorAll('a, button, [onclick], input, select, textarea, label').forEach(el => {
+              el.classList.add('custom-cursor-pointer');
+            });
+          };
+          reader.readAsDataURL(blob);
+        } catch (e) {
+          console.log('カーソル画像読み込みスキップ');
+        }
+      }
+
       // ページ読み込み時にAPIからデータ取得
       document.addEventListener('DOMContentLoaded', async () => {
+        setupCustomCursor();
         await fetchNews();
       });
 
