@@ -669,7 +669,8 @@ export const renderLayout = (title: string, content: string, activeNav: string =
   </style>
 </head>
 <body class="bg-cafe-ivory min-h-screen flex flex-col overflow-x-hidden">
-  <!-- Animated Background -->
+  <!-- Animated Background (軽量ページでは非表示) -->
+  ${activeNav === 'ai-news' ? '' : `
   <div class="bg-animated">
     <!-- Soft floating orbs -->
     <div class="bg-orb bg-orb-1"></div>
@@ -726,6 +727,7 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       <path fill="#B8CDB0" fill-opacity="0.6" d="M0,120L120,110C240,100,480,80,720,90C960,100,1200,130,1440,140C1680,150,1920,130,2160,110C2400,90,2640,80,2760,75L2880,70L2880,200L0,200Z"></path>
     </svg>
   </div>
+  `}
 
   <!-- Header -->
   <header class="glass-warm fixed top-0 left-0 right-0 z-50 border-b border-cafe-beige/50">
@@ -795,7 +797,8 @@ export const renderLayout = (title: string, content: string, activeNav: string =
   <!-- Spacer for fixed header -->
   <div class="h-20"></div>
   
-  <!-- Floating Characters -->
+  <!-- Floating Characters (非表示: ai-news, blog詳細ページなど軽量化が必要なページ) -->
+  ${activeNav === 'ai-news' ? '' : `
   <div class="floating-characters" id="floating-chars">
     <div class="floating-char char-green" id="char-green">
       <img src="/static/char-green.png" alt="AIアシスタント - リーフ" loading="lazy">
@@ -807,6 +810,7 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       <img src="/static/char-pink.png" alt="AIアシスタント - ピンク" loading="lazy">
     </div>
   </div>
+  `}
 
   <!-- Main Content -->
   <main class="flex-grow relative z-20">
