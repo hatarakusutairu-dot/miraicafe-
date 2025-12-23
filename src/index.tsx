@@ -1197,6 +1197,7 @@ app.get('/admin/bookings', async (c) => {
   const tab = c.req.query('tab') || 'all'
   
   try {
+    // 予約一覧を取得
     const bookings = await c.env.DB.prepare(`
       SELECT b.*, c.title as course_name
       FROM bookings b
@@ -1204,10 +1205,57 @@ app.get('/admin/bookings', async (c) => {
       ORDER BY b.created_at DESC
     `).all()
     
-    return c.html(renderBookingsList(bookings.results as Booking[], tab))
+    // 講座一覧を取得（フィルター用）
+    const dbCourses = await c.env.DB.prepare(`
+      SELECT id, title FROM courses WHERE status = 'published' ORDER BY title
+    `).all()
+    const coursesList = dbCourses.results as { id: string; title: string }[]
+    
+    return c.html(renderBookingsList(bookings.results as Booking[], tab, coursesList))
   } catch (error) {
     console.error('Bookings error:', error)
-    return c.html(renderBookingsList([], tab))
+    return c.html(renderBookingsList([], tab, []))
+  }
+})
+
+// 予約一覧API（JSON）
+app.get('/admin/api/bookings', async (c) => {
+  try {
+    const bookings = await c.env.DB.prepare(`
+      SELECT b.*, c.title as course_name
+      FROM bookings b
+      LEFT JOIN courses c ON b.course_id = c.id
+      ORDER BY b.created_at DESC
+    `).all()
+    
+    return c.json({ success: true, bookings: bookings.results })
+  } catch (error) {
+    console.error('Bookings API error:', error)
+    return c.json({ success: false, error: 'Failed to fetch bookings' }, 500)
+  }
+})
+
+// 予約ステータス変更API（PATCH）
+app.patch('/admin/api/bookings/:id/status', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    const body = await c.req.json()
+    const status = body.status as string
+    
+    const validStatuses = ['pending', 'confirmed', 'completed', 'cancelled']
+    if (!validStatuses.includes(status)) {
+      return c.json({ success: false, error: 'Invalid status' }, 400)
+    }
+    
+    await c.env.DB.prepare(`
+      UPDATE bookings SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    `).bind(status, id).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Status update API error:', error)
+    return c.json({ success: false, error: 'Failed to update status' }, 500)
   }
 })
 
