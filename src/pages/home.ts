@@ -119,8 +119,14 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           </div>
         </div>
         
-        <div class="text-center mt-6">
-          <a href="/blog" class="inline-flex items-center px-6 py-3 bg-blue-500 text-white rounded-full font-medium hover:bg-blue-600 transition">
+        <!-- 外部記事注意書き -->
+        <div class="text-center mt-4 text-xs text-gray-500">
+          <i class="fas fa-external-link-alt mr-1"></i>
+          ニュースは外部サイトの記事へリンクしています
+        </div>
+        
+        <div class="text-center mt-4">
+          <a href="/ai-news" class="inline-flex items-center px-6 py-3 bg-blue-500 text-white rounded-full font-medium hover:bg-blue-600 transition">
             もっと見る <i class="fas fa-arrow-right ml-2"></i>
           </a>
         </div>

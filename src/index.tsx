@@ -9,6 +9,7 @@ import { renderCoursesPage, renderCourseDetailPage } from './pages/courses'
 import { renderReservationPage } from './pages/reservation'
 import { renderBlogPage, renderBlogPostPage } from './pages/blog'
 import { renderContactPage } from './pages/contact'
+import { renderAINewsPage } from './pages/ai-news'
 
 // Admin Pages
 import { renderAdminLayout, renderLoginPage } from './admin/layout'
@@ -104,6 +105,25 @@ app.get('/blog/:id', async (c) => {
 // Contact
 app.get('/contact', (c) => {
   return c.html(renderContactPage())
+})
+
+// AI News Page
+app.get('/ai-news', async (c) => {
+  try {
+    const result = await c.env.DB.prepare(`
+      SELECT id, title, url, summary, source, published_at, 
+             category, original_language, is_translated, image_url, image_source
+      FROM ai_news 
+      WHERE status = 'approved'
+      ORDER BY published_at DESC, created_at DESC
+      LIMIT 100
+    `).all()
+    
+    return c.html(renderAINewsPage(result.results || []))
+  } catch (error) {
+    console.error('AI News page error:', error)
+    return c.html(renderAINewsPage([]))
+  }
 })
 
 // ===== API Endpoints =====
