@@ -329,42 +329,24 @@ export const renderCourseForm = (course?: Course, error?: string) => {
         </button>
       </div>
 
-      <!-- 講師情報 -->
+      <!-- 講師情報（固定：mion） -->
       <div class="bg-white rounded-xl shadow-sm p-6">
         <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
           <i class="fas fa-user-tie text-blue-500 mr-2"></i>講師情報
         </h2>
         
-        <div class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
+          <div class="flex items-center gap-4">
+            <img src="/static/mion-profile.png" alt="mion" class="w-16 h-16 rounded-full object-cover border-2 border-amber-300">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">講師名</label>
-              <input type="text" name="instructor" value="${course?.instructor || ''}"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                placeholder="例: 田中 太郎">
+              <p class="font-bold text-gray-800 text-lg">mion（ミオン）</p>
+              <p class="text-amber-700 text-sm">mirAIcafe 代表講師</p>
+              <p class="text-gray-600 text-sm mt-1">全ての講座はmionが担当します</p>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">肩書き</label>
-              <input type="text" name="instructor_title" value="${course?.instructorInfo?.title || ''}"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                placeholder="例: AI研究者・データサイエンティスト">
-            </div>
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">講師プロフィール</label>
-            <textarea name="instructor_bio" rows="3"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-              placeholder="講師の経歴や専門分野について">${course?.instructorInfo?.bio || ''}</textarea>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              <i class="fas fa-user-circle mr-1"></i>講師画像
-            </label>
-            <div id="instructor-image-upload"></div>
           </div>
         </div>
+        <!-- 講師名をhiddenフィールドで固定 -->
+        <input type="hidden" name="instructor" value="mion">
       </div>
 
       <!-- 画像設定 -->
@@ -521,9 +503,6 @@ export const renderCourseForm = (course?: Course, error?: string) => {
       
       // 画像アップロードコンポーネントを初期化
       document.addEventListener('DOMContentLoaded', function() {
-        // 講師画像（単一）
-        initImageUpload('instructor-image-upload', 'instructor_image', '${escapeAttr(course?.instructorInfo?.image || '')}');
-        
         // メイン画像（単一）
         initImageUpload('course-main-image-upload', 'image', '${escapeAttr(course?.image || '')}');
         
@@ -533,6 +512,71 @@ export const renderCourseForm = (course?: Course, error?: string) => {
         
         // SEO機能初期化
         initSEOFeatures('course');
+        
+        // AI講座生成からのデータを受け取る
+        const aiData = sessionStorage.getItem('aiGeneratedCourse');
+        if (aiData) {
+          try {
+            const data = JSON.parse(aiData);
+            // フォームに反映
+            if (data.title) document.querySelector('input[name="title"]').value = data.title;
+            if (data.catchphrase) document.querySelector('input[name="catchphrase"]').value = data.catchphrase;
+            if (data.category) document.querySelector('select[name="category"]').value = data.category;
+            if (data.level) document.querySelector('select[name="level"]').value = data.level;
+            if (data.description) document.querySelector('textarea[name="description"]').value = data.description;
+            if (data.price) document.querySelector('input[name="price"]').value = data.price;
+            if (data.duration) document.querySelector('input[name="duration"]').value = data.duration;
+            if (data.targetAudience && Array.isArray(data.targetAudience)) {
+              document.querySelector('textarea[name="targetAudience"]').value = data.targetAudience.join('\\n');
+            }
+            if (data.features && Array.isArray(data.features)) {
+              document.querySelector('textarea[name="features"]').value = data.features.join('\\n');
+            }
+            if (data.image) {
+              document.getElementById('course-main-image-upload-hidden').value = data.image;
+              showPreview('course-main-image-upload', data.image);
+            }
+            // カリキュラムの設定
+            if (data.curriculum && Array.isArray(data.curriculum) && data.curriculum.length > 0) {
+              const container = document.getElementById('curriculum-container');
+              container.innerHTML = '';
+              data.curriculum.forEach((item, i) => {
+                const div = document.createElement('div');
+                div.className = 'curriculum-item p-4 border border-gray-200 rounded-lg';
+                div.innerHTML = \`
+                  <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div class="md:col-span-5">
+                      <input type="text" name="curriculum_title[]" value="\${item.title || ''}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                        placeholder="セッションタイトル">
+                    </div>
+                    <div class="md:col-span-2">
+                      <input type="text" name="curriculum_duration[]" value="\${item.duration || ''}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                        placeholder="所要時間">
+                    </div>
+                    <div class="md:col-span-4">
+                      <input type="text" name="curriculum_description[]" value="\${item.description || ''}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                        placeholder="説明">
+                    </div>
+                    <div class="md:col-span-1 flex items-center justify-end">
+                      <button type="button" onclick="removeCurriculum(this)" class="text-red-500 hover:text-red-700 p-2">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                \`;
+                container.appendChild(div);
+              });
+            }
+            // 使用済みなので削除
+            sessionStorage.removeItem('aiGeneratedCourse');
+            showToast('AI生成データを読み込みました');
+          } catch (e) {
+            console.error('AI data parse error:', e);
+          }
+        }
       });
       
       // デバウンス関数
