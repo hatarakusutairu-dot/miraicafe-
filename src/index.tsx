@@ -1655,7 +1655,7 @@ ${(content || '').substring(0, 500)}...
 • [ポイント3]`
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${c.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${c.env.GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1672,7 +1672,15 @@ ${(content || '').substring(0, 500)}...
     )
     
     if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status}`)
+      const errorData = await response.json().catch(() => ({})) as { error?: { message?: string, code?: number } }
+      const errorMessage = errorData.error?.message || `HTTP ${response.status}`
+      
+      // クォータ制限エラーの場合は分かりやすいメッセージ
+      if (response.status === 429 || errorMessage.includes('quota')) {
+        return c.json({ error: 'APIの利用制限に達しました。しばらく待ってから再度お試しください。' }, 429)
+      }
+      
+      throw new Error(`Gemini API error: ${errorMessage}`)
     }
     
     const data = await response.json() as {
@@ -1681,6 +1689,12 @@ ${(content || '').substring(0, 500)}...
           parts?: Array<{ text?: string }>
         }
       }>
+      error?: { message?: string }
+    }
+    
+    // API応答にエラーが含まれている場合
+    if (data.error) {
+      return c.json({ error: data.error.message || 'AI処理でエラーが発生しました' }, 500)
     }
     
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
