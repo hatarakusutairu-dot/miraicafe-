@@ -210,6 +210,29 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
               placeholder="記事のタイトルを入力">
           </div>
 
+          <!-- SEOスコアパネル -->
+          <div class="seo-panel mt-3 p-4 bg-gradient-to-r from-slate-50 to-blue-50 border border-slate-200 rounded-xl">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center">
+                  <span id="seo-score" class="text-xl font-bold text-slate-400">--</span>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-slate-700">SEOスコア</p>
+                  <p class="text-xs text-slate-500">タイトルと本文を入力すると自動計算</p>
+                </div>
+              </div>
+              <button type="button" id="ai-suggest-btn" 
+                class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm hover:shadow-md flex items-center gap-2">
+                <i class="fas fa-robot"></i>
+                <span>AI提案を見る</span>
+              </button>
+            </div>
+            <div id="seo-feedback" class="mt-3 text-sm space-y-1 hidden">
+              <!-- フィードバックがここに表示 -->
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">カテゴリ <span class="text-red-500">*</span></label>
@@ -252,6 +275,38 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
           placeholder="<p>記事の本文を入力...</p>">${escapeHtmlForTextarea(post?.content || '')}</textarea>
       </div>
 
+      <!-- SEO設定 -->
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+          <i class="fas fa-search text-blue-500 mr-2"></i>SEO設定
+        </h2>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              メタディスクリプション
+              <span class="text-xs text-gray-500 ml-1">（検索結果に表示される説明文）</span>
+            </label>
+            <textarea name="meta_description" rows="3" maxlength="160"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+              placeholder="この記事の内容を120文字程度で要約してください">${escapeHtmlForTextarea(post?.meta_description || '')}</textarea>
+            <div class="flex justify-end mt-1">
+              <span class="text-xs text-gray-500"><span id="meta-char-count">0</span>/160</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              キーワード
+              <span class="text-xs text-gray-500 ml-1">（カンマ区切りで3〜5個）</span>
+            </label>
+            <input type="text" name="keywords" value="${escapeAttr(post?.keywords || '')}"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="例: ChatGPT, AI活用, 初心者向け">
+          </div>
+        </div>
+      </div>
+
       <div class="bg-white rounded-xl shadow-sm p-6">
         <h2 class="text-lg font-bold text-gray-800 mb-4">公開設定</h2>
         
@@ -292,7 +347,230 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
       // 画像アップロードコンポーネントを初期化
       document.addEventListener('DOMContentLoaded', function() {
         initImageUpload('blog-image-upload', 'image', '${escapeAttr(post?.image || '')}');
+        initSEOFeatures('blog');
       });
+      
+      // デバウンス関数
+      function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+          const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+          };
+          clearTimeout(timeout);
+          timeout = setTimeout(later, wait);
+        };
+      }
+      
+      // SEO機能初期化
+      function initSEOFeatures(type) {
+        const titleInput = document.querySelector('input[name="title"]');
+        const contentInput = document.querySelector('textarea[name="content"]');
+        const metaInput = document.querySelector('textarea[name="meta_description"]');
+        const seoScoreEl = document.getElementById('seo-score');
+        const seoFeedbackEl = document.getElementById('seo-feedback');
+        const aiSuggestBtn = document.getElementById('ai-suggest-btn');
+        const metaCharCount = document.getElementById('meta-char-count');
+        
+        // メタディスクリプション文字数カウント
+        if (metaInput && metaCharCount) {
+          metaCharCount.textContent = metaInput.value.length;
+          metaInput.addEventListener('input', (e) => {
+            metaCharCount.textContent = e.target.value.length;
+          });
+        }
+        
+        // SEOスコア更新
+        async function updateSEOScore() {
+          const title = titleInput?.value || '';
+          const content = contentInput?.value || '';
+          
+          if (!title || !content) return;
+          
+          try {
+            const res = await fetch('/admin/api/ai/analyze-seo', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title, content })
+            });
+            
+            if (!res.ok) return;
+            
+            const data = await res.json();
+            
+            if (seoScoreEl) {
+              seoScoreEl.textContent = data.score;
+              seoScoreEl.className = 'text-xl font-bold ' + 
+                (data.color === 'green' ? 'text-emerald-500' : 
+                 data.color === 'yellow' ? 'text-amber-500' : 'text-red-500');
+            }
+            
+            if (seoFeedbackEl && data.feedback) {
+              seoFeedbackEl.classList.remove('hidden');
+              seoFeedbackEl.innerHTML = data.feedback.map(f => 
+                '<div class="text-slate-600">' + f + '</div>'
+              ).join('');
+            }
+          } catch (err) {
+            console.error('SEO score error:', err);
+          }
+        }
+        
+        // デバウンス付きイベントリスナー
+        if (titleInput) {
+          titleInput.addEventListener('input', debounce(updateSEOScore, 500));
+        }
+        if (contentInput) {
+          contentInput.addEventListener('input', debounce(updateSEOScore, 1000));
+        }
+        
+        // 初回スコア計算
+        if (titleInput?.value && contentInput?.value) {
+          updateSEOScore();
+        }
+        
+        // AI提案ボタン
+        if (aiSuggestBtn) {
+          aiSuggestBtn.addEventListener('click', async () => {
+            const title = titleInput?.value || '';
+            const content = contentInput?.value || '';
+            
+            if (!title || !content) {
+              alert('タイトルと内容を入力してください');
+              return;
+            }
+            
+            const btn = aiSuggestBtn;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>AI分析中...</span>';
+            btn.disabled = true;
+            
+            try {
+              const res = await fetch('/admin/api/ai/suggest-seo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, content, type })
+              });
+              
+              const data = await res.json();
+              
+              if (data.error) {
+                alert(data.error);
+                return;
+              }
+              
+              showAISuggestionModal(data);
+            } catch (error) {
+              alert('AI提案の取得に失敗しました');
+            } finally {
+              btn.innerHTML = originalText;
+              btn.disabled = false;
+            }
+          });
+        }
+      }
+      
+      // AI提案モーダル
+      function showAISuggestionModal(data) {
+        const escapeHtml = (str) => {
+          const div = document.createElement('div');
+          div.textContent = str;
+          return div.innerHTML;
+        };
+        
+        const modal = document.createElement('div');
+        modal.id = 'ai-suggestion-modal';
+        modal.innerHTML = \`
+          <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px;">
+            <div style="background: white; padding: 24px; border-radius: 16px; max-width: 600px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; font-size: 20px; font-weight: bold; color: #1e293b;">🤖 SEO最適化のAI提案</h2>
+                <button onclick="document.getElementById('ai-suggestion-modal').remove();" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #64748b;">&times;</button>
+              </div>
+              
+              <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 14px; font-weight: 600; color: #475569; margin-bottom: 10px;">📌 改善タイトル案</h3>
+                \${(data.suggested_titles || []).map((t, i) => \`
+                  <div onclick="applyTitle(this)" data-value="\${escapeHtml(t)}" style="margin: 8px 0; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#6366f1'" onmouseout="this.style.borderColor='#e2e8f0'">
+                    <span style="color: #6366f1; font-weight: 500;">\${i+1}.</span> \${escapeHtml(t)}
+                    <span style="float: right; color: #6366f1; font-size: 12px; font-weight: 600;">[採用]</span>
+                  </div>
+                \`).join('')}
+              </div>
+              
+              <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 14px; font-weight: 600; color: #475569; margin-bottom: 10px;">📝 メタディスクリプション</h3>
+                <div onclick="applyMeta(this)" data-value="\${escapeHtml(data.meta_description || '')}" style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#6366f1'" onmouseout="this.style.borderColor='#e2e8f0'">
+                  \${escapeHtml(data.meta_description || '提案なし')}
+                  <span style="display: block; text-align: right; color: #6366f1; font-size: 12px; font-weight: 600; margin-top: 8px;">[採用]</span>
+                </div>
+              </div>
+              
+              <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 14px; font-weight: 600; color: #475569; margin-bottom: 10px;">🔑 推奨キーワード</h3>
+                <div onclick="applyKeywords(this)" data-value="\${escapeHtml((data.keywords || []).join(', '))}" style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#6366f1'" onmouseout="this.style.borderColor='#e2e8f0'">
+                  \${(data.keywords || []).map(k => \`<span style="display: inline-block; padding: 4px 10px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border-radius: 20px; margin: 4px 4px 4px 0; font-size: 13px;">\${escapeHtml(k)}</span>\`).join('')}
+                  <span style="display: block; text-align: right; color: #6366f1; font-size: 12px; font-weight: 600; margin-top: 8px;">[採用]</span>
+                </div>
+              </div>
+              
+              <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 14px; font-weight: 600; color: #475569; margin-bottom: 10px;">💡 改善ポイント</h3>
+                <ul style="padding-left: 20px; margin: 0; color: #475569;">
+                  \${(data.improvement_points || []).map(p => \`<li style="margin: 8px 0;">\${escapeHtml(p)}</li>\`).join('')}
+                </ul>
+              </div>
+              
+              <button onclick="document.getElementById('ai-suggestion-modal').remove();" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
+                閉じる
+              </button>
+            </div>
+          </div>
+        \`;
+        document.body.appendChild(modal);
+      }
+      
+      // タイトル適用
+      function applyTitle(el) {
+        const value = el.dataset.value;
+        const input = document.querySelector('input[name="title"]');
+        if (input && value) {
+          input.value = value;
+          input.dispatchEvent(new Event('input'));
+          showToast('タイトルを反映しました');
+        }
+      }
+      
+      // メタディスクリプション適用
+      function applyMeta(el) {
+        const value = el.dataset.value;
+        const input = document.querySelector('textarea[name="meta_description"]');
+        if (input && value) {
+          input.value = value;
+          input.dispatchEvent(new Event('input'));
+          showToast('メタディスクリプションを反映しました');
+        }
+      }
+      
+      // キーワード適用
+      function applyKeywords(el) {
+        const value = el.dataset.value;
+        const input = document.querySelector('input[name="keywords"]');
+        if (input && value) {
+          input.value = value;
+          showToast('キーワードを反映しました');
+        }
+      }
+      
+      // トースト通知
+      function showToast(message) {
+        const toast = document.createElement('div');
+        toast.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; animation: fadeIn 0.3s;';
+        toast.innerHTML = '<i class="fas fa-check-circle mr-2"></i>' + message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+      }
     </script>
   `
 
