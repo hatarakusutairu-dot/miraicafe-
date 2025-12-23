@@ -87,8 +87,21 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       </div>
     </section>
 
-    <!-- 1. AI News Section (白背景、アニメーションなし) -->
-    <section id="ai-news" class="py-16 bg-white">
+    <!-- 1. AI News Section (白背景、アニメーションなし、ウェーブライン付き) -->
+    <section id="ai-news" class="py-16 bg-white relative">
+      <!-- Wave Top (from Hero) -->
+      <div class="absolute top-0 left-0 right-0 h-16 overflow-hidden transform rotate-180">
+        <svg viewBox="0 0 1440 60" class="w-full h-full" preserveAspectRatio="none">
+          <path fill="#E8DCC8" fill-opacity="0.7" d="M0,30L80,25C160,20,320,10,480,15C640,20,800,40,960,45C1120,50,1280,40,1360,35L1440,30L1440,60L0,60Z"></path>
+        </svg>
+      </div>
+      
+      <!-- Wave Bottom -->
+      <div class="absolute bottom-0 left-0 right-0 h-16 overflow-hidden">
+        <svg viewBox="0 0 1440 60" class="w-full h-full" preserveAspectRatio="none">
+          <path fill="#E8DCC8" fill-opacity="0.7" d="M0,30L80,35C160,40,320,50,480,50C640,50,800,40,960,35C1120,30,1280,30,1360,30L1440,30L1440,60L0,60Z"></path>
+        </svg>
+      </div>
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-8">
           <span class="inline-flex items-center bg-blue-100 text-blue-600 font-medium px-4 py-2 rounded-full text-sm mb-4">
@@ -164,8 +177,21 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       </div>
     </section>
 
-    <!-- 3. Profile Section (白背景、アニメーションなし) -->
-    <section id="profile" class="py-20 bg-white">
+    <!-- 3. Profile Section (白背景、アニメーションなし、ウェーブライン付き) -->
+    <section id="profile" class="py-20 bg-white relative">
+      <!-- Wave Top -->
+      <div class="absolute top-0 left-0 right-0 h-16 overflow-hidden transform rotate-180">
+        <svg viewBox="0 0 1440 60" class="w-full h-full" preserveAspectRatio="none">
+          <path fill="#E8DCC8" fill-opacity="0.7" d="M0,20L80,25C160,30,320,40,480,45C640,50,800,45,960,40C1120,35,1280,25,1360,20L1440,15L1440,60L0,60Z"></path>
+        </svg>
+      </div>
+      
+      <!-- Wave Bottom -->
+      <div class="absolute bottom-0 left-0 right-0 h-16 overflow-hidden">
+        <svg viewBox="0 0 1440 60" class="w-full h-full" preserveAspectRatio="none">
+          <path fill="#E8DCC8" fill-opacity="0.7" d="M0,40L80,35C160,30,320,20,480,15C640,10,800,15,960,20C1120,25,1280,35,1360,40L1440,45L1440,60L0,60Z"></path>
+        </svg>
+      </div>
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-12">
           <span class="inline-flex items-center bg-pink-100 text-pink-600 font-medium px-4 py-2 rounded-full text-sm mb-4">
@@ -265,8 +291,21 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       </div>
     </section>
 
-    <!-- 5. Characters Section - AI COMPANIONS (白背景、アニメーションなし) -->
-    <section class="py-20 bg-white">
+    <!-- 5. Characters Section - AI COMPANIONS (白背景、アニメーションなし、ウェーブライン付き) -->
+    <section class="py-20 bg-white relative">
+      <!-- Wave Top -->
+      <div class="absolute top-0 left-0 right-0 h-16 overflow-hidden transform rotate-180">
+        <svg viewBox="0 0 1440 60" class="w-full h-full" preserveAspectRatio="none">
+          <path fill="#E8DCC8" fill-opacity="0.7" d="M0,25L80,30C160,35,320,45,480,50C640,55,800,50,960,45C1120,40,1280,30,1360,25L1440,20L1440,60L0,60Z"></path>
+        </svg>
+      </div>
+      
+      <!-- Wave Bottom -->
+      <div class="absolute bottom-0 left-0 right-0 h-16 overflow-hidden">
+        <svg viewBox="0 0 1440 60" class="w-full h-full" preserveAspectRatio="none">
+          <path fill="#E8DCC8" fill-opacity="0.7" d="M0,35L80,30C160,25,320,15,480,10C640,5,800,10,960,15C1120,20,1280,30,1360,35L1440,40L1440,60L0,60Z"></path>
+        </svg>
+      </div>
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div>
@@ -359,8 +398,21 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       </div>
     </section>
 
-    <!-- 7. How It Works Section - 3ステップで始める (白背景、アニメーションなし) -->
-    <section class="py-24 bg-white">
+    <!-- 7. How It Works Section - 3ステップで始める (白背景、アニメーションなし、ウェーブライン付き) -->
+    <section class="py-24 bg-white relative">
+      <!-- Wave Top -->
+      <div class="absolute top-0 left-0 right-0 h-16 overflow-hidden transform rotate-180">
+        <svg viewBox="0 0 1440 60" class="w-full h-full" preserveAspectRatio="none">
+          <path fill="#E8DCC8" fill-opacity="0.7" d="M0,30L80,25C160,20,320,10,480,5C640,0,800,5,960,10C1120,15,1280,25,1360,30L1440,35L1440,60L0,60Z"></path>
+        </svg>
+      </div>
+      
+      <!-- Wave Bottom -->
+      <div class="absolute bottom-0 left-0 right-0 h-16 overflow-hidden">
+        <svg viewBox="0 0 1440 60" class="w-full h-full" preserveAspectRatio="none">
+          <path fill="#E8DCC8" fill-opacity="0.7" d="M0,20L80,25C160,30,320,40,480,45C640,50,800,45,960,40C1120,35,1280,25,1360,20L1440,15L1440,60L0,60Z"></path>
+        </svg>
+      </div>
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <span class="inline-flex items-center bg-nature-sage/50 text-nature-forest font-medium px-4 py-2 rounded-full text-sm mb-4">
