@@ -3,9 +3,9 @@
 export const renderAdminLayout = (title: string, content: string, activePage: string = 'dashboard') => {
   const menuItems = [
     { id: 'dashboard', icon: 'fas fa-home', label: 'ダッシュボード', href: '/admin' },
-    { id: 'bookings', icon: 'fas fa-calendar-check', label: '予約管理', href: '/admin/bookings' },
     { id: 'blog', icon: 'fas fa-newspaper', label: 'ブログ管理', href: '/admin/blog' },
     { id: 'courses', icon: 'fas fa-book-open', label: '講座管理', href: '/admin/courses' },
+    { id: 'bookings', icon: 'fas fa-calendar-check', label: '予約管理', href: '/admin/bookings' },
     { id: 'reviews', icon: 'fas fa-star', label: '口コミ管理', href: '/admin/reviews' },
     { id: 'contacts', icon: 'fas fa-envelope', label: 'お問い合わせ', href: '/admin/contacts' },
     { id: 'seo', icon: 'fas fa-search', label: 'SEO管理', href: '/admin/seo' },
