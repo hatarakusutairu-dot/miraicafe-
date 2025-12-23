@@ -18,6 +18,7 @@ import { renderCoursesList, renderCourseForm } from './admin/courses'
 import { renderReviewsList } from './admin/reviews'
 import { renderContactsList, renderContactDetail } from './admin/contacts'
 import { renderSEODashboard, renderSEOEditForm } from './admin/seo'
+import { renderBookingsList, renderBookingDetail, type Booking } from './admin/bookings'
 
 // Services
 import { 
@@ -1189,6 +1190,171 @@ app.post('/admin/reviews/:id/delete', async (c) => {
     console.error('Delete error:', error)
   }
   return c.redirect('/admin/reviews')
+})
+
+// ===== 予約管理 =====
+app.get('/admin/bookings', async (c) => {
+  const tab = c.req.query('tab') || 'all'
+  
+  try {
+    const bookings = await c.env.DB.prepare(`
+      SELECT b.*, c.title as course_name
+      FROM bookings b
+      LEFT JOIN courses c ON b.course_id = c.id
+      ORDER BY b.created_at DESC
+    `).all()
+    
+    return c.html(renderBookingsList(bookings.results as Booking[], tab))
+  } catch (error) {
+    console.error('Bookings error:', error)
+    return c.html(renderBookingsList([], tab))
+  }
+})
+
+// 予約詳細
+app.get('/admin/bookings/:id', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    const booking = await c.env.DB.prepare(`
+      SELECT b.*, c.title as course_name
+      FROM bookings b
+      LEFT JOIN courses c ON b.course_id = c.id
+      WHERE b.id = ?
+    `).bind(id).first()
+    
+    if (!booking) {
+      return c.redirect('/admin/bookings')
+    }
+    
+    return c.html(renderBookingDetail(booking as Booking))
+  } catch (error) {
+    console.error('Booking detail error:', error)
+    return c.redirect('/admin/bookings')
+  }
+})
+
+// 予約ステータス変更
+app.post('/admin/bookings/:id/status', async (c) => {
+  const id = c.req.param('id')
+  const body = await c.req.parseBody()
+  const status = body.status as string
+  
+  const validStatuses = ['pending', 'confirmed', 'completed', 'cancelled']
+  if (!validStatuses.includes(status)) {
+    return c.redirect(`/admin/bookings/${id}`)
+  }
+  
+  try {
+    await c.env.DB.prepare(`
+      UPDATE bookings SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    `).bind(status, id).run()
+  } catch (error) {
+    console.error('Status update error:', error)
+  }
+  
+  return c.redirect(`/admin/bookings/${id}`)
+})
+
+// 予約支払いステータス変更
+app.post('/admin/bookings/:id/payment', async (c) => {
+  const id = c.req.param('id')
+  const body = await c.req.parseBody()
+  const paymentStatus = body.payment_status as string
+  
+  const validStatuses = ['unpaid', 'paid', 'refunded']
+  if (!validStatuses.includes(paymentStatus)) {
+    return c.redirect(`/admin/bookings/${id}`)
+  }
+  
+  try {
+    await c.env.DB.prepare(`
+      UPDATE bookings SET payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    `).bind(paymentStatus, id).run()
+  } catch (error) {
+    console.error('Payment status update error:', error)
+  }
+  
+  return c.redirect(`/admin/bookings/${id}`)
+})
+
+// 予約メモ更新
+app.post('/admin/bookings/:id/note', async (c) => {
+  const id = c.req.param('id')
+  const body = await c.req.parseBody()
+  const adminNote = body.admin_note as string
+  
+  try {
+    await c.env.DB.prepare(`
+      UPDATE bookings SET admin_note = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    `).bind(adminNote || '', id).run()
+  } catch (error) {
+    console.error('Note update error:', error)
+  }
+  
+  return c.redirect(`/admin/bookings/${id}`)
+})
+
+// 予約削除
+app.post('/admin/bookings/:id/delete', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    await c.env.DB.prepare(`DELETE FROM bookings WHERE id = ?`).bind(id).run()
+  } catch (error) {
+    console.error('Delete booking error:', error)
+  }
+  
+  return c.redirect('/admin/bookings')
+})
+
+// 予約エクスポート（CSV）
+app.get('/admin/bookings/export', async (c) => {
+  try {
+    const bookings = await c.env.DB.prepare(`
+      SELECT b.*, c.title as course_name
+      FROM bookings b
+      LEFT JOIN courses c ON b.course_id = c.id
+      ORDER BY b.created_at DESC
+    `).all()
+    
+    // CSVヘッダー
+    const headers = ['ID', '講座名', '顧客名', 'メール', '電話', '希望日', '希望時間', 'ステータス', '支払い', '金額', '作成日']
+    
+    // CSVデータ
+    const rows = (bookings.results as Booking[]).map(b => [
+      b.id,
+      b.course_name || '',
+      b.customer_name,
+      b.customer_email,
+      b.customer_phone || '',
+      b.preferred_date || '',
+      b.preferred_time || '',
+      b.status,
+      b.payment_status,
+      b.amount,
+      b.created_at
+    ])
+    
+    // CSV文字列生成
+    const csv = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n')
+    
+    // BOMを付けてUTF-8で出力（Excelで開けるように）
+    const bom = '\uFEFF'
+    
+    return new Response(bom + csv, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="bookings_${new Date().toISOString().split('T')[0]}.csv"`
+      }
+    })
+  } catch (error) {
+    console.error('Export error:', error)
+    return c.redirect('/admin/bookings')
+  }
 })
 
 // ===== お問い合わせ管理 =====
