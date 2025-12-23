@@ -1,11 +1,30 @@
 /**
- * AI記事生成ページ
+ * AI記事生成ページ（改善版）
+ * - Markdown→HTML変換
+ * - 概要(excerpt)自動生成
+ * - SEO一括設定
  */
 
 import { renderAdminLayout } from './layout'
 
 export const renderAIWriterPage = () => {
   const content = `
+    <style>
+      /* Markdown変換後のHTML用CSS */
+      .markdown-content h1 { font-size: 1.8rem; font-weight: bold; color: #1e293b; margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #3b82f6; }
+      .markdown-content h2 { font-size: 1.5rem; font-weight: bold; color: #1e293b; margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid #e2e8f0; }
+      .markdown-content h3 { font-size: 1.25rem; font-weight: bold; color: #334155; margin: 16px 0 8px; }
+      .markdown-content p { font-size: 1rem; line-height: 1.8; color: #374151; margin-bottom: 12px; }
+      .markdown-content ul, .markdown-content ol { margin: 12px 0; padding-left: 24px; }
+      .markdown-content li { margin-bottom: 6px; line-height: 1.7; }
+      .markdown-content strong { font-weight: bold; color: #1e293b; }
+      .markdown-content em { font-style: italic; color: #64748b; }
+      .markdown-content code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+      .markdown-content pre { background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0; }
+      .markdown-content pre code { background: none; color: inherit; padding: 0; }
+      .markdown-content blockquote { border-left: 4px solid #3b82f6; padding-left: 16px; margin: 12px 0; color: #64748b; font-style: italic; }
+    </style>
+    
     <div class="max-w-5xl mx-auto space-y-6">
       <!-- ヘッダー -->
       <div>
@@ -107,6 +126,14 @@ export const renderAIWriterPage = () => {
             <div id="generatedTitle" class="p-4 bg-gray-50 rounded-lg font-bold text-lg text-gray-800"></div>
           </div>
           
+          <!-- 概要 -->
+          <div class="border-b pb-5">
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              <i class="fas fa-align-left text-teal-500 mr-1"></i>概要（Excerpt）
+            </label>
+            <div id="generatedExcerpt" class="p-4 bg-gray-50 rounded-lg text-gray-700"></div>
+          </div>
+          
           <!-- カテゴリ -->
           <div class="border-b pb-5">
             <label class="block text-sm font-semibold text-gray-700 mb-2">
@@ -125,10 +152,18 @@ export const renderAIWriterPage = () => {
           
           <!-- 本文 -->
           <div class="border-b pb-5">
-            <label class="block text-sm font-semibold text-gray-700 mb-2">
-              <i class="fas fa-file-alt text-green-500 mr-1"></i>本文
-            </label>
-            <div id="generatedContent" class="p-4 bg-gray-50 rounded-lg text-gray-700 leading-relaxed prose max-w-none" style="white-space: pre-wrap;"></div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-sm font-semibold text-gray-700">
+                <i class="fas fa-file-alt text-green-500 mr-1"></i>本文
+              </label>
+              <button onclick="togglePreview()" class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm font-medium hover:bg-blue-200 transition">
+                <i class="fas fa-eye mr-1"></i><span id="previewBtnText">プレビュー</span>
+              </button>
+            </div>
+            <!-- Markdownソース -->
+            <textarea id="generatedContentMarkdown" class="w-full p-4 bg-gray-50 rounded-lg text-gray-700 font-mono text-sm" style="min-height: 400px; display: block;"></textarea>
+            <!-- HTMLプレビュー -->
+            <div id="generatedContentPreview" class="p-4 bg-gray-50 rounded-lg markdown-content" style="min-height: 400px; display: none;"></div>
           </div>
           
           <!-- メタディスクリプション -->
@@ -137,6 +172,17 @@ export const renderAIWriterPage = () => {
               <i class="fas fa-search text-blue-500 mr-1"></i>メタディスクリプション
             </label>
             <div id="generatedMeta" class="p-4 bg-gray-50 rounded-lg text-gray-600 text-sm"></div>
+          </div>
+          
+          <!-- SEO一括設定 -->
+          <div class="border-b pb-5">
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+              <i class="fas fa-bullseye text-red-500 mr-1"></i>SEO一括設定
+            </label>
+            <button onclick="applyAllSEO()" class="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-bold hover:from-green-600 hover:to-emerald-700 transition">
+              <i class="fas fa-check-double mr-2"></i>カテゴリ・メタディスクリプション・キーワードを一括設定
+            </button>
+            <div id="seoStatus" class="mt-2 text-green-600 font-medium hidden"></div>
           </div>
           
           <!-- 画像候補 -->
@@ -173,10 +219,51 @@ export const renderAIWriterPage = () => {
       </div>
     </div>
 
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
     <script>
       let generatedData = {};
       let selectedCategory = null;
       let selectedImage = null;
+      let isPreviewMode = false;
+
+      // Markdown → HTML変換
+      function markdownToHtml(markdown) {
+        if (typeof marked !== 'undefined') {
+          return marked.parse(markdown);
+        }
+        // フォールバック: 簡易変換
+        return markdown
+          .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+          .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+          .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+          .replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>')
+          .replace(/\\*(.+?)\\*/g, '<em>$1</em>')
+          .replace(/^- (.+)$/gm, '<li>$1</li>')
+          .replace(/(<li>.*<\\/li>)/s, '<ul>$1</ul>')
+          .replace(/\\n\\n/g, '</p><p>')
+          .replace(/^(.+)$/gm, '<p>$1</p>');
+      }
+
+      // プレビュー切り替え
+      function togglePreview() {
+        isPreviewMode = !isPreviewMode;
+        const markdown = document.getElementById('generatedContentMarkdown');
+        const preview = document.getElementById('generatedContentPreview');
+        const btnText = document.getElementById('previewBtnText');
+        
+        if (isPreviewMode) {
+          preview.innerHTML = markdownToHtml(markdown.value);
+          markdown.style.display = 'none';
+          preview.style.display = 'block';
+          btnText.textContent = '編集';
+        } else {
+          markdown.style.display = 'block';
+          preview.style.display = 'none';
+          btnText.textContent = 'プレビュー';
+        }
+      }
 
       // 記事生成
       async function generateArticle() {
@@ -227,14 +314,26 @@ export const renderAIWriterPage = () => {
       // 結果表示
       function displayResults(data) {
         document.getElementById('generatedTitle').textContent = data.title || '';
-        document.getElementById('generatedContent').textContent = data.content || '';
+        document.getElementById('generatedExcerpt').textContent = data.excerpt || data.metaDescription || '';
+        document.getElementById('generatedContentMarkdown').value = data.content || '';
         document.getElementById('generatedMeta').textContent = data.metaDescription || '';
+        
+        // プレビューもリセット
+        isPreviewMode = false;
+        document.getElementById('generatedContentMarkdown').style.display = 'block';
+        document.getElementById('generatedContentPreview').style.display = 'none';
+        document.getElementById('previewBtnText').textContent = 'プレビュー';
         
         // カテゴリ提案
         const categoryContainer = document.getElementById('categorySuggestions');
         categoryContainer.innerHTML = (data.categories || []).map(cat => 
           \`<button onclick="selectCategory('\${cat}')" class="category-chip px-4 py-2 bg-blue-100 text-blue-700 rounded-full font-medium hover:bg-blue-200 transition">\${cat}</button>\`
         ).join('');
+        
+        // デフォルトで最初のカテゴリを選択
+        if (data.categories && data.categories.length > 0) {
+          selectCategory(data.categories[0]);
+        }
         
         // タグ
         const tagsContainer = document.getElementById('generatedTags');
@@ -250,9 +349,14 @@ export const renderAIWriterPage = () => {
               <img src="\${img}" alt="候補\${index + 1}" class="w-full h-32 object-cover">
             </div>\`
           ).join('');
+          // デフォルトで最初の画像を選択
+          selectImage(0, data.images[0]);
         } else {
-          imageContainer.innerHTML = '<p class="text-gray-500 text-sm col-span-full">画像候補がありません（Unsplash APIキーを設定すると表示されます）</p>';
+          imageContainer.innerHTML = '<p class="text-gray-500 text-sm col-span-full">画像候補がありません</p>';
         }
+        
+        // SEOステータスをリセット
+        document.getElementById('seoStatus').classList.add('hidden');
         
         // 結果セクション表示
         document.getElementById('resultSection').classList.remove('hidden');
@@ -279,12 +383,26 @@ export const renderAIWriterPage = () => {
         document.querySelectorAll('.image-option').forEach((option, i) => {
           if (i === index) {
             option.classList.remove('border-transparent');
-            option.classList.add('border-green-500');
+            option.classList.add('border-green-500', 'border-4');
           } else {
-            option.classList.remove('border-green-500');
+            option.classList.remove('border-green-500', 'border-4');
             option.classList.add('border-transparent');
           }
         });
+      }
+
+      // SEO一括設定
+      function applyAllSEO() {
+        if (!selectedCategory) {
+          showToast('カテゴリを選択してください', 'error');
+          return;
+        }
+        
+        generatedData.seoApplied = true;
+        const seoStatus = document.getElementById('seoStatus');
+        seoStatus.innerHTML = \`<i class="fas fa-check-circle mr-1"></i>SEO設定完了: カテゴリ「\${selectedCategory}」、メタディスクリプション、キーワード(\${(generatedData.tags || []).join(', ')})\`;
+        seoStatus.classList.remove('hidden');
+        showToast('SEO設定を適用しました', 'success');
       }
 
       // 記事保存
@@ -294,14 +412,18 @@ export const renderAIWriterPage = () => {
           return;
         }
         
+        // Markdown → HTML変換
+        const contentMarkdown = document.getElementById('generatedContentMarkdown').value;
+        const contentHtml = markdownToHtml(contentMarkdown);
+        
         try {
           const response = await fetch('/admin/api/blog-posts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               title: generatedData.title,
-              content: generatedData.content,
-              excerpt: generatedData.metaDescription,
+              content: contentHtml,
+              excerpt: generatedData.excerpt || generatedData.metaDescription,
               category: selectedCategory,
               tags: (generatedData.tags || []).join(','),
               meta_description: generatedData.metaDescription,
@@ -329,10 +451,12 @@ export const renderAIWriterPage = () => {
           return;
         }
         
-        // 編集ページに遷移（データをセッションストレージで渡す）
+        const contentMarkdown = document.getElementById('generatedContentMarkdown').value;
+        const contentHtml = markdownToHtml(contentMarkdown);
+        
         sessionStorage.setItem('aiGeneratedArticle', JSON.stringify({
           title: generatedData.title,
-          content: generatedData.content,
+          content: contentHtml,
           category: selectedCategory,
           tags: (generatedData.tags || []).join(','),
           meta_description: generatedData.metaDescription,

@@ -22,6 +22,7 @@ import { renderSEODashboard, renderSEOEditForm } from './admin/seo'
 import { renderBookingsList, renderBookingDetail, type Booking } from './admin/bookings'
 import { renderAINewsList, type AINews } from './admin/ai-news'
 import { renderAIWriterPage } from './admin/ai-writer'
+import { renderAICourseGeneratorPage } from './admin/ai-course-generator'
 
 // Services
 import { 
@@ -724,6 +725,11 @@ app.get('/admin/blog/edit/:id', async (c) => {
 // AI記事生成ページ
 app.get('/admin/blog/ai-writer', (c) => {
   return c.html(renderAIWriterPage())
+})
+
+// AI講座生成ページ
+app.get('/admin/courses/ai-generator', (c) => {
+  return c.html(renderAICourseGeneratorPage())
 })
 
 // SEOスコア計算ヘルパー関数
@@ -2393,7 +2399,8 @@ ${additionalInstructions ? `【追加の指示】\n${additionalInstructions}\n` 
 {
   "title": "SEOに最適化された魅力的なタイトル(30〜40文字)",
   "content": "本文(Markdown形式、見出し・リスト・強調を含む)",
-  "metaDescription": "メタディスクリプション(120文字以内)",
+  "excerpt": "記事の概要・要約(80〜120文字、本文の冒頭をわかりやすく要約)",
+  "metaDescription": "メタディスクリプション(120文字以内、SEO最適化)",
   "categories": ["カテゴリ1", "カテゴリ2", "カテゴリ3"],
   "tags": ["タグ1", "タグ2", "タグ3", "タグ4", "タグ5"]
 }
@@ -2514,6 +2521,7 @@ ${additionalInstructions ? `【追加の指示】\n${additionalInstructions}\n` 
         return c.json({
           title: parsed.title || topic,
           content: parsed.content || '',
+          excerpt: parsed.excerpt || parsed.metaDescription || '',
           metaDescription: parsed.metaDescription || '',
           categories: parsed.categories || ['AI活用術'],
           tags: parsed.tags || [],
@@ -2531,6 +2539,210 @@ ${additionalInstructions ? `【追加の指示】\n${additionalInstructions}\n` 
   } catch (error) {
     console.error('[AI Writer] Generate article error:', error)
     return c.json({ error: 'エラーが発生しました' }, 500)
+  }
+})
+
+// AI講座生成API
+app.post('/admin/api/ai/generate-course', async (c) => {
+  try {
+    const { topic, category, level, priceRange, additionalInstructions } = await c.req.json()
+    
+    if (!topic) {
+      return c.json({ error: '講座テーマを入力してください' }, 400)
+    }
+    
+    if (!c.env.GEMINI_API_KEY) {
+      return c.json({ error: 'GEMINI_API_KEY が設定されていません' }, 500)
+    }
+    
+    // 価格範囲のマッピング
+    const priceRangeMap: Record<string, { min: number; max: number }> = {
+      '5000-10000': { min: 5000, max: 10000 },
+      '10000-15000': { min: 10000, max: 15000 },
+      '15000-25000': { min: 15000, max: 25000 },
+      '25000-50000': { min: 25000, max: 50000 }
+    }
+    const priceInfo = priceRangeMap[priceRange] || { min: 10000, max: 15000 }
+    
+    const prompt = `以下の条件でAI講座の情報を生成してください。
+
+【講座テーマ】
+${topic}
+
+【カテゴリ】
+${category || 'AI入門'}
+
+【レベル】
+${level || '初級'}
+
+【価格範囲】
+${priceInfo.min}円〜${priceInfo.max}円
+
+${additionalInstructions ? `【追加の指示】\n${additionalInstructions}\n` : ''}
+
+【出力形式】JSON のみ出力（マークダウンコードブロック不要）
+{
+  "title": "魅力的な講座タイトル(20〜40文字)",
+  "catchphrase": "キャッチフレーズ(30文字以内)",
+  "description": "講座説明(Markdown形式、300〜500文字、特徴・メリットを含む)",
+  "targetAudience": ["対象者1", "対象者2", "対象者3", "対象者4"],
+  "features": ["特徴1", "特徴2", "特徴3", "特徴4"],
+  "curriculum": [
+    {"title": "セッション1タイトル", "description": "内容説明"},
+    {"title": "セッション2タイトル", "description": "内容説明"},
+    {"title": "セッション3タイトル", "description": "内容説明"},
+    {"title": "セッション4タイトル", "description": "内容説明"}
+  ],
+  "duration": "所要時間（例: 120分）",
+  "price": 価格（数値のみ）
+}
+
+【重要】
+- 講座はmirAIcafe（AIカフェ）で開催
+- 講師は「mion」固定
+- 具体的で実践的な内容
+- 初心者にも分かりやすい言葉で
+- ハンズオン形式を推奨`
+
+    // Gemini API呼び出し
+    const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-pro']
+    
+    for (const model of models) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${c.env.GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 4000
+              }
+            })
+          }
+        )
+        
+        if (!response.ok) {
+          if (response.status === 429) {
+            console.log(`[AI Course Generator] ${model}: Rate limit, trying next model`)
+            await new Promise(r => setTimeout(r, 1000))
+            continue
+          }
+          continue
+        }
+        
+        const data = await response.json() as any
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
+        
+        // JSONを抽出
+        const jsonMatch = text.match(/\{[\s\S]*\}/)
+        if (!jsonMatch) {
+          console.log(`[AI Course Generator] ${model}: JSON not found`)
+          continue
+        }
+        
+        // 制御文字を除去
+        let cleanJson = jsonMatch[0]
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+          .replace(/("(?:[^"\\]|\\.)*")/g, (match) => {
+            return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
+          })
+        
+        let parsed: any
+        try {
+          parsed = JSON.parse(cleanJson)
+        } catch (parseError) {
+          console.log(`[AI Course Generator] ${model}: JSON parse error`)
+          continue
+        }
+        
+        // Unsplash画像検索
+        const images: string[] = []
+        if (c.env.UNSPLASH_ACCESS_KEY) {
+          try {
+            const keyword = topic.split(/[\s、。]/)[0]
+            const unsplashResponse = await fetch(
+              `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keyword + ' technology learning')}&per_page=4&orientation=landscape`,
+              {
+                headers: { 'Authorization': `Client-ID ${c.env.UNSPLASH_ACCESS_KEY}` }
+              }
+            )
+            
+            if (unsplashResponse.ok) {
+              const unsplashData = await unsplashResponse.json() as any
+              images.push(...unsplashData.results.map((r: any) => r.urls.regular))
+            }
+          } catch (error) {
+            console.error('[AI Course Generator] Unsplash error:', error)
+          }
+        }
+        
+        console.log(`[AI Course Generator] Course generated successfully with ${model}`)
+        return c.json({
+          title: parsed.title || topic,
+          catchphrase: parsed.catchphrase || '',
+          description: parsed.description || '',
+          targetAudience: parsed.targetAudience || [],
+          features: parsed.features || [],
+          curriculum: parsed.curriculum || [],
+          duration: parsed.duration || '120分',
+          price: parsed.price || priceInfo.min,
+          images
+        })
+        
+      } catch (error: any) {
+        console.error(`[AI Course Generator] ${model} error:`, error.message || error)
+        continue
+      }
+    }
+    
+    return c.json({ error: 'AI講座生成に失敗しました。しばらく待ってから再試行してください。' }, 500)
+    
+  } catch (error) {
+    console.error('[AI Course Generator] Error:', error)
+    return c.json({ error: 'エラーが発生しました' }, 500)
+  }
+})
+
+// 講座保存API（JSON）- AI講座生成用
+app.post('/admin/api/courses', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { title, catchphrase, description, category, level, price, duration, image, targetAudience, features, curriculum, instructor, status } = body
+    
+    if (!title || !category || !level) {
+      return c.json({ error: '必須項目が不足しています' }, 400)
+    }
+    
+    const id = generateCourseId(title)
+    
+    await c.env.DB.prepare(`
+      INSERT INTO courses (id, title, catchphrase, description, price, duration, level, category, image,
+                          instructor, target_audience, curriculum, features, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id,
+      title,
+      catchphrase || '',
+      description || '',
+      price || 0,
+      duration || '',
+      level,
+      category,
+      image || '',
+      instructor || 'mion',
+      JSON.stringify(targetAudience || []),
+      JSON.stringify(curriculum || []),
+      JSON.stringify(features || []),
+      status || 'draft'
+    ).run()
+    
+    return c.json({ success: true, id, message: '講座を保存しました' })
+  } catch (error) {
+    console.error('Course API create error:', error)
+    return c.json({ error: '講座の保存に失敗しました' }, 500)
   }
 })
 
