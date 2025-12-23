@@ -372,6 +372,24 @@ export const renderCourseForm = (course?: Course, error?: string) => {
         </div>
       </div>
 
+      <!-- 開催日程 -->
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+          <i class="fas fa-calendar-alt text-blue-500 mr-2"></i>開催日程
+        </h2>
+        <p class="text-sm text-gray-500 mb-4">講座の開催日時を設定できます。複数の日程を追加可能です。</p>
+        
+        <div id="schedule-container" class="space-y-3">
+          <!-- 日程項目はJavaScriptで動的に追加 -->
+        </div>
+        <button type="button" onclick="addSchedule()" class="mt-4 text-blue-600 hover:text-blue-800 text-sm flex items-center">
+          <i class="fas fa-plus mr-1"></i>日程を追加
+        </button>
+        <p class="text-xs text-gray-400 mt-2">
+          <i class="fas fa-info-circle mr-1"></i>日程は講座保存後に管理できます。編集画面から日程を追加・削除できます。
+        </p>
+      </div>
+
       <!-- FAQ -->
       <div class="bg-white rounded-xl shadow-sm p-6">
         <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
@@ -499,6 +517,58 @@ export const renderCourseForm = (course?: Course, error?: string) => {
         if (items.length > 1) {
           btn.closest('.faq-item').remove();
         }
+      }
+      
+      // 日程追加
+      function addSchedule() {
+        const container = document.getElementById('schedule-container');
+        const today = new Date().toISOString().split('T')[0];
+        const html = \`
+          <div class="schedule-item p-4 border border-gray-200 rounded-lg bg-gray-50">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <div class="md:col-span-3">
+                <label class="block text-xs text-gray-500 mb-1">開催日</label>
+                <input type="date" name="schedule_date[]" min="\${today}"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                  value="">
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">開始時間</label>
+                <input type="time" name="schedule_start[]"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                  value="10:00">
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">終了時間</label>
+                <input type="time" name="schedule_end[]"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                  value="12:00">
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">定員</label>
+                <input type="number" name="schedule_capacity[]" min="1" max="100"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                  value="10">
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">開催場所</label>
+                <input type="text" name="schedule_location[]"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                  value="オンライン" placeholder="オンライン">
+              </div>
+              <div class="md:col-span-1 flex items-end justify-end pb-1">
+                <button type="button" onclick="removeSchedule(this)" class="text-red-500 hover:text-red-700 p-2">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        \`;
+        container.insertAdjacentHTML('beforeend', html);
+      }
+
+      function removeSchedule(btn) {
+        btn.closest('.schedule-item').remove();
       }
       
       // 画像アップロードコンポーネントを初期化

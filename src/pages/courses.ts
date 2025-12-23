@@ -559,36 +559,7 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
             </div>
             ` : ''}
 
-            <!-- 講師紹介 -->
-            <div class="bg-white rounded-2xl p-6 md:p-8 shadow-lg border border-future-sky/50">
-              <h2 class="text-xl font-bold text-future-text mb-6 flex items-center">
-                <span class="w-10 h-10 gradient-ai rounded-xl flex items-center justify-center mr-3 shadow">
-                  <i class="fas fa-chalkboard-teacher text-white"></i>
-                </span>
-                講師紹介
-              </h2>
-              <div class="flex flex-col md:flex-row gap-6">
-                <div class="flex-shrink-0">
-                  ${course.instructorInfo?.image ? `
-                    <img src="${course.instructorInfo.image}" alt="${course.instructor}" class="w-32 h-32 rounded-full object-cover border-4 border-ai-blue/20 shadow-lg mx-auto md:mx-0">
-                  ` : `
-                    <div class="w-32 h-32 gradient-ai rounded-full flex items-center justify-center shadow-lg mx-auto md:mx-0">
-                      <i class="fas fa-user text-white text-4xl"></i>
-                    </div>
-                  `}
-                </div>
-                <div class="flex-1 text-center md:text-left">
-                  <h3 class="text-xl font-bold text-future-text">${course.instructor}</h3>
-                  ${course.instructorInfo?.title ? `<p class="gradient-ai-text font-medium mb-2">${course.instructorInfo.title}</p>` : `<p class="gradient-ai-text font-medium mb-2">mirAIcafe認定講師</p>`}
-                  ${course.instructorInfo?.bio ? `<p class="text-future-textLight text-sm leading-relaxed mb-4">${course.instructorInfo.bio}</p>` : ''}
-                  ${course.instructorInfo?.specialties && course.instructorInfo.specialties.length > 0 ? `
-                    <div class="flex flex-wrap justify-center md:justify-start gap-2">
-                      ${course.instructorInfo.specialties.map(s => `<span class="bg-ai-blue/10 text-ai-blue text-xs px-3 py-1 rounded-full">${s}</span>`).join('')}
-                    </div>
-                  ` : ''}
-                </div>
-              </div>
-            </div>
+
 
             <!-- これまでの開催の様子（ギャラリー） -->
             ${course.gallery && course.gallery.length > 0 ? `
@@ -893,10 +864,7 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
                   <i class="fas fa-users w-8 text-ai-purple"></i>
                   <span class="text-sm">少人数制（最大${course.maxCapacity || 10}名）</span>
                 </div>
-                <div class="flex items-center text-future-text bg-future-light rounded-xl p-3">
-                  <i class="fas fa-certificate w-8 text-ai-pink"></i>
-                  <span class="text-sm">修了証発行あり</span>
-                </div>
+
               </div>
 
               <!-- 含まれるもの -->

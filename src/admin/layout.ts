@@ -196,11 +196,13 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
       const container = document.getElementById(containerId);
       if (!container) return;
 
-      const html = '<div class="image-upload-tabs mb-2">' +
+      const html = '<div class="image-upload-tabs mb-2 flex flex-wrap gap-1">' +
         '<button type="button" class="tab-btn active" data-tab="upload" onclick="switchImageTab(\\'' + containerId + '\\', \\'upload\\')">' +
           '<i class="fas fa-upload mr-1"></i>アップロード</button>' +
         '<button type="button" class="tab-btn" data-tab="url" onclick="switchImageTab(\\'' + containerId + '\\', \\'url\\')">' +
           '<i class="fas fa-link mr-1"></i>URL入力</button>' +
+        '<button type="button" class="tab-btn" data-tab="generate" onclick="switchImageTab(\\'' + containerId + '\\', \\'generate\\')">' +
+          '<i class="fas fa-magic mr-1"></i>AI生成</button>' +
         '</div>' +
         '<div class="tab-content upload-tab">' +
           '<div class="image-upload-zone" id="' + containerId + '-dropzone">' +
@@ -235,6 +237,22 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
             'onchange="handleUrlInput(\\'' + containerId + '\\', \\'' + inputName + '\\', this.value)">' +
           '<p class="text-xs text-gray-400 mt-1">外部URLを直接入力できます</p>' +
         '</div>' +
+        '<div class="tab-content generate-tab hidden">' +
+          '<div class="space-y-3">' +
+            '<input type="text" id="' + containerId + '-generate-prompt" placeholder="生成したい画像の説明（例: カフェでAI講座を受ける様子）" ' +
+              'class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none">' +
+            '<button type="button" onclick="handleImageGenerate(\\'' + containerId + '\\', \\'' + inputName + '\\')" ' +
+              'class="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg transition flex items-center justify-center" ' +
+              'id="' + containerId + '-generate-btn">' +
+              '<i class="fas fa-magic mr-2"></i>AI画像を生成' +
+            '</button>' +
+            '<div id="' + containerId + '-generate-results" class="hidden">' +
+              '<p class="text-sm text-gray-600 mb-2">画像候補（クリックで選択）:</p>' +
+              '<div class="grid grid-cols-3 gap-2" id="' + containerId + '-generate-grid"></div>' +
+            '</div>' +
+            '<p class="text-xs text-gray-400">Unsplashから関連画像を検索します</p>' +
+          '</div>' +
+        '</div>' +
         '<input type="hidden" name="' + inputName + '" id="' + containerId + '-hidden" value="' + currentUrl + '">';
       
       container.innerHTML = html;
@@ -254,18 +272,71 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
       const tabs = container.querySelectorAll('.tab-btn');
       const uploadContent = container.querySelector('.upload-tab');
       const urlContent = container.querySelector('.url-tab');
+      const generateContent = container.querySelector('.generate-tab');
       
       tabs.forEach(t => {
         t.classList.toggle('active', t.dataset.tab === tab);
       });
       
+      uploadContent.classList.add('hidden');
+      urlContent.classList.add('hidden');
+      if (generateContent) generateContent.classList.add('hidden');
+      
       if (tab === 'upload') {
         uploadContent.classList.remove('hidden');
-        urlContent.classList.add('hidden');
-      } else {
-        uploadContent.classList.add('hidden');
+      } else if (tab === 'url') {
         urlContent.classList.remove('hidden');
+      } else if (tab === 'generate' && generateContent) {
+        generateContent.classList.remove('hidden');
       }
+    }
+    
+    // AI画像生成（Unsplash検索）
+    async function handleImageGenerate(containerId, inputName) {
+      const promptInput = document.getElementById(containerId + '-generate-prompt');
+      const btn = document.getElementById(containerId + '-generate-btn');
+      const resultsDiv = document.getElementById(containerId + '-generate-results');
+      const gridDiv = document.getElementById(containerId + '-generate-grid');
+      
+      const prompt = promptInput.value.trim();
+      if (!prompt) {
+        alert('生成したい画像の説明を入力してください');
+        return;
+      }
+      
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>検索中...';
+      btn.disabled = true;
+      
+      try {
+        const res = await fetch('/admin/api/ai/search-images?query=' + encodeURIComponent(prompt));
+        const data = await res.json();
+        
+        if (data.images && data.images.length > 0) {
+          gridDiv.innerHTML = data.images.map(function(img) {
+            return '<div class="cursor-pointer rounded-lg overflow-hidden border-2 border-transparent hover:border-purple-500 transition" ' +
+              'onclick="selectGeneratedImage(\\'' + containerId + '\\', \\'' + inputName + '\\', \\'' + img.url + '\\')">' +
+              '<img src="' + img.url + '" alt="候補" class="w-full h-20 object-cover">' +
+            '</div>';
+          }).join('');
+          resultsDiv.classList.remove('hidden');
+        } else {
+          alert('画像が見つかりませんでした。別のキーワードをお試しください。');
+        }
+      } catch (error) {
+        alert('画像の検索に失敗しました: ' + error.message);
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+    
+    // 生成画像を選択
+    function selectGeneratedImage(containerId, inputName, url) {
+      document.getElementById(containerId + '-hidden').value = url;
+      showPreview(containerId, url);
+      // アップロードタブに切り替えてプレビューを表示
+      switchImageTab(containerId, 'upload');
     }
     
     // ドロップゾーンの設定

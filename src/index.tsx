@@ -944,7 +944,8 @@ async function getAllCourses(db: D1Database): Promise<any[]> {
       SELECT id, title, catchphrase, description, price, duration, level, category, image,
              instructor, instructor_title, instructor_bio, instructor_image,
              target_audience, curriculum, faq, gallery, features, includes,
-             max_capacity, cancellation_policy, status
+             max_capacity, cancellation_policy, status,
+             meta_description, keywords, seo_score
       FROM courses
       ORDER BY created_at DESC
     `).all()
@@ -973,7 +974,9 @@ async function getAllCourses(db: D1Database): Promise<any[]> {
       includes: course.includes ? JSON.parse(course.includes) : [],
       maxCapacity: course.max_capacity,
       cancellationPolicy: course.cancellation_policy,
-      status: course.status
+      status: course.status,
+      meta_description: course.meta_description || '',
+      keywords: course.keywords || ''
     }))
     
     // 静的データとD1データをマージ（D1のIDが優先）
@@ -999,7 +1002,8 @@ async function getCourseById(db: D1Database, id: string): Promise<any | null> {
       SELECT id, title, catchphrase, description, price, duration, level, category, image,
              instructor, instructor_title, instructor_bio, instructor_image,
              target_audience, curriculum, faq, gallery, features, includes,
-             max_capacity, cancellation_policy, status
+             max_capacity, cancellation_policy, status,
+             meta_description, keywords, seo_score
       FROM courses WHERE id = ?
     `).bind(id).first()
     
@@ -1028,7 +1032,9 @@ async function getCourseById(db: D1Database, id: string): Promise<any | null> {
         includes: (course as any).includes ? JSON.parse((course as any).includes) : [],
         maxCapacity: (course as any).max_capacity,
         cancellationPolicy: (course as any).cancellation_policy,
-        status: (course as any).status
+        status: (course as any).status,
+        meta_description: (course as any).meta_description || '',
+        keywords: (course as any).keywords || ''
       }
     }
     
@@ -1131,6 +1137,31 @@ app.post('/admin/courses/create', async (c) => {
       body.keywords || '',
       seoScore
     ).run()
+    
+    // スケジュールの保存
+    const scheduleDates = Array.isArray(body.schedule_date) ? body.schedule_date : [body.schedule_date].filter(Boolean)
+    const scheduleStarts = Array.isArray(body.schedule_start) ? body.schedule_start : [body.schedule_start].filter(Boolean)
+    const scheduleEnds = Array.isArray(body.schedule_end) ? body.schedule_end : [body.schedule_end].filter(Boolean)
+    const scheduleCapacities = Array.isArray(body.schedule_capacity) ? body.schedule_capacity : [body.schedule_capacity].filter(Boolean)
+    const scheduleLocations = Array.isArray(body.schedule_location) ? body.schedule_location : [body.schedule_location].filter(Boolean)
+    
+    for (let i = 0; i < scheduleDates.length; i++) {
+      if (scheduleDates[i] && scheduleStarts[i] && scheduleEnds[i]) {
+        const scheduleId = `sch_${Date.now()}_${i}`
+        await c.env.DB.prepare(`
+          INSERT INTO schedules (id, course_id, date, start_time, end_time, capacity, location)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          scheduleId,
+          id,
+          scheduleDates[i],
+          scheduleStarts[i],
+          scheduleEnds[i],
+          parseInt(scheduleCapacities[i] as string) || 10,
+          scheduleLocations[i] || 'オンライン'
+        ).run()
+      }
+    }
     
     return c.redirect('/admin/courses')
   } catch (error) {
@@ -1243,6 +1274,36 @@ app.post('/admin/courses/update/:id', async (c) => {
       ).run()
     }
     
+    // スケジュールの更新（既存を削除して新規追加）
+    const scheduleDates = Array.isArray(body.schedule_date) ? body.schedule_date : [body.schedule_date].filter(Boolean)
+    const scheduleStarts = Array.isArray(body.schedule_start) ? body.schedule_start : [body.schedule_start].filter(Boolean)
+    const scheduleEnds = Array.isArray(body.schedule_end) ? body.schedule_end : [body.schedule_end].filter(Boolean)
+    const scheduleCapacities = Array.isArray(body.schedule_capacity) ? body.schedule_capacity : [body.schedule_capacity].filter(Boolean)
+    const scheduleLocations = Array.isArray(body.schedule_location) ? body.schedule_location : [body.schedule_location].filter(Boolean)
+    
+    // 新しいスケジュールがある場合のみ既存を削除
+    if (scheduleDates.length > 0 && scheduleDates[0]) {
+      await c.env.DB.prepare(`DELETE FROM schedules WHERE course_id = ?`).bind(id).run()
+      
+      for (let i = 0; i < scheduleDates.length; i++) {
+        if (scheduleDates[i] && scheduleStarts[i] && scheduleEnds[i]) {
+          const scheduleId = `sch_${Date.now()}_${i}`
+          await c.env.DB.prepare(`
+            INSERT INTO schedules (id, course_id, date, start_time, end_time, capacity, location)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `).bind(
+            scheduleId,
+            id,
+            scheduleDates[i],
+            scheduleStarts[i],
+            scheduleEnds[i],
+            parseInt(scheduleCapacities[i] as string) || 10,
+            scheduleLocations[i] || 'オンライン'
+          ).run()
+        }
+      }
+    }
+    
     return c.redirect('/admin/courses')
   } catch (error) {
     console.error('Error updating course:', error)
@@ -1251,10 +1312,11 @@ app.post('/admin/courses/update/:id', async (c) => {
   }
 })
 
-// 講座削除
+// 講座削除（関連するスケジュールも削除）
 app.post('/admin/courses/delete/:id', async (c) => {
   const id = c.req.param('id')
   try {
+    await c.env.DB.prepare(`DELETE FROM schedules WHERE course_id = ?`).bind(id).run()
     await c.env.DB.prepare(`DELETE FROM courses WHERE id = ?`).bind(id).run()
     return c.redirect('/admin/courses')
   } catch (error) {
@@ -1829,6 +1891,53 @@ app.delete('/admin/api/upload/:fileName', async (c) => {
   } catch (error) {
     console.error('Delete error:', error)
     return c.json({ error: '削除に失敗しました' }, 500)
+  }
+})
+
+// AI画像検索エンドポイント（Unsplash）
+app.get('/admin/api/ai/search-images', async (c) => {
+  // 認証チェック
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSession(sessionId)) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+
+  const query = c.req.query('query')
+  if (!query) {
+    return c.json({ error: '検索キーワードが必要です' }, 400)
+  }
+
+  try {
+    const UNSPLASH_ACCESS_KEY = c.env.UNSPLASH_ACCESS_KEY
+    if (!UNSPLASH_ACCESS_KEY) {
+      return c.json({ error: 'Unsplash APIキーが設定されていません' }, 500)
+    }
+
+    const searchQuery = encodeURIComponent(query)
+    const url = `https://api.unsplash.com/search/photos?query=${searchQuery}&per_page=9&orientation=landscape`
+    
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Client-ID ${UNSPLASH_ACCESS_KEY}`
+      }
+    })
+
+    if (!response.ok) {
+      console.error('Unsplash API error:', await response.text())
+      return c.json({ error: '画像検索に失敗しました' }, 500)
+    }
+
+    const data = await response.json() as { results: { urls: { regular: string; small: string } }[] }
+    
+    const images = data.results.map(img => ({
+      url: img.urls.regular,
+      thumb: img.urls.small
+    }))
+
+    return c.json({ images })
+  } catch (error) {
+    console.error('Image search error:', error)
+    return c.json({ error: '画像検索に失敗しました' }, 500)
   }
 })
 
