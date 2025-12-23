@@ -21,6 +21,7 @@ import { renderContactsList, renderContactDetail } from './admin/contacts'
 import { renderSEODashboard, renderSEOEditForm } from './admin/seo'
 import { renderBookingsList, renderBookingDetail, type Booking } from './admin/bookings'
 import { renderAINewsList, type AINews } from './admin/ai-news'
+import { renderAIWriterPage } from './admin/ai-writer'
 
 // Services
 import { 
@@ -720,6 +721,11 @@ app.get('/admin/blog/edit/:id', async (c) => {
   return c.html(renderBlogForm(post))
 })
 
+// AI記事生成ページ
+app.get('/admin/blog/ai-writer', (c) => {
+  return c.html(renderAIWriterPage())
+})
+
 // SEOスコア計算ヘルパー関数
 function calculateSEOScore(title: string, content: string): number {
   let score = 0
@@ -865,6 +871,49 @@ app.post('/admin/blog/delete/:id', async (c) => {
   } catch (error) {
     console.error('Error deleting blog post:', error)
     return c.redirect('/admin/blog')
+  }
+})
+
+// ブログ投稿API（JSON）- AI記事生成用
+app.post('/admin/api/blog-posts', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { title, content, excerpt, category, tags, meta_description, featured_image, status } = body
+    
+    if (!title || !content || !category) {
+      return c.json({ error: 'タイトル、本文、カテゴリは必須です' }, 400)
+    }
+    
+    const id = generateBlogId(title)
+    const tagsArray = tags ? tags.split(',').map((t: string) => t.trim()).filter((t: string) => t) : []
+    
+    // SEOスコア計算
+    const seoScore = calculateSEOScore(title, content)
+    
+    await c.env.DB.prepare(`
+      INSERT INTO blog_posts (id, title, excerpt, content, author, date, category, tags, image, read_time, meta_description, keywords, seo_score, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id,
+      title,
+      excerpt || '',
+      content,
+      'AI Writer',
+      new Date().toISOString().split('T')[0],
+      category,
+      JSON.stringify(tagsArray),
+      featured_image || '',
+      '5分',
+      meta_description || '',
+      tagsArray.join(', '),
+      seoScore,
+      status || 'draft'
+    ).run()
+    
+    return c.json({ success: true, id, message: '記事を保存しました' })
+  } catch (error) {
+    console.error('Blog API create error:', error)
+    return c.json({ error: '記事の保存に失敗しました' }, 500)
   }
 })
 
@@ -2285,6 +2334,174 @@ function createFallbackMeta(title: string, content: string): string {
   
   return '記事の詳細については本文をご覧ください。'
 }
+
+// AI記事生成API
+app.post('/admin/api/ai/generate-article', async (c) => {
+  try {
+    const { topic, articleType, articleLength, tone, additionalInstructions } = await c.req.json()
+    
+    if (!topic) {
+      return c.json({ error: 'テーマを入力してください' }, 400)
+    }
+    
+    if (!c.env.GEMINI_API_KEY) {
+      return c.json({ error: 'GEMINI_API_KEY が設定されていません' }, 500)
+    }
+    
+    // 文字数マッピング
+    const lengthMap: Record<string, string> = {
+      short: '1000〜1500文字',
+      medium: '2000〜2500文字',
+      long: '3000〜4000文字'
+    }
+    
+    // 記事タイプの説明
+    const typeDescriptions: Record<string, string> = {
+      'how-to': '使い方ガイド形式で、ステップバイステップで説明',
+      'tutorial': 'チュートリアル形式で、実践的な内容',
+      'case-study': '事例紹介形式で、具体的な活用例',
+      'news': 'ニュース解説形式で、最新情報と背景',
+      'opinion': 'コラム・意見形式で、個人的な見解',
+      'comparison': '比較記事形式で、複数の選択肢を比較'
+    }
+    
+    // トーンの説明
+    const toneDescriptions: Record<string, string> = {
+      friendly: '親しみやすく、読者に語りかけるような',
+      professional: 'プロフェッショナルで信頼性の高い',
+      casual: 'カジュアルで気軽に読める',
+      educational: '教育的で分かりやすい'
+    }
+    
+    const prompt = `以下の条件でブログ記事を生成してください。
+
+【テーマ】
+${topic}
+
+【記事タイプ】
+${typeDescriptions[articleType] || '使い方ガイド形式'}
+
+【文字数】
+${lengthMap[articleLength] || '2000〜2500文字'}
+
+【トーン】
+${toneDescriptions[tone] || '親しみやすく、読者に語りかけるような'}
+
+${additionalInstructions ? `【追加の指示】\n${additionalInstructions}\n` : ''}
+
+【出力形式】JSON のみ出力（マークダウンコードブロック不要）
+{
+  "title": "SEOに最適化された魅力的なタイトル(30〜40文字)",
+  "content": "本文(Markdown形式、見出し・リスト・強調を含む)",
+  "metaDescription": "メタディスクリプション(120文字以内)",
+  "categories": ["カテゴリ1", "カテゴリ2", "カテゴリ3"],
+  "tags": ["タグ1", "タグ2", "タグ3", "タグ4", "タグ5"]
+}
+
+【カテゴリ候補】
+- AI活用術
+- ChatGPT
+- AIツール
+- 業務効率化
+- 学習・教育
+- 開発・技術
+- AIニュース
+- 初心者ガイド
+- プロンプト
+
+【重要】
+- 内容は正確で実用的に
+- 初心者にも分かりやすく
+- 具体例を含める
+- SEOキーワードを自然に含める
+- 見出し(##)、リスト(-)、強調(**)を使用
+`
+
+    // Gemini API呼び出し
+    const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-pro']
+    
+    for (const model of models) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${c.env.GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 8000
+              }
+            })
+          }
+        )
+        
+        if (!response.ok) {
+          if (response.status === 429) {
+            console.log(`[AI Writer] ${model}: Rate limit, trying next model`)
+            await new Promise(r => setTimeout(r, 1000))
+            continue
+          }
+          continue
+        }
+        
+        const data = await response.json() as any
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
+        
+        // JSONを抽出してパース
+        const jsonMatch = text.match(/\{[\s\S]*\}/)
+        if (!jsonMatch) {
+          console.log(`[AI Writer] ${model}: JSON parse failed`)
+          continue
+        }
+        
+        const parsed = JSON.parse(jsonMatch[0])
+        
+        // Unsplash画像検索
+        const images: string[] = []
+        if (c.env.UNSPLASH_ACCESS_KEY) {
+          try {
+            const keyword = topic.split(/[\s、。]/)[0]
+            const unsplashResponse = await fetch(
+              `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keyword + ' technology AI')}&per_page=4&orientation=landscape`,
+              {
+                headers: { 'Authorization': `Client-ID ${c.env.UNSPLASH_ACCESS_KEY}` }
+              }
+            )
+            
+            if (unsplashResponse.ok) {
+              const unsplashData = await unsplashResponse.json() as any
+              images.push(...unsplashData.results.map((r: any) => r.urls.regular))
+            }
+          } catch (error) {
+            console.error('[AI Writer] Unsplash image fetch error:', error)
+          }
+        }
+        
+        console.log(`[AI Writer] Article generated successfully with ${model}`)
+        return c.json({
+          title: parsed.title || topic,
+          content: parsed.content || '',
+          metaDescription: parsed.metaDescription || '',
+          categories: parsed.categories || ['AI活用術'],
+          tags: parsed.tags || [],
+          images
+        })
+        
+      } catch (error: any) {
+        console.error(`[AI Writer] ${model} error:`, error.message || error)
+        continue
+      }
+    }
+    
+    return c.json({ error: 'AI記事生成に失敗しました。しばらく待ってから再試行してください。' }, 500)
+    
+  } catch (error) {
+    console.error('[AI Writer] Generate article error:', error)
+    return c.json({ error: 'エラーが発生しました' }, 500)
+  }
+})
 
 // ===== AI News API (Frontend) =====
 

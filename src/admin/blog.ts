@@ -357,6 +357,29 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
       document.addEventListener('DOMContentLoaded', function() {
         initImageUpload('blog-image-upload', 'image', '${escapeAttr(post?.image || '')}');
         initSEOFeatures('blog');
+        
+        // AI記事生成からのデータを受け取る
+        const aiData = sessionStorage.getItem('aiGeneratedArticle');
+        if (aiData) {
+          try {
+            const data = JSON.parse(aiData);
+            // フォームに反映
+            if (data.title) document.querySelector('input[name="title"]').value = data.title;
+            if (data.content) document.querySelector('textarea[name="content"]').value = data.content;
+            if (data.category) document.querySelector('select[name="category"]').value = data.category;
+            if (data.tags) document.querySelector('input[name="tags"]').value = data.tags;
+            if (data.meta_description) document.querySelector('textarea[name="meta_description"]').value = data.meta_description;
+            if (data.featured_image) {
+              document.getElementById('blog-image-upload-hidden').value = data.featured_image;
+              showPreview('blog-image-upload', data.featured_image);
+            }
+            // 使用済みなので削除
+            sessionStorage.removeItem('aiGeneratedArticle');
+            showToast('AI生成データを読み込みました');
+          } catch (e) {
+            console.error('AI data parse error:', e);
+          }
+        }
       });
       
       // デバウンス関数
