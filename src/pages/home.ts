@@ -142,11 +142,25 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
               container.innerHTML = news.map(item => \`
                 <a href="\${item.url}" target="_blank" rel="noopener" 
                    class="flex-none w-72 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border border-gray-100 overflow-hidden group">
-                  <div class="p-5">
-                    <div class="flex items-center gap-2 mb-3">
-                      <span class="px-2 py-1 bg-blue-100 text-blue-600 text-xs font-medium rounded-full">
-                        <i class="fas fa-robot mr-1"></i>AI
+                  <div class="relative h-36 overflow-hidden bg-gradient-to-br from-blue-100 to-purple-100">
+                    <img 
+                      src="\${item.image_url || ''}" 
+                      alt="\${escapeHtml(item.title)}"
+                      class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+                    />
+                    <div class="absolute inset-0 hidden items-center justify-center bg-gradient-to-br \${getCategoryGradient(item.category)}">
+                      <span class="text-4xl">\${getCategoryIcon(item.category)}</span>
+                    </div>
+                    <div class="absolute top-2 left-2 flex gap-1">
+                      <span class="px-2 py-1 bg-white/90 backdrop-blur-sm text-blue-600 text-xs font-medium rounded-full shadow-sm \${getCategoryBadgeColor(item.category)}">
+                        \${getCategoryLabel(item.category)}
                       </span>
+                      \${item.is_translated ? '<span class="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full shadow-sm">翻訳</span>' : ''}
+                    </div>
+                  </div>
+                  <div class="p-4">
+                    <div class="flex items-center gap-2 mb-2">
                       <span class="text-xs text-gray-400">\${formatNewsDate(item.published_at)}</span>
                     </div>
                     <h3 class="font-bold text-gray-800 text-sm line-clamp-2 group-hover:text-blue-600 transition mb-2">\${escapeHtml(item.title)}</h3>
@@ -185,6 +199,46 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+          }
+          
+          function getCategoryLabel(category) {
+            const labels = {
+              'official_announcement': '公式発表',
+              'tool_update': 'ツール更新',
+              'how_to': '使い方',
+              'other': 'その他'
+            };
+            return labels[category] || 'AI';
+          }
+          
+          function getCategoryIcon(category) {
+            const icons = {
+              'official_announcement': '📢',
+              'tool_update': '🔧',
+              'how_to': '📚',
+              'other': '📰'
+            };
+            return icons[category] || '📰';
+          }
+          
+          function getCategoryBadgeColor(category) {
+            const colors = {
+              'official_announcement': 'bg-blue-100 text-blue-700',
+              'tool_update': 'bg-green-100 text-green-700',
+              'how_to': 'bg-orange-100 text-orange-700',
+              'other': 'bg-gray-100 text-gray-700'
+            };
+            return colors[category] || 'bg-blue-100 text-blue-600';
+          }
+          
+          function getCategoryGradient(category) {
+            const gradients = {
+              'official_announcement': 'from-blue-500 to-purple-600',
+              'tool_update': 'from-green-500 to-emerald-600',
+              'how_to': 'from-orange-400 to-red-500',
+              'other': 'from-gray-400 to-gray-600'
+            };
+            return gradients[category] || 'from-blue-400 to-purple-500';
           }
         </script>
       </div>

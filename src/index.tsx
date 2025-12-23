@@ -44,6 +44,7 @@ type Bindings = {
   R2_BUCKET: R2Bucket
   RESEND_API_KEY?: string
   GEMINI_API_KEY?: string
+  UNSPLASH_ACCESS_KEY?: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -300,7 +301,8 @@ app.get('/api/ai-news', async (c) => {
   
   try {
     const news = await c.env.DB.prepare(`
-      SELECT id, title, url, summary, source, published_at, status, created_at
+      SELECT id, title, url, summary, source, published_at, status, created_at,
+             category, original_language, is_translated, image_url, image_source
       FROM ai_news 
       WHERE status = ?
       ORDER BY published_at DESC, created_at DESC
@@ -2377,7 +2379,11 @@ app.delete('/admin/api/ai-news/:id', async (c) => {
 app.post('/admin/api/ai-news/collect', async (c) => {
   try {
     console.log('[Manual] AIニュース収集開始')
-    const result = await collectAINews(c.env as any)
+    const result = await collectAINews({
+      DB: c.env.DB,
+      GEMINI_API_KEY: c.env.GEMINI_API_KEY || '',
+      UNSPLASH_ACCESS_KEY: c.env.UNSPLASH_ACCESS_KEY,
+    })
     console.log('[Manual] AIニュース収集完了:', result)
     return c.json(result)
   } catch (error) {

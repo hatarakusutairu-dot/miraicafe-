@@ -1,9 +1,10 @@
 /**
  * AI News Collector Service - Enhanced Filter Version
- * 厳格なフィルタリング + 日本語翻訳 + カテゴリ分類
+ * 厳格なフィルタリング + 日本語翻訳 + カテゴリ分類 + ハイブリッド画像取得
  */
 
 import { XMLParser } from 'fast-xml-parser';
+import { fetchNewsImage, type NewsCategory as ImageCategory } from '../utils/image-fetcher';
 
 // RSS フィード一覧（公式ブログ追加）
 const RSS_FEEDS = [
@@ -285,9 +286,9 @@ ${detectedLang === 'en' ? `
 }
 
 /**
- * メイン収集処理（厳格フィルタ版）
+ * メイン収集処理（厳格フィルタ版 + ハイブリッド画像取得）
  */
-export async function collectAINews(env: { DB: D1Database; GEMINI_API_KEY: string }) {
+export async function collectAINews(env: { DB: D1Database; GEMINI_API_KEY: string; UNSPLASH_ACCESS_KEY?: string }) {
   console.log('[Cron] AIニュース収集開始（厳格フィルタ版）');
   
   if (!env.GEMINI_API_KEY) {
@@ -348,14 +349,25 @@ export async function collectAINews(env: { DB: D1Database; GEMINI_API_KEY: strin
         const finalSummary = analysis.translatedSummary || analysis.summary;
         const isTranslated = analysis.translatedTitle ? 1 : 0;
 
+        // ハイブリッド画像取得 (OGP → Unsplash → Gradient)
+        console.log(`[Image] 画像取得開始: ${item.url.substring(0, 50)}...`);
+        const imageResult = await fetchNewsImage(
+          item.url,
+          finalTitle,
+          analysis.category as ImageCategory,
+          env.UNSPLASH_ACCESS_KEY
+        );
+        console.log(`[Image] 取得完了: ${imageResult.imageSource}`);
+
         // DB に保存
         try {
           await env.DB.prepare(`
             INSERT INTO ai_news (
               title, url, summary, source, published_at, status, 
-              ai_relevance_score, category, original_language, is_translated
+              ai_relevance_score, category, original_language, is_translated,
+              image_url, image_source
             )
-            VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)
           `).bind(
             finalTitle,
             item.url,
@@ -365,12 +377,14 @@ export async function collectAINews(env: { DB: D1Database; GEMINI_API_KEY: strin
             analysis.score,
             analysis.category,
             analysis.language,
-            isTranslated
+            isTranslated,
+            imageResult.imageUrl,
+            imageResult.imageSource
           ).run();
 
           totalSaved++;
           console.log(`[保存✅] ${finalTitle.substring(0, 40)}...`);
-          console.log(`  カテゴリ: ${analysis.category} | スコア: ${analysis.score} | 言語: ${analysis.language}${isTranslated ? ' (翻訳済)' : ''}`);
+          console.log(`  カテゴリ: ${analysis.category} | スコア: ${analysis.score} | 言語: ${analysis.language}${isTranslated ? ' (翻訳済)' : ''} | 画像: ${imageResult.imageSource}`);
         } catch (dbError: any) {
           if (dbError.message?.includes('UNIQUE')) {
             totalDuplicate++;
@@ -403,7 +417,7 @@ export async function collectAINews(env: { DB: D1Database; GEMINI_API_KEY: strin
  * Cloudflare Cron Trigger ハンドラ
  */
 export default {
-  async scheduled(event: ScheduledEvent, env: { DB: D1Database; GEMINI_API_KEY: string }, ctx: ExecutionContext) {
+  async scheduled(event: ScheduledEvent, env: { DB: D1Database; GEMINI_API_KEY: string; UNSPLASH_ACCESS_KEY?: string }, ctx: ExecutionContext) {
     ctx.waitUntil(collectAINews(env));
   },
 };

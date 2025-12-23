@@ -20,6 +20,8 @@ export interface AINews {
   category: NewsCategory | null
   original_language: string | null
   is_translated: number | null
+  image_url: string | null
+  image_source: 'ogp' | 'unsplash' | 'gradient' | null
   created_at: string
   updated_at: string | null
 }
@@ -227,11 +229,27 @@ export const renderAINewsList = (news: AINews[], counts: { all: number; pending:
         container.innerHTML = filtered.map(item => \`
           <div class="p-4 hover:bg-gray-50 transition" id="news-\${item.id}">
             <div class="flex flex-col md:flex-row md:items-start gap-4">
+              <!-- サムネイル画像 -->
+              <div class="flex-shrink-0 w-full md:w-32 h-24 rounded-lg overflow-hidden bg-gray-100">
+                \${item.image_url ? \`
+                  <img 
+                    src="\${item.image_url}" 
+                    alt="\${escapeHtml(item.title)}"
+                    class="w-full h-full object-cover"
+                    onerror="this.parentElement.innerHTML='<div class=\\'w-full h-full flex items-center justify-center text-gray-400\\'><i class=\\'fas fa-image text-2xl\\'></i></div>'"
+                  />
+                \` : \`
+                  <div class="w-full h-full flex items-center justify-center text-gray-400">
+                    <i class="fas fa-image text-2xl"></i>
+                  </div>
+                \`}
+              </div>
               <div class="flex-1">
                 <div class="flex flex-wrap items-center gap-2 mb-2">
                   \${getStatusBadge(item.status)}
                   \${getCategoryBadge(item.category)}
                   \${item.is_translated ? '<span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium"><i class="fas fa-globe mr-1"></i>翻訳済</span>' : ''}
+                  \${getImageSourceBadge(item.image_source)}
                   <span class="text-xs text-gray-500">
                     <i class="fas fa-chart-line mr-1"></i>関連度: \${item.ai_relevance_score ? Math.round(item.ai_relevance_score * 100) : 50}%
                   </span>
@@ -288,6 +306,16 @@ export const renderAINewsList = (news: AINews[], counts: { all: number; pending:
           other: '<span class="px-2 py-0.5 bg-gray-400 text-white rounded text-xs font-medium">その他</span>'
         };
         return badges[category] || '';
+      }
+
+      // 画像ソースバッジ
+      function getImageSourceBadge(imageSource) {
+        const badges = {
+          ogp: '<span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium"><i class="fas fa-share-alt mr-1"></i>OGP</span>',
+          unsplash: '<span class="px-2 py-0.5 bg-teal-100 text-teal-700 rounded-full text-xs font-medium"><i class="fas fa-camera mr-1"></i>Unsplash</span>',
+          gradient: '<span class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-medium"><i class="fas fa-palette mr-1"></i>グラデーション</span>'
+        };
+        return badges[imageSource] || '';
       }
 
       // 日付フォーマット
