@@ -19,6 +19,7 @@ import { renderReviewsList } from './admin/reviews'
 import { renderContactsList, renderContactDetail } from './admin/contacts'
 import { renderSEODashboard, renderSEOEditForm } from './admin/seo'
 import { renderBookingsList, renderBookingDetail, type Booking } from './admin/bookings'
+import { renderAINewsList, type AINews } from './admin/ai-news'
 
 // Services
 import { 
@@ -32,6 +33,7 @@ import {
   getDefaultSEOData,
   type PageContent 
 } from './services/seo'
+import { collectAINews } from './services/ai-news-collector'
 
 // Data
 import { courses, blogPosts, schedules, portfolios } from './data'
@@ -1238,6 +1240,33 @@ app.post('/admin/reviews/:id/delete', async (c) => {
   return c.redirect('/admin/reviews')
 })
 
+// ===== AIニュース管理 =====
+app.get('/admin/ai-news', async (c) => {
+  try {
+    // AIニュース一覧を取得
+    const newsResult = await c.env.DB.prepare(`
+      SELECT * FROM ai_news ORDER BY created_at DESC LIMIT 100
+    `).all()
+    const news = newsResult.results as AINews[]
+
+    // ステータス別カウント
+    const allCount = news.length
+    const pendingCount = news.filter(n => n.status === 'pending').length
+    const approvedCount = news.filter(n => n.status === 'approved').length
+    const rejectedCount = news.filter(n => n.status === 'rejected').length
+
+    return c.html(renderAINewsList(news, {
+      all: allCount,
+      pending: pendingCount,
+      approved: approvedCount,
+      rejected: rejectedCount
+    }))
+  } catch (error) {
+    console.error('AI News list error:', error)
+    return c.html(renderAINewsList([], { all: 0, pending: 0, approved: 0, rejected: 0 }))
+  }
+})
+
 // ===== 予約管理 =====
 app.get('/admin/bookings', async (c) => {
   const tab = c.req.query('tab') || 'all'
@@ -2234,5 +2263,127 @@ function createFallbackMeta(title: string, content: string): string {
   
   return '記事の詳細については本文をご覧ください。'
 }
+
+// ===== AI News API (Frontend) =====
+
+// 承認済みAIニュース取得（フロントエンド用）
+app.get('/api/ai-news', async (c) => {
+  const limit = parseInt(c.req.query('limit') || '10')
+  const status = c.req.query('status') || 'approved'
+  
+  try {
+    const result = await c.env.DB.prepare(`
+      SELECT id, title, url, summary, source, published_at, ai_relevance_score
+      FROM ai_news
+      WHERE status = ?
+      ORDER BY published_at DESC
+      LIMIT ?
+    `).bind(status, limit).all()
+    
+    return c.json(result.results || [])
+  } catch (error) {
+    console.error('AI News API error:', error)
+    return c.json([])
+  }
+})
+
+// ===== Admin AI News API =====
+
+// AIニュース一覧（管理画面用）
+app.get('/admin/api/ai-news', async (c) => {
+  const status = c.req.query('status')
+  
+  try {
+    let query = 'SELECT * FROM ai_news'
+    const params: any[] = []
+    
+    if (status && status !== 'all') {
+      query += ' WHERE status = ?'
+      params.push(status)
+    }
+    
+    query += ' ORDER BY created_at DESC LIMIT 100'
+    
+    const stmt = params.length > 0 
+      ? c.env.DB.prepare(query).bind(...params)
+      : c.env.DB.prepare(query)
+    
+    const result = await stmt.all()
+    return c.json(result.results || [])
+  } catch (error) {
+    console.error('Admin AI News list error:', error)
+    return c.json([])
+  }
+})
+
+// AIニュース詳細
+app.get('/admin/api/ai-news/:id', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    const news = await c.env.DB.prepare(
+      'SELECT * FROM ai_news WHERE id = ?'
+    ).bind(id).first()
+    
+    if (!news) {
+      return c.json({ error: 'Not found' }, 404)
+    }
+    return c.json(news)
+  } catch (error) {
+    console.error('Admin AI News detail error:', error)
+    return c.json({ error: 'Server error' }, 500)
+  }
+})
+
+// AIニュースステータス更新
+app.patch('/admin/api/ai-news/:id', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    const { status } = await c.req.json()
+    
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return c.json({ error: 'Invalid status' }, 400)
+    }
+    
+    await c.env.DB.prepare(
+      'UPDATE ai_news SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind(status, id).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Admin AI News update error:', error)
+    return c.json({ error: 'Server error' }, 500)
+  }
+})
+
+// AIニュース削除
+app.delete('/admin/api/ai-news/:id', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    await c.env.DB.prepare(
+      'DELETE FROM ai_news WHERE id = ?'
+    ).bind(id).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Admin AI News delete error:', error)
+    return c.json({ error: 'Server error' }, 500)
+  }
+})
+
+// AIニュース手動収集トリガー
+app.post('/admin/api/ai-news/collect', async (c) => {
+  try {
+    console.log('[Manual] AIニュース収集開始')
+    const result = await collectAINews(c.env as any)
+    console.log('[Manual] AIニュース収集完了:', result)
+    return c.json(result)
+  } catch (error) {
+    console.error('AI News collection error:', error)
+    return c.json({ error: 'Collection failed', message: String(error) }, 500)
+  }
+})
 
 export default app

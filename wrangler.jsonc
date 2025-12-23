@@ -17,4 +17,14 @@
       "bucket_name": "miraicafe-images"
     }
   ]
+  // NOTE: Cron Triggers for AI News collection
+  // Cloudflare Pages doesn't support cron triggers directly.
+  // For production, use one of these options:
+  // 1. Create a separate Worker with cron trigger
+  // 2. Use Cloudflare Queues with scheduled jobs
+  // 3. Use external cron service (e.g., cron-job.org) to call /admin/api/ai-news/collect
+  // 
+  // If using separate Worker, add this to worker's wrangler.toml:
+  // [triggers]
+  // crons = ["0 9 * * *"]  // Daily at 9:00 JST (0:00 UTC)
 }

@@ -112,7 +112,11 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         </div>
         
         <div class="news-scroll-container flex gap-5 overflow-x-auto pb-4 scroll-smooth" id="newsContainer" style="scrollbar-width: thin;">
-          <p class="text-center text-cafe-textLight w-full py-8">準備中です。近日公開予定!</p>
+          <!-- ニュースはJavaScriptで動的に読み込み -->
+          <div class="w-full py-8 text-center text-cafe-textLight">
+            <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+            <p>読み込み中...</p>
+          </div>
         </div>
         
         <div class="text-center mt-6">
@@ -120,6 +124,69 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
             もっと見る <i class="fas fa-arrow-right ml-2"></i>
           </a>
         </div>
+        
+        <script>
+          // AIニュースを動的に読み込み
+          (async function loadAINews() {
+            const container = document.getElementById('newsContainer');
+            
+            try {
+              const response = await fetch('/api/ai-news?limit=10&status=approved');
+              const news = await response.json();
+              
+              if (news.length === 0) {
+                container.innerHTML = '<p class="text-center text-cafe-textLight w-full py-8">準備中です。近日公開予定!</p>';
+                return;
+              }
+              
+              container.innerHTML = news.map(item => \`
+                <a href="\${item.url}" target="_blank" rel="noopener" 
+                   class="flex-none w-72 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border border-gray-100 overflow-hidden group">
+                  <div class="p-5">
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="px-2 py-1 bg-blue-100 text-blue-600 text-xs font-medium rounded-full">
+                        <i class="fas fa-robot mr-1"></i>AI
+                      </span>
+                      <span class="text-xs text-gray-400">\${formatNewsDate(item.published_at)}</span>
+                    </div>
+                    <h3 class="font-bold text-gray-800 text-sm line-clamp-2 group-hover:text-blue-600 transition mb-2">\${escapeHtml(item.title)}</h3>
+                    <p class="text-xs text-gray-600 line-clamp-2 mb-3">\${escapeHtml(item.summary || '')}</p>
+                    <div class="flex items-center justify-between text-xs text-gray-400">
+                      <span><i class="fas fa-newspaper mr-1"></i>\${escapeHtml(item.source || '不明')}</span>
+                      <span class="group-hover:text-blue-500 transition">詳細 <i class="fas fa-arrow-right ml-1"></i></span>
+                    </div>
+                  </div>
+                </a>
+              \`).join('');
+              
+            } catch (error) {
+              console.error('AI News load error:', error);
+              container.innerHTML = '<p class="text-center text-cafe-textLight w-full py-8">ニュースの読み込みに失敗しました</p>';
+            }
+          })();
+          
+          function formatNewsDate(dateStr) {
+            if (!dateStr) return '';
+            try {
+              const date = new Date(dateStr);
+              const now = new Date();
+              const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+              if (diffDays === 0) return '今日';
+              if (diffDays === 1) return '昨日';
+              if (diffDays < 7) return diffDays + '日前';
+              return date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+            } catch {
+              return '';
+            }
+          }
+          
+          function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+          }
+        </script>
       </div>
     </section>
 
