@@ -1,5 +1,5 @@
 /**
- * AIニュース管理画面（カテゴリフィルタ対応版）
+ * AIニュース管理画面（一括操作対応版）
  */
 
 import { renderAdminLayout } from './layout'
@@ -141,6 +141,32 @@ export const renderAINewsList = (news: AINews[], counts: { all: number; pending:
           </button>
         </div>
 
+        <!-- 一括操作バー -->
+        <div id="bulkActionBar" class="p-3 bg-blue-50 border-b hidden">
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-2">
+              <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+              <label for="selectAll" class="text-sm font-medium text-gray-700">全選択</label>
+              <span id="selectedCount" class="text-sm text-blue-600 font-bold">(0件選択中)</span>
+            </div>
+            <div class="flex-1"></div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="bulkAction('approved')" class="px-3 py-1.5 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition disabled:opacity-50 disabled:cursor-not-allowed" id="bulkApproveBtn" disabled>
+                <i class="fas fa-check mr-1"></i>一括承認
+              </button>
+              <button onclick="bulkAction('rejected')" class="px-3 py-1.5 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed" id="bulkRejectBtn" disabled>
+                <i class="fas fa-times mr-1"></i>一括却下
+              </button>
+              <button onclick="bulkAction('pending')" class="px-3 py-1.5 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600 transition disabled:opacity-50 disabled:cursor-not-allowed" id="bulkPendingBtn" disabled>
+                <i class="fas fa-undo mr-1"></i>一括保留
+              </button>
+              <button onclick="bulkDelete()" class="px-3 py-1.5 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed" id="bulkDeleteBtn" disabled>
+                <i class="fas fa-trash mr-1"></i>一括削除
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- ニュース一覧 -->
         <div id="newsList" class="divide-y">
           ${news.length === 0 ? `
@@ -170,10 +196,12 @@ export const renderAINewsList = (news: AINews[], counts: { all: number; pending:
       let currentFilter = 'all';
       let currentCategory = 'all';
       let allNews = ${JSON.stringify(news)};
+      let selectedIds = new Set();
 
       // 初期表示
       renderNewsList();
       document.querySelector('.cat-filter[data-category="all"]').classList.add('active');
+      showBulkActionBar();
 
       // ステータスフィルター切り替え
       function filterNews(status) {
@@ -227,8 +255,12 @@ export const renderAINewsList = (news: AINews[], counts: { all: number; pending:
         }
 
         container.innerHTML = filtered.map(item => \`
-          <div class="p-4 hover:bg-gray-50 transition" id="news-\${item.id}">
+          <div class="p-4 hover:bg-gray-50 transition news-item" id="news-\${item.id}" data-id="\${item.id}">
             <div class="flex flex-col md:flex-row md:items-start gap-4">
+              <!-- チェックボックス -->
+              <div class="flex-shrink-0 flex items-center">
+                <input type="checkbox" class="news-checkbox w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer" data-id="\${item.id}" onchange="updateSelection()">
+              </div>
               <!-- サムネイル画像 -->
               <div class="flex-shrink-0 w-full md:w-32 h-24 rounded-lg overflow-hidden bg-gray-100">
                 \${item.image_url ? \`
@@ -433,6 +465,122 @@ export const renderAINewsList = (news: AINews[], counts: { all: number; pending:
           toast.style.opacity = '0';
           setTimeout(() => toast.remove(), 300);
         }, 4000);
+      }
+
+      // 一括操作バー表示
+      function showBulkActionBar() {
+        document.getElementById('bulkActionBar').classList.remove('hidden');
+      }
+
+      // 選択状態更新
+      function updateSelection() {
+        selectedIds = new Set();
+        document.querySelectorAll('.news-checkbox:checked').forEach(cb => {
+          selectedIds.add(parseInt(cb.dataset.id));
+        });
+        
+        const count = selectedIds.size;
+        document.getElementById('selectedCount').textContent = \`(\${count}件選択中)\`;
+        
+        // ボタンの有効/無効
+        const hasSelection = count > 0;
+        document.getElementById('bulkApproveBtn').disabled = !hasSelection;
+        document.getElementById('bulkRejectBtn').disabled = !hasSelection;
+        document.getElementById('bulkPendingBtn').disabled = !hasSelection;
+        document.getElementById('bulkDeleteBtn').disabled = !hasSelection;
+        
+        // 全選択チェックボックスの状態
+        const allCheckboxes = document.querySelectorAll('.news-checkbox');
+        const allChecked = allCheckboxes.length > 0 && count === allCheckboxes.length;
+        document.getElementById('selectAll').checked = allChecked;
+        document.getElementById('selectAll').indeterminate = count > 0 && !allChecked;
+      }
+
+      // 全選択/解除
+      function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAll').checked;
+        document.querySelectorAll('.news-checkbox').forEach(cb => {
+          cb.checked = selectAll;
+        });
+        updateSelection();
+      }
+
+      // 一括ステータス変更
+      async function bulkAction(status) {
+        const count = selectedIds.size;
+        const statusLabel = status === 'approved' ? '承認' : status === 'rejected' ? '却下' : '保留';
+        
+        if (!confirm(\`選択した\${count}件のニュースを「\${statusLabel}」に変更しますか？\`)) return;
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const id of selectedIds) {
+          try {
+            const response = await fetch(\`/admin/api/ai-news/\${id}\`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status })
+            });
+
+            if (response.ok) {
+              const newsItem = allNews.find(n => n.id === id);
+              if (newsItem) newsItem.status = status;
+              successCount++;
+            } else {
+              errorCount++;
+            }
+          } catch (error) {
+            errorCount++;
+          }
+        }
+
+        selectedIds.clear();
+        renderNewsList();
+        updateSelection();
+
+        if (errorCount === 0) {
+          showToast(\`\${successCount}件を「\${statusLabel}」に変更しました\`, 'success');
+        } else {
+          showToast(\`\${successCount}件成功、\${errorCount}件失敗\`, errorCount > 0 ? 'error' : 'success');
+        }
+      }
+
+      // 一括削除
+      async function bulkDelete() {
+        const count = selectedIds.size;
+        
+        if (!confirm(\`選択した\${count}件のニュースを削除しますか？\\nこの操作は元に戻せません。\`)) return;
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const id of selectedIds) {
+          try {
+            const response = await fetch(\`/admin/api/ai-news/\${id}\`, {
+              method: 'DELETE'
+            });
+
+            if (response.ok) {
+              allNews = allNews.filter(n => n.id !== id);
+              successCount++;
+            } else {
+              errorCount++;
+            }
+          } catch (error) {
+            errorCount++;
+          }
+        }
+
+        selectedIds.clear();
+        renderNewsList();
+        updateSelection();
+
+        if (errorCount === 0) {
+          showToast(\`\${successCount}件を削除しました\`, 'success');
+        } else {
+          showToast(\`\${successCount}件削除成功、\${errorCount}件失敗\`, errorCount > 0 ? 'error' : 'success');
+        }
       }
     </script>
   `;
