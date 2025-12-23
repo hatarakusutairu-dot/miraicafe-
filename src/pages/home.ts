@@ -87,6 +87,91 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       </div>
     </section>
 
+    <!-- Features Section (WHY mirAIcafe?) -->
+    <section class="py-24 relative overflow-hidden bg-cafe-cream/70">
+      <!-- Wood Wave Top -->
+      <div class="absolute top-0 left-0 right-0 h-16 overflow-hidden transform rotate-180">
+        <svg viewBox="0 0 1440 60" class="w-full h-full" preserveAspectRatio="none">
+          <path fill="#FAF8F3" d="M0,30L80,35C160,40,320,50,480,50C640,50,800,40,960,35C1120,30,1280,30,1360,30L1440,30L1440,60L0,60Z"></path>
+        </svg>
+      </div>
+      
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        <div class="text-center mb-16">
+          <span class="inline-flex items-center bg-nature-mint text-nature-forest font-medium px-4 py-2 rounded-full text-sm mb-4">
+            <i class="fas fa-leaf mr-2"></i>WHY mirAIcafe?
+          </span>
+          <h2 class="text-4xl md:text-5xl font-bold text-cafe-text mb-4">
+            学びを、もっと<span class="text-wood-gradient">心地よく</span>
+          </h2>
+          <p class="text-cafe-textLight max-w-2xl mx-auto text-lg">
+            温かみのある空間で、あなたのペースでAIスキルを習得しましょう
+          </p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
+            <div class="w-20 h-20 bg-nature-mint rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md">
+              <i class="fas fa-users text-nature-forest text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-cafe-text mb-3">少人数制</h3>
+            <p class="text-cafe-textLight">
+              最大10名の少人数制で、一人ひとりに合わせた丁寧な指導を実現
+            </p>
+          </div>
+          
+          <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
+            <div class="w-20 h-20 bg-nature-sky rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md">
+              <i class="fas fa-globe text-nature-blue text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-cafe-text mb-3">完全オンライン</h3>
+            <p class="text-cafe-textLight">
+              どこからでも参加可能。自宅やカフェから快適に学習できます
+            </p>
+          </div>
+          
+          <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
+            <div class="w-20 h-20 bg-cafe-latte rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md">
+              <i class="fas fa-headset text-cafe-brown text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-cafe-text mb-3">個別サポート</h3>
+            <p class="text-cafe-textLight">
+              質問・相談いつでもOK。あなたの学習を全力でサポートします
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Characters Section (AI COMPANIONS) -->
+    <section class="py-20 bg-cafe-ivory">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div>
+            <span class="inline-flex items-center bg-cafe-latte/50 text-cafe-brown font-medium px-4 py-2 rounded-full text-sm mb-4">
+              <i class="fas fa-heart mr-2"></i>AI COMPANIONS
+            </span>
+            <h2 class="text-4xl font-bold text-cafe-text mb-6">
+              あなたの学習を<br><span class="text-wood-gradient">サポートする仲間たち</span>
+            </h2>
+            <p class="text-cafe-textLight text-lg mb-8 leading-relaxed">
+              mirAIcafeのかわいいキャラクターたちが、あなたの学習をサポート。
+              楽しみながら、着実にスキルアップできる環境を提供します。
+            </p>
+            <a href="/courses" class="btn-warm inline-flex items-center px-6 py-3 font-bold">
+              <i class="fas fa-arrow-right mr-2"></i>講座を見る
+            </a>
+          </div>
+          <div class="relative flex justify-center items-end gap-4">
+            <div class="absolute inset-0 bg-nature-mint rounded-3xl opacity-30 blur-2xl"></div>
+            <img src="/static/companion-green.png" alt="リーフ" class="relative w-28 md:w-36 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char1 6s ease-in-out infinite;">
+            <img src="/static/companion-rabbit.png" alt="ロボうさぎ" class="relative w-32 md:w-40 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char2 7s ease-in-out infinite;">
+            <img src="/static/companion-pink.png" alt="ピンク" class="relative w-24 md:w-32 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char3 5s ease-in-out infinite;">
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- AI News Section -->
     <section id="ai-news" class="py-16 bg-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -110,7 +195,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       </div>
     </section>
 
-    <!-- Blog Section (大きめ、5件表示) -->
+    <!-- Blog Section (3件表示) -->
     <section id="blog" class="py-20 bg-gradient-to-b from-gray-50 to-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col md:flex-row justify-between items-center mb-12">
@@ -126,7 +211,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="blogGrid">
-          ${recentPosts.slice(0, 5).map(post => `
+          ${recentPosts.slice(0, 3).map(post => `
             <a href="/blog/${post.id}" class="group bg-white rounded-xl overflow-hidden shadow-lg border border-gray-100 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
               <div class="aspect-video overflow-hidden">
                 <img src="${post.image}" alt="${post.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
@@ -146,21 +231,32 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
             </a>
           `).join('')}
         </div>
+        
+        <div class="text-center mt-10">
+          <a href="/blog" class="inline-flex items-center px-8 py-4 bg-cafe-wood text-white rounded-full font-bold hover:bg-cafe-brown hover:-translate-y-1 transition-all shadow-lg">
+            <i class="fas fa-newspaper mr-2"></i>ブログをもっと見る <i class="fas fa-arrow-right ml-2"></i>
+          </a>
+        </div>
       </div>
     </section>
 
-    <!-- Portfolio Section -->
+    <!-- Portfolio Section (3件表示) -->
     <section id="portfolio" class="py-20 bg-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-12">
-          <span class="inline-flex items-center bg-amber-100 text-amber-600 font-medium px-4 py-2 rounded-full text-sm mb-4">
-            <i class="fas fa-briefcase mr-2"></i>PORTFOLIO
-          </span>
-          <h2 class="text-4xl font-bold text-cafe-text">実績・ポートフォリオ</h2>
+        <div class="flex flex-col md:flex-row justify-between items-center mb-12">
+          <div class="text-center md:text-left mb-6 md:mb-0">
+            <span class="inline-flex items-center bg-amber-100 text-amber-600 font-medium px-4 py-2 rounded-full text-sm mb-4">
+              <i class="fas fa-briefcase mr-2"></i>PORTFOLIO
+            </span>
+            <h2 class="text-4xl font-bold text-cafe-text">実績・ポートフォリオ</h2>
+          </div>
+          <a href="/contact" class="btn-outline inline-flex items-center px-6 py-3 font-medium">
+            お問い合わせ <i class="fas fa-arrow-right ml-2"></i>
+          </a>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="portfolioGrid">
-          ${(portfolios || []).map(item => `
+          ${(portfolios || []).slice(0, 3).map(item => `
             <div class="bg-gray-50 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
               <div class="aspect-video overflow-hidden">
                 <img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500">
@@ -185,10 +281,16 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
             </div>
           `).join('')}
         </div>
+        
+        <div class="text-center mt-10">
+          <a href="/contact" class="inline-flex items-center px-8 py-4 bg-amber-500 text-white rounded-full font-bold hover:bg-amber-600 hover:-translate-y-1 transition-all shadow-lg">
+            <i class="fas fa-envelope mr-2"></i>制作のご相談はこちら <i class="fas fa-arrow-right ml-2"></i>
+          </a>
+        </div>
       </div>
     </section>
 
-    <!-- Profile Section -->
+    <!-- Profile Section (短縮版) -->
     <section id="profile" class="py-20 bg-gradient-to-br from-gray-50 to-gray-100">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-12">
@@ -198,14 +300,14 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           <h2 class="text-4xl font-bold text-cafe-text">講師紹介</h2>
         </div>
         
-        <div class="flex flex-col lg:flex-row gap-10 items-start">
+        <div class="flex flex-col lg:flex-row gap-10 items-center">
           <!-- 左側: プロフィール画像 -->
-          <div class="lg:w-80 flex-shrink-0 mx-auto lg:mx-0">
+          <div class="lg:w-72 flex-shrink-0 mx-auto lg:mx-0">
             <img src="/static/mion-profile.png" alt="mion(ミオン)" class="w-full max-w-xs mx-auto rounded-2xl shadow-xl">
           </div>
           
-          <!-- 右側: プロフィール本文 -->
-          <div class="flex-1">
+          <!-- 右側: プロフィール本文（短縮版） -->
+          <div class="flex-1 text-center lg:text-left">
             <h3 class="text-3xl font-bold text-cafe-text mb-2">mion(ミオン)</h3>
             <p class="text-lg text-cafe-textLight mb-6">現役AI講師 / AIキャリア教育コンサルタント</p>
             
@@ -214,89 +316,68 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
               そんな想いで、mirAIcafeを運営しています。</p>
             </div>
             
-            <h4 class="text-xl font-bold text-cafe-text mb-4 pb-2 border-b-2 border-blue-500">毎日、AIと共に働いています。</h4>
-            <ul class="space-y-3 mb-8">
-              <li class="flex items-start">
-                <span class="text-blue-500 font-bold mr-3">✓</span>
-                <span><strong>企業研修の資料作成</strong> → ChatGPT・Geminiで下書き、Geminiで仕上げ、リサーチにはGensparkを活用</span>
-              </li>
-              <li class="flex items-start">
-                <span class="text-blue-500 font-bold mr-3">✓</span>
-                <span><strong>高校での授業準備</strong> → AIで教材アイデア出し、Gemini・Kahoot・Canvaで授業構成、AIをキャリア教育に統合</span>
-              </li>
-              <li class="flex items-start">
-                <span class="text-blue-500 font-bold mr-3">✓</span>
-                <span><strong>Webアプリ開発</strong> → 要件定義からAIと相談、コーディング支援、デバッグまでAIと二人三脚</span>
-              </li>
-            </ul>
+            <h4 class="text-xl font-bold text-cafe-text mb-4 pb-2 border-b-2 border-blue-500 inline-block">毎日、AIと共に働いています。</h4>
             
-            <div class="bg-yellow-50 p-6 rounded-xl border-l-4 border-yellow-400 mb-8">
+            <div class="bg-yellow-50 p-6 rounded-xl border-l-4 border-yellow-400 mb-8 mt-4">
               <p class="text-lg leading-relaxed">
                 AIは「難しい技術」ではなく、<strong>「使い方次第で人生を豊かにする相棒」</strong>です。<br>
                 私自身、<strong>AIは人の生き方を広げる相棒</strong>だと信じています。
               </p>
             </div>
             
-            <h4 class="text-xl font-bold text-cafe-text mb-4 pb-2 border-b-2 border-blue-500">私の経歴</h4>
-            <ul class="space-y-3 mb-8">
-              <li class="flex items-start">
-                <span class="text-blue-500 font-bold mr-3">✓</span>
-                <span><strong>現役通信制高校講師(5年)</strong> メンタルヘルス・キャリア教育担当</span>
-              </li>
-              <li class="flex items-start">
-                <span class="text-blue-500 font-bold mr-3">✓</span>
-                <span><strong>キャリアコンサルタント資格保持</strong>（企業内キャリア支援部署立ち上げ経験）</span>
-              </li>
-              <li class="flex items-start">
-                <span class="text-blue-500 font-bold mr-3">✓</span>
-                <span><strong>ジム運営・エリアマネージャー</strong>（人材育成・店舗運営）</span>
-              </li>
-              <li class="flex items-start">
-                <span class="text-blue-500 font-bold mr-3">✓</span>
-                <span><strong>現在</strong>: 企業向けAI研修講師、AIアプリ開発</span>
-              </li>
-            </ul>
-            
-            <h4 class="text-xl font-bold text-cafe-text mb-4 pb-2 border-b-2 border-blue-500">こんな方におすすめ</h4>
-            <div class="space-y-4 mb-8">
-              <div class="border-b border-gray-200 pb-4">
-                <p class="flex items-start">
-                  <span class="text-blue-500 font-bold mr-3">✓</span>
-                  <span><strong>「AIってそもそも何だろう?」</strong><br>
-                  私もそこからスタートしました。安心してお越しください。</span>
-                </p>
-              </div>
-              <div class="border-b border-gray-200 pb-4">
-                <p class="flex items-start">
-                  <span class="text-blue-500 font-bold mr-3">✓</span>
-                  <span><strong>「受験勉強・資格勉強を効率化したい」</strong><br>
-                  AIがあれば、必要な情報を瞬時に検索し、学習進捗を整理できます。NotebookLM、音声認識、YouTube要約など、勉強が加速するツールをご紹介します。</span>
-                </p>
-              </div>
-              <div class="border-b border-gray-200 pb-4">
-                <p class="flex items-start">
-                  <span class="text-blue-500 font-bold mr-3">✓</span>
-                  <span><strong>「業務効率化で時間を削減したい」</strong><br>
-                  メール送信、報告書作成、データ分析が劇的に楽になります。スプレッドシート1枚から資料を自動生成したり、Excelデータから瞬時にグラフや分析レポートを作成することも可能です。</span>
-                </p>
-              </div>
-              <div class="pb-4">
-                <p class="flex items-start">
-                  <span class="text-blue-500 font-bold mr-3">✓</span>
-                  <span><strong>「教育現場でAIをどう活かせばいいか知りたい（先生向け）」</strong><br>
-                  先生自身の活用法、生徒への教え方、著作権・個人情報・教科書問題など、安全な使い方を丁寧にサポートします。</span>
-                </p>
-              </div>
-            </div>
-            
-            <h4 class="text-xl font-bold text-cafe-text mb-4 pb-2 border-b-2 border-blue-500">サービス内容</h4>
-            <p class="mb-6">少人数制のオンライン研修、個別相談、キャリア×AI支援など、柔軟に対応します。<br>
-            まずは無料相談から、お気軽にどうぞ!</p>
-            
             <a href="https://hatarakustyle.jp/" target="_blank" class="inline-flex items-center px-6 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition">
               <i class="fas fa-external-link-alt mr-2"></i>メンタルヘルス・キャリアコンサルタントとしての活動はこちら
             </a>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works Section (3ステップで始める) -->
+    <section class="py-24 bg-cafe-ivory relative overflow-hidden">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+          <span class="inline-flex items-center bg-nature-sage/50 text-nature-forest font-medium px-4 py-2 rounded-full text-sm mb-4">
+            <i class="fas fa-route mr-2"></i>HOW IT WORKS
+          </span>
+          <h2 class="text-4xl font-bold text-cafe-text mb-4">
+            <span class="text-wood-gradient">3ステップ</span>で始める
+          </h2>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+          <!-- Connecting line -->
+          <div class="hidden md:block absolute top-16 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-cafe-wood via-cafe-caramel to-cafe-wood"></div>
+          
+          <div class="relative">
+            <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
+              <div class="w-16 h-16 bg-cafe-wood rounded-full flex items-center justify-center mx-auto mb-6 text-white font-bold text-2xl shadow-lg relative z-10">1</div>
+              <h3 class="text-xl font-bold text-cafe-text mb-3">講座を選ぶ</h3>
+              <p class="text-cafe-textLight">目的やレベルに合わせて最適な講座を選択</p>
+            </div>
+          </div>
+          
+          <div class="relative">
+            <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
+              <div class="w-16 h-16 bg-cafe-wood rounded-full flex items-center justify-center mx-auto mb-6 text-white font-bold text-2xl shadow-lg relative z-10">2</div>
+              <h3 class="text-xl font-bold text-cafe-text mb-3">日程を予約</h3>
+              <p class="text-cafe-textLight">カレンダーから都合の良い日程を選択</p>
+            </div>
+          </div>
+          
+          <div class="relative">
+            <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
+              <div class="w-16 h-16 bg-cafe-wood rounded-full flex items-center justify-center mx-auto mb-6 text-white font-bold text-2xl shadow-lg relative z-10">3</div>
+              <h3 class="text-xl font-bold text-cafe-text mb-3">決済して参加</h3>
+              <p class="text-cafe-textLight">安全なStripe決済でオンライン受講</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="text-center mt-12">
+          <a href="/reservation" class="btn-warm inline-flex items-center px-8 py-4 font-bold shadow-lg">
+            <i class="fas fa-calendar-check mr-2"></i>今すぐ予約する
+          </a>
         </div>
       </div>
     </section>
@@ -309,9 +390,9 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         <div class="flex flex-col md:flex-row justify-between items-center mb-12">
           <div class="text-center md:text-left mb-6 md:mb-0">
             <span class="inline-flex items-center bg-cafe-wood/20 text-cafe-wood font-medium px-4 py-2 rounded-full text-sm mb-4">
-              <i class="fas fa-graduation-cap mr-2"></i>COURSES
+              <i class="fas fa-star mr-2"></i>POPULAR COURSES
             </span>
-            <h2 class="text-4xl font-bold text-cafe-text">講座紹介</h2>
+            <h2 class="text-4xl font-bold text-cafe-text">人気の講座</h2>
           </div>
           <a href="/courses" class="btn-outline inline-flex items-center px-6 py-3 font-medium">
             すべて見る <i class="fas fa-arrow-right ml-2"></i>
