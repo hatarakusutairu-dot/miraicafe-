@@ -744,26 +744,28 @@ export const renderCourseForm = (course?: Course, error?: string) => {
         const metaInput = document.getElementById('meta_description');
         const titleInput = document.querySelector('input[name="title"]');
         const descInput = document.querySelector('textarea[name="description"]');
+        const charCountEl = document.getElementById('meta-char-count');
         
-        const title = titleInput ? titleInput.value : '';
-        const content = descInput ? descInput.value : '';
+        const title = titleInput ? titleInput.value.trim() : '';
+        const content = descInput ? descInput.value.trim() : '';
         
-        if (!title && !content) {
-          alert('講座名または説明を入力してください');
+        if (!title || !content) {
+          alert('講座名と説明を入力してください');
           return;
         }
         
         // ボタンをローディング状態に
         const originalHtml = btn.innerHTML;
+        const originalBg = btn.style.background;
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><br>生成中...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><br>⏳ 生成中...';
         btn.style.opacity = '0.7';
         
         try {
           const res = await fetch('/admin/api/ai/generate-meta', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, content, type: 'course' })
+            body: JSON.stringify({ title, content })
           });
           
           const data = await res.json();
@@ -773,18 +775,46 @@ export const renderCourseForm = (course?: Course, error?: string) => {
           }
           
           if (data.meta_description) {
+            // メタディスクリプションに反映
             metaInput.value = data.meta_description;
             metaInput.dispatchEvent(new Event('input'));
-            showToast('メタディスクリプションを生成しました (' + data.char_count + '文字)');
+            
+            // 文字数カウント更新
+            if (charCountEl) {
+              charCountEl.textContent = data.length || data.meta_description.length;
+            }
+            
+            // フォーカスを当てる
+            metaInput.focus();
+            
+            // フォールバック時の警告
+            if (data.fallback) {
+              alert('⚠️ AI生成に失敗したため、基本的な要約を生成しました。必要に応じて編集してください。');
+              btn.innerHTML = originalHtml;
+              btn.style.opacity = '1';
+            } else {
+              // 成功時：ボタンを緑色に変更
+              btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+              btn.innerHTML = '<i class="fas fa-check"></i><br>✅ 生成完了';
+              btn.style.opacity = '1';
+              
+              showToast('メタディスクリプションを生成しました (' + (data.length || data.meta_description.length) + '文字)');
+              
+              // 2秒後に元に戻す
+              setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.style.background = originalBg;
+              }, 2000);
+            }
           } else {
             throw new Error('メタディスクリプションを生成できませんでした');
           }
         } catch (error) {
-          alert(error.message || 'メタディスクリプションの生成に失敗しました');
-        } finally {
-          btn.disabled = false;
+          alert('ネットワークエラー: ' + (error.message || 'メタディスクリプションの生成に失敗しました'));
           btn.innerHTML = originalHtml;
           btn.style.opacity = '1';
+        } finally {
+          btn.disabled = false;
         }
       }
       

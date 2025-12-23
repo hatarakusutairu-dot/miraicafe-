@@ -2044,7 +2044,8 @@ app.post('/admin/api/ai/generate-meta', async (c) => {
       const fallbackMeta = createFallbackMeta(title, content)
       return c.json({ 
         meta_description: fallbackMeta,
-        length: fallbackMeta.length
+        length: fallbackMeta.length,
+        fallback: true
       })
     }
     
@@ -2154,6 +2155,11 @@ ${truncatedContent}
     if (!metaDescription) {
       console.log('All models failed, using fallback')
       metaDescription = createFallbackMeta(title, content)
+      return c.json({ 
+        meta_description: metaDescription,
+        length: metaDescription.length,
+        fallback: true
+      })
     }
     
     return c.json({ 
@@ -2167,7 +2173,8 @@ ${truncatedContent}
     const fallbackMeta = createFallbackMeta(title, content)
     return c.json({ 
       meta_description: fallbackMeta,
-      length: fallbackMeta.length
+      length: fallbackMeta.length,
+      fallback: true
     })
   }
 })
