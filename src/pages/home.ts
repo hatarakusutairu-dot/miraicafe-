@@ -164,6 +164,11 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
                       </span>
                       \${item.is_translated ? '<span class="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full shadow-sm">翻訳</span>' : ''}
                     </div>
+                    <div class="absolute top-2 right-2">
+                      <span class="px-2 py-1 bg-black/60 backdrop-blur-sm text-white text-xs rounded-full">
+                        <i class="fas fa-external-link-alt mr-1"></i>外部
+                      </span>
+                    </div>
                   </div>
                   <div class="p-4">
                     <div class="flex items-center gap-2 mb-2">
@@ -173,7 +178,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
                     <p class="text-xs text-gray-600 line-clamp-2 mb-3">\${escapeHtml(item.summary || '')}</p>
                     <div class="flex items-center justify-between text-xs text-gray-400">
                       <span><i class="fas fa-newspaper mr-1"></i>\${escapeHtml(item.source || '不明')}</span>
-                      <span class="group-hover:text-blue-500 transition">詳細 <i class="fas fa-arrow-right ml-1"></i></span>
+                      <span class="group-hover:text-blue-500 transition"><i class="fas fa-external-link-alt mr-1"></i>外部記事を読む</span>
                     </div>
                   </div>
                 </a>
