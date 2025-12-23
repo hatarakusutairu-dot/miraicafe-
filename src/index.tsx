@@ -649,6 +649,42 @@ app.get('/admin/blog/edit/:id', async (c) => {
   return c.html(renderBlogForm(post))
 })
 
+// SEOスコア計算ヘルパー関数
+function calculateSEOScore(title: string, content: string): number {
+  let score = 0
+  
+  // タイトル文字数チェック
+  const titleLength = title?.length || 0
+  if (titleLength >= 30 && titleLength <= 60) {
+    score += 30
+  }
+  
+  // 数字の有無
+  if (/\d/.test(title || '')) {
+    score += 15
+  }
+  
+  // キーワード密度
+  if ((title || '').includes('AI') || (title || '').includes('ChatGPT') || (title || '').includes('初心者')) {
+    score += 20
+  }
+  
+  // 疑問形・具体性
+  if ((title || '').includes('？') || (title || '').includes('方法') || (title || '').includes('完全ガイド')) {
+    score += 15
+  }
+  
+  // コンテンツ文字数
+  const contentLength = content?.length || 0
+  if (contentLength >= 1500) {
+    score += 20
+  } else if (contentLength >= 800) {
+    score += 10
+  }
+  
+  return Math.min(score, 100)
+}
+
 // ブログ作成
 app.post('/admin/blog/create', async (c) => {
   try {
@@ -656,9 +692,12 @@ app.post('/admin/blog/create', async (c) => {
     const id = generateBlogId(body.title as string)
     const tags = (body.tags as string || '').split(',').map(t => t.trim()).filter(t => t)
     
+    // SEOスコア計算
+    const seoScore = calculateSEOScore(body.title as string, body.content as string)
+    
     await c.env.DB.prepare(`
-      INSERT INTO blog_posts (id, title, excerpt, content, author, date, category, tags, image, read_time)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO blog_posts (id, title, excerpt, content, author, date, category, tags, image, read_time, meta_description, keywords, seo_score)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       body.title,
@@ -669,7 +708,10 @@ app.post('/admin/blog/create', async (c) => {
       body.category,
       JSON.stringify(tags),
       body.image || '',
-      body.readTime || '5分'
+      body.readTime || '5分',
+      body.meta_description || '',
+      body.keywords || '',
+      seoScore
     ).run()
     
     return c.redirect('/admin/blog')
@@ -686,6 +728,9 @@ app.post('/admin/blog/update/:id', async (c) => {
     const body = await c.req.parseBody()
     const tags = (body.tags as string || '').split(',').map(t => t.trim()).filter(t => t)
     
+    // SEOスコア計算
+    const seoScore = calculateSEOScore(body.title as string, body.content as string)
+    
     // まずD1に存在するか確認
     const existing = await c.env.DB.prepare(`SELECT id FROM blog_posts WHERE id = ?`).bind(id).first()
     
@@ -693,7 +738,7 @@ app.post('/admin/blog/update/:id', async (c) => {
       // D1のレコードを更新
       await c.env.DB.prepare(`
         UPDATE blog_posts 
-        SET title = ?, excerpt = ?, content = ?, author = ?, date = ?, category = ?, tags = ?, image = ?, read_time = ?, updated_at = CURRENT_TIMESTAMP
+        SET title = ?, excerpt = ?, content = ?, author = ?, date = ?, category = ?, tags = ?, image = ?, read_time = ?, meta_description = ?, keywords = ?, seo_score = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).bind(
         body.title,
@@ -705,13 +750,16 @@ app.post('/admin/blog/update/:id', async (c) => {
         JSON.stringify(tags),
         body.image || '',
         body.readTime || '5分',
+        body.meta_description || '',
+        body.keywords || '',
+        seoScore,
         id
       ).run()
     } else {
       // 静的データからの編集 → D1に新規挿入
       await c.env.DB.prepare(`
-        INSERT INTO blog_posts (id, title, excerpt, content, author, date, category, tags, image, read_time)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO blog_posts (id, title, excerpt, content, author, date, category, tags, image, read_time, meta_description, keywords, seo_score)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         id,
         body.title,
@@ -722,7 +770,10 @@ app.post('/admin/blog/update/:id', async (c) => {
         body.category,
         JSON.stringify(tags),
         body.image || '',
-        body.readTime || '5分'
+        body.readTime || '5分',
+        body.meta_description || '',
+        body.keywords || '',
+        seoScore
       ).run()
     }
     
@@ -920,11 +971,15 @@ app.post('/admin/courses/create', async (c) => {
       answer: faqAnswers[i] || ''
     })).filter((item: any) => item.question)
     
+    // SEOスコア計算
+    const seoScore = calculateSEOScore(body.title as string, body.description as string)
+    
     await c.env.DB.prepare(`
       INSERT INTO courses (id, title, catchphrase, description, price, duration, level, category, image,
                           instructor, instructor_title, instructor_bio, instructor_image,
-                          target_audience, curriculum, faq, gallery, features, max_capacity, cancellation_policy)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          target_audience, curriculum, faq, gallery, features, max_capacity, cancellation_policy,
+                          meta_description, keywords, seo_score)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       body.title,
@@ -945,7 +1000,10 @@ app.post('/admin/courses/create', async (c) => {
       JSON.stringify(galleryUrls),
       JSON.stringify(features),
       parseInt(body.maxCapacity as string) || null,
-      body.cancellationPolicy || ''
+      body.cancellationPolicy || '',
+      body.meta_description || '',
+      body.keywords || '',
+      seoScore
     ).run()
     
     return c.redirect('/admin/courses')
@@ -984,6 +1042,9 @@ app.post('/admin/courses/update/:id', async (c) => {
       answer: faqAnswers[i] || ''
     })).filter((item: any) => item.question)
     
+    // SEOスコア計算
+    const seoScore = calculateSEOScore(body.title as string, body.description as string)
+    
     // まずD1に存在するか確認
     const existing = await c.env.DB.prepare(`SELECT id FROM courses WHERE id = ?`).bind(id).first()
     
@@ -994,7 +1055,7 @@ app.post('/admin/courses/update/:id', async (c) => {
         SET title = ?, catchphrase = ?, description = ?, price = ?, duration = ?, level = ?, category = ?, image = ?,
             instructor = ?, instructor_title = ?, instructor_bio = ?, instructor_image = ?,
             target_audience = ?, curriculum = ?, faq = ?, gallery = ?, features = ?,
-            max_capacity = ?, cancellation_policy = ?, updated_at = CURRENT_TIMESTAMP
+            max_capacity = ?, cancellation_policy = ?, meta_description = ?, keywords = ?, seo_score = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).bind(
         body.title,
@@ -1016,6 +1077,9 @@ app.post('/admin/courses/update/:id', async (c) => {
         JSON.stringify(features),
         parseInt(body.maxCapacity as string) || null,
         body.cancellationPolicy || '',
+        body.meta_description || '',
+        body.keywords || '',
+        seoScore,
         id
       ).run()
     } else {
@@ -1023,8 +1087,9 @@ app.post('/admin/courses/update/:id', async (c) => {
       await c.env.DB.prepare(`
         INSERT INTO courses (id, title, catchphrase, description, price, duration, level, category, image,
                             instructor, instructor_title, instructor_bio, instructor_image,
-                            target_audience, curriculum, faq, gallery, features, max_capacity, cancellation_policy)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            target_audience, curriculum, faq, gallery, features, max_capacity, cancellation_policy,
+                            meta_description, keywords, seo_score)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         id,
         body.title,
@@ -1045,7 +1110,10 @@ app.post('/admin/courses/update/:id', async (c) => {
         JSON.stringify(galleryUrls),
         JSON.stringify(features),
         parseInt(body.maxCapacity as string) || null,
-        body.cancellationPolicy || ''
+        body.cancellationPolicy || '',
+        body.meta_description || '',
+        body.keywords || '',
+        seoScore
       ).run()
     }
     
