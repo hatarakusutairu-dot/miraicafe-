@@ -1,12 +1,11 @@
 /**
- * AI News Collector Service
- * RSS/Atom feeds から AI 関連ニュースを収集し、
- * Gemini API でフィルタリング・要約を行う
+ * AI News Collector Service - Enhanced Filter Version
+ * 厳格なフィルタリング + 日本語翻訳 + カテゴリ分類
  */
 
 import { XMLParser } from 'fast-xml-parser';
 
-// RSS フィード一覧
+// RSS フィード一覧（公式ブログ追加）
 const RSS_FEEDS = [
   { url: 'https://ai-news.jp/feed/', name: 'AI新聞' },
   { url: 'https://ledge.ai/feed/', name: 'Ledge.ai' },
@@ -14,7 +13,12 @@ const RSS_FEEDS = [
   { url: 'https://techcrunch.com/tag/artificial-intelligence/feed/', name: 'TechCrunch' },
   { url: 'https://venturebeat.com/category/ai/feed/', name: 'VentureBeat' },
   { url: 'https://www.theverge.com/rss/ai-artificial-intelligence/index.xml', name: 'The Verge' },
+  { url: 'https://openai.com/blog/rss.xml', name: 'OpenAI Blog' },
+  { url: 'https://blog.google/technology/ai/rss/', name: 'Google AI Blog' },
 ];
+
+// カテゴリ定義
+type NewsCategory = 'official_announcement' | 'tool_update' | 'how_to' | 'other';
 
 // ニュースアイテムの型定義
 interface NewsItem {
@@ -25,11 +29,15 @@ interface NewsItem {
   source: string;
 }
 
-// Gemini 分析結果の型定義
+// Gemini 分析結果の型定義（拡張版）
 interface GeminiAnalysis {
   isRelevant: boolean;
   score: number;
   summary: string;
+  category: NewsCategory;
+  translatedTitle?: string;
+  translatedSummary?: string;
+  language: string;
 }
 
 /**
@@ -37,12 +45,18 @@ interface GeminiAnalysis {
  */
 async function fetchRSS(feedUrl: string, feedName: string): Promise<NewsItem[]> {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒タイムアウト
+
     const response = await fetch(feedUrl, {
       headers: {
         'User-Agent': 'mirAIcafe/1.0 RSS Reader',
         'Accept': 'application/rss+xml, application/xml, text/xml',
       },
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       console.log(`[RSS] ${feedName}: HTTP ${response.status}`);
@@ -83,7 +97,6 @@ async function fetchRSS(feedUrl: string, feedName: string): Promise<NewsItem[]> 
         : [result.feed.entry];
       
       for (const entry of atomItems) {
-        // Atom の link 処理
         let link = '';
         if (entry.link) {
           if (Array.isArray(entry.link)) {
@@ -110,8 +123,12 @@ async function fetchRSS(feedUrl: string, feedName: string): Promise<NewsItem[]> 
 
     console.log(`[RSS] ${feedName}: ${items.length}件取得`);
     return items;
-  } catch (error) {
-    console.error(`[RSS] ${feedName} エラー:`, error);
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.log(`[RSS] ${feedName}: タイムアウト`);
+    } else {
+      console.error(`[RSS] ${feedName} エラー:`, error.message || error);
+    }
     return [];
   }
 }
@@ -121,7 +138,7 @@ async function fetchRSS(feedUrl: string, feedName: string): Promise<NewsItem[]> 
  */
 function cleanText(text: string): string {
   return text
-    .replace(/<[^>]*>/g, '') // HTMLタグ除去
+    .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
@@ -133,37 +150,72 @@ function cleanText(text: string): string {
 }
 
 /**
- * Gemini API で AI 関連性をチェックし、要約を生成
+ * 言語検出（簡易版）
+ */
+function detectLanguage(text: string): string {
+  const japanesePattern = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/;
+  return japanesePattern.test(text) ? 'ja' : 'en';
+}
+
+/**
+ * Gemini API で厳格な分析 + 翻訳 + カテゴリ分類
  */
 async function analyzeWithGemini(
   title: string,
   description: string,
   apiKey: string
 ): Promise<GeminiAnalysis> {
+  const detectedLang = detectLanguage(title + description);
+  
   const prompt = `
-以下のニュース記事がAI技術に関連するか判定し、要約を生成してください。
+以下のニュース記事を厳格に評価してください。
 
 【タイトル】
 ${title}
 
 【本文】
-${description.substring(0, 500)}
+${description.substring(0, 800)}
 
-【指示】
-1. AI技術との関連性を0.0〜1.0で評価(0.7以上が関連あり)
-2. 不適切なコンテンツ(成人向け、暴力、詐欺、ギャンブル)は0.0
-3. AI、機械学習、ChatGPT、LLM、生成AI、深層学習などに関連する記事は高スコア
-4. 関連がある場合のみ、50文字以内で日本語要約を生成
+【評価基準(厳格)】
+以下のいずれかに該当する場合のみ、高スコア(0.85以上)を付与:
+
+✅ **公式発表(official_announcement)**: 
+- OpenAI、Google、Microsoft、Anthropic、Meta等の公式リリース
+- 新製品・新機能の正式発表
+- 企業の公式声明
+
+✅ **ツール更新(tool_update)**:
+- ChatGPT、Gemini、Claude、Copilot等のアップデート情報
+- 新機能追加、料金改定、API変更
+- 具体的なバージョン情報
+
+✅ **使い方・活用法(how_to)**:
+- 実践的なAIツールの使い方ガイド
+- プロンプト例、活用事例
+- 業務効率化・学習支援の具体例
+
+❌ **除外対象(スコア0.5以下)**:
+- 一般的なAI議論、意見記事
+- AI倫理・規制の抽象的な議論
+- 投資・株価関連
+- 広告・プロモーション記事
+- 噂・未確認情報
+- 単なるニュースまとめ
 
 【出力形式】JSON のみ出力（コードブロック不要）
-{"score": 0.85, "summary": "ChatGPTの新機能が発表され、画像生成が可能に"}
+${detectedLang === 'en' ? `
+※英語記事の場合、タイトルと要約を日本語に翻訳してください。
+{"score": 0.90, "category": "tool_update", "summary": "50文字以内の要約(日本語)", "translatedTitle": "日本語に翻訳されたタイトル", "language": "en"}
+` : `
+{"score": 0.90, "category": "official_announcement", "summary": "50文字以内の要約", "language": "ja"}
+`}
 `;
 
   const models = [
     'gemini-2.0-flash-exp',
     'gemini-1.5-flash-latest',
     'gemini-1.5-flash',
-    'gemini-pro'
+    'gemini-1.5-pro'
   ];
 
   for (const model of models) {
@@ -176,8 +228,8 @@ ${description.substring(0, 500)}
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
-              temperature: 0.3,
-              maxOutputTokens: 200,
+              temperature: 0.2, // 厳格な評価のため低く設定
+              maxOutputTokens: 500,
             },
           }),
         }
@@ -186,6 +238,7 @@ ${description.substring(0, 500)}
       if (!response.ok) {
         if (response.status === 429) {
           console.log(`[Gemini] ${model}: レート制限、次のモデルへ`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
           continue;
         }
         continue;
@@ -197,63 +250,69 @@ ${description.substring(0, 500)}
       // JSON を抽出してパース
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
+        console.log(`[Gemini] ${model}: JSONパース失敗`);
         continue;
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
+      const category = parsed.category as NewsCategory;
+      const validCategories: NewsCategory[] = ['official_announcement', 'tool_update', 'how_to'];
       
+      // フィルタ強化: スコア0.85以上 かつ 有効なカテゴリのみ採用
       return {
-        isRelevant: parsed.score >= 0.7,
+        isRelevant: parsed.score >= 0.85 && validCategories.includes(category),
         score: parsed.score || 0.5,
         summary: parsed.summary || title.substring(0, 50),
+        category: validCategories.includes(category) ? category : 'other',
+        translatedTitle: parsed.translatedTitle,
+        translatedSummary: parsed.summary,
+        language: parsed.language || detectedLang,
       };
-    } catch (error) {
-      console.log(`[Gemini] ${model} エラー:`, error);
+    } catch (error: any) {
+      console.log(`[Gemini] ${model} エラー:`, error.message || error);
       continue;
     }
   }
 
-  // 全モデル失敗時のフォールバック
-  // キーワードベースで簡易判定
-  const aiKeywords = ['AI', 'ChatGPT', 'GPT', 'LLM', '生成AI', '機械学習', 'OpenAI', 'Claude', 'Gemini', '深層学習', 'ディープラーニング'];
-  const titleLower = title.toLowerCase();
-  const hasAIKeyword = aiKeywords.some(kw => 
-    title.includes(kw) || titleLower.includes(kw.toLowerCase())
-  );
-
+  // 全モデル失敗時のフォールバック: 厳格化のため基本的に却下
   return {
-    isRelevant: hasAIKeyword,
-    score: hasAIKeyword ? 0.75 : 0.3,
+    isRelevant: false,
+    score: 0.3,
     summary: title.substring(0, 50),
+    category: 'other',
+    language: detectedLang,
   };
 }
 
 /**
- * メイン収集処理
+ * メイン収集処理（厳格フィルタ版）
  */
 export async function collectAINews(env: { DB: D1Database; GEMINI_API_KEY: string }) {
-  console.log('[Cron] AIニュース収集開始');
+  console.log('[Cron] AIニュース収集開始（厳格フィルタ版）');
   
   if (!env.GEMINI_API_KEY) {
     console.error('[Cron] GEMINI_API_KEY が設定されていません');
-    return { collected: 0, saved: 0, error: 'GEMINI_API_KEY not configured' };
+    return { collected: 0, saved: 0, filtered: 0, error: 'GEMINI_API_KEY not configured' };
   }
 
   let totalCollected = 0;
   let totalSaved = 0;
-  let totalSkipped = 0;
+  let totalFiltered = 0;
   let totalDuplicate = 0;
 
   for (const feed of RSS_FEEDS) {
     try {
       const items = await fetchRSS(feed.url, feed.name);
       
-      for (const item of items) {
+      // 最新10件のみ処理（API呼び出し節約）
+      const recentItems = items.slice(0, 10);
+      
+      for (const item of recentItems) {
         totalCollected++;
         
         // URL が空の場合はスキップ
         if (!item.url || !item.title) {
-          totalSkipped++;
+          totalFiltered++;
           continue;
         }
 
@@ -268,10 +327,10 @@ export async function collectAINews(env: { DB: D1Database; GEMINI_API_KEY: strin
             continue;
           }
         } catch (e) {
-          // 重複エラーを無視して続行
+          // エラーは無視して続行
         }
 
-        // Gemini で分析
+        // Gemini で厳格分析
         const analysis = await analyzeWithGemini(
           item.title,
           item.description,
@@ -279,52 +338,63 @@ export async function collectAINews(env: { DB: D1Database; GEMINI_API_KEY: strin
         );
 
         if (!analysis.isRelevant) {
-          console.log(`[スキップ] ${item.title.substring(0, 30)}... (スコア: ${analysis.score})`);
-          totalSkipped++;
+          totalFiltered++;
+          console.log(`[フィルタ除外] ${item.title.substring(0, 40)}... (スコア: ${analysis.score}, カテゴリ: ${analysis.category})`);
           continue;
         }
+
+        // 翻訳されたタイトルがあれば使用
+        const finalTitle = analysis.translatedTitle || item.title;
+        const finalSummary = analysis.translatedSummary || analysis.summary;
+        const isTranslated = analysis.translatedTitle ? 1 : 0;
 
         // DB に保存
         try {
           await env.DB.prepare(`
-            INSERT INTO ai_news (title, url, summary, source, published_at, status, ai_relevance_score)
-            VALUES (?, ?, ?, ?, ?, 'pending', ?)
+            INSERT INTO ai_news (
+              title, url, summary, source, published_at, status, 
+              ai_relevance_score, category, original_language, is_translated
+            )
+            VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
           `).bind(
-            item.title,
+            finalTitle,
             item.url,
-            analysis.summary,
+            finalSummary,
             item.source,
             item.published,
-            analysis.score
+            analysis.score,
+            analysis.category,
+            analysis.language,
+            isTranslated
           ).run();
 
           totalSaved++;
-          console.log(`[保存] ${item.title.substring(0, 30)}... (スコア: ${analysis.score})`);
+          console.log(`[保存✅] ${finalTitle.substring(0, 40)}...`);
+          console.log(`  カテゴリ: ${analysis.category} | スコア: ${analysis.score} | 言語: ${analysis.language}${isTranslated ? ' (翻訳済)' : ''}`);
         } catch (dbError: any) {
-          // UNIQUE constraint エラーは無視
           if (dbError.message?.includes('UNIQUE')) {
             totalDuplicate++;
           } else {
-            console.error('[DB] 保存エラー:', dbError);
+            console.error('[DB] 保存エラー:', dbError.message || dbError);
           }
         }
 
         // API レート制限対策: 少し待機
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 800));
       }
-    } catch (feedError) {
-      console.error(`[Feed] ${feed.name} 処理エラー:`, feedError);
+    } catch (feedError: any) {
+      console.error(`[Feed] ${feed.name} 処理エラー:`, feedError.message || feedError);
     }
   }
 
   const result = {
     collected: totalCollected,
     saved: totalSaved,
-    skipped: totalSkipped,
+    filtered: totalFiltered,
     duplicate: totalDuplicate,
   };
   
-  console.log(`[Cron完了] 収集:${totalCollected}件 / 保存:${totalSaved}件 / スキップ:${totalSkipped}件 / 重複:${totalDuplicate}件`);
+  console.log(`[Cron完了] 収集:${totalCollected}件 / 保存:${totalSaved}件 / フィルタ除外:${totalFiltered}件 / 重複:${totalDuplicate}件`);
   
   return result;
 }
