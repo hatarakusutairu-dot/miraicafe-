@@ -1221,21 +1221,90 @@ app.get('/admin/bookings', async (c) => {
 // 予約一覧API（JSON）
 app.get('/admin/api/bookings', async (c) => {
   try {
-    const bookings = await c.env.DB.prepare(`
-      SELECT b.*, c.title as course_name
+    const { results } = await c.env.DB.prepare(`
+      SELECT 
+        b.*,
+        c.title as course_name
       FROM bookings b
       LEFT JOIN courses c ON b.course_id = c.id
       ORDER BY b.created_at DESC
     `).all()
     
-    return c.json({ success: true, bookings: bookings.results })
-  } catch (error) {
+    return c.json({ bookings: results })
+  } catch (error: any) {
     console.error('Bookings API error:', error)
-    return c.json({ success: false, error: 'Failed to fetch bookings' }, 500)
+    return c.json({ error: error.message || 'Failed to fetch bookings' }, 500)
   }
 })
 
-// 予約ステータス変更API（PATCH）
+// 予約詳細API（JSON）
+app.get('/admin/api/bookings/:id', async (c) => {
+  try {
+    const id = c.req.param('id')
+    
+    const booking = await c.env.DB.prepare(`
+      SELECT 
+        b.*,
+        c.title as course_name,
+        c.price as course_price,
+        c.duration as course_duration
+      FROM bookings b
+      LEFT JOIN courses c ON b.course_id = c.id
+      WHERE b.id = ?
+    `).bind(id).first()
+    
+    if (!booking) {
+      return c.json({ error: '予約が見つかりません' }, 404)
+    }
+    
+    return c.json({ booking })
+  } catch (error: any) {
+    console.error('Booking detail API error:', error)
+    return c.json({ error: error.message || 'Failed to fetch booking' }, 500)
+  }
+})
+
+// 予約ステータス・メモ更新API（PATCH）
+app.patch('/admin/api/bookings/:id', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const { status, admin_note } = await c.req.json()
+    
+    // ステータスのバリデーション
+    const validStatuses = ['pending', 'confirmed', 'completed', 'cancelled']
+    if (status && !validStatuses.includes(status)) {
+      return c.json({ error: '無効なステータスです' }, 400)
+    }
+    
+    // ステータスとメモの両方、またはどちらかを更新
+    if (status && admin_note !== undefined) {
+      await c.env.DB.prepare(`
+        UPDATE bookings
+        SET status = ?, admin_note = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(status, admin_note || null, id).run()
+    } else if (status) {
+      await c.env.DB.prepare(`
+        UPDATE bookings
+        SET status = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(status, id).run()
+    } else if (admin_note !== undefined) {
+      await c.env.DB.prepare(`
+        UPDATE bookings
+        SET admin_note = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(admin_note || null, id).run()
+    }
+    
+    return c.json({ success: true, message: 'ステータスを更新しました' })
+  } catch (error: any) {
+    console.error('Booking update API error:', error)
+    return c.json({ error: error.message || 'Failed to update booking' }, 500)
+  }
+})
+
+// 予約ステータス変更API（PATCH - 後方互換性）
 app.patch('/admin/api/bookings/:id/status', async (c) => {
   const id = c.req.param('id')
   
@@ -1245,17 +1314,17 @@ app.patch('/admin/api/bookings/:id/status', async (c) => {
     
     const validStatuses = ['pending', 'confirmed', 'completed', 'cancelled']
     if (!validStatuses.includes(status)) {
-      return c.json({ success: false, error: 'Invalid status' }, 400)
+      return c.json({ error: '無効なステータスです' }, 400)
     }
     
     await c.env.DB.prepare(`
       UPDATE bookings SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
     `).bind(status, id).run()
     
-    return c.json({ success: true })
-  } catch (error) {
+    return c.json({ success: true, message: 'ステータスを更新しました' })
+  } catch (error: any) {
     console.error('Status update API error:', error)
-    return c.json({ success: false, error: 'Failed to update status' }, 500)
+    return c.json({ error: error.message || 'Failed to update status' }, 500)
   }
 })
 
