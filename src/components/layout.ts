@@ -6,6 +6,19 @@ export const renderLayout = (title: string, content: string, activeNav: string =
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title} | mirAIcafe</title>
+  <meta name="description" content="mirAIcafeは、リラックスした雰囲気でAI・プログラミングを学べる新しいスタイルの学習カフェです。初心者から上級者まで、あなたのレベルに合った講座をご用意しています。">
+  <meta name="keywords" content="AI,プログラミング,講座,mirAIcafe,学習,ChatGPT,Python,機械学習">
+  <meta name="author" content="mirAIcafe">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="mirAIcafe">
+  <meta property="og:title" content="${title} | mirAIcafe">
+  <meta property="og:description" content="mirAIcafeは、リラックスした雰囲気でAI・プログラミングを学べる新しいスタイルの学習カフェです。">
+  <meta property="og:image" content="https://miraicafe.work/static/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${title} | mirAIcafe">
+  <meta name="twitter:description" content="mirAIcafeは、リラックスした雰囲気でAI・プログラミングを学べる新しいスタイルの学習カフェです。">
+  <link rel="canonical" href="https://miraicafe.work">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {

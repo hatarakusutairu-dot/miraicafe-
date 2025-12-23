@@ -17,6 +17,7 @@ import { renderBlogList, renderBlogForm } from './admin/blog'
 import { renderCoursesList, renderCourseForm } from './admin/courses'
 import { renderReviewsList } from './admin/reviews'
 import { renderContactsList, renderContactDetail } from './admin/contacts'
+import { renderSEODashboard, renderSEOEditForm } from './admin/seo'
 
 // Services
 import { 
@@ -25,6 +26,11 @@ import {
   sendReservationConfirmationToCustomer,
   sendReviewNotificationToAdmin
 } from './services/email'
+import { 
+  generateSEOSuggestions, 
+  getDefaultSEOData,
+  type PageContent 
+} from './services/seo'
 
 // Data
 import { courses, blogPosts, schedules } from './data'
@@ -34,6 +40,7 @@ type Bindings = {
   DB: D1Database
   R2_BUCKET: R2Bucket
   RESEND_API_KEY?: string
+  GEMINI_API_KEY?: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -1343,6 +1350,145 @@ app.get('/images/:fileName', async (c) => {
   } catch (error) {
     console.error('Image serve error:', error)
     return c.notFound()
+  }
+})
+
+// ===== SEO管理 =====
+
+// SEOページ一覧を生成
+function getSEOPages() {
+  const pages = [
+    { id: 'home', title: 'トップページ', url: '/', type: 'home' },
+    { id: 'courses', title: '講座一覧', url: '/courses', type: 'course' },
+    { id: 'blog', title: 'ブログ一覧', url: '/blog', type: 'blog' },
+    { id: 'contact', title: 'お問い合わせ', url: '/contact', type: 'contact' },
+  ]
+  
+  // 講座ページを追加
+  courses.forEach(course => {
+    pages.push({
+      id: `course-${course.id}`,
+      title: course.title,
+      url: `/courses/${course.id}`,
+      type: 'course'
+    })
+  })
+  
+  // ブログ記事を追加
+  blogPosts.forEach(post => {
+    pages.push({
+      id: `blog-${post.id}`,
+      title: post.title,
+      url: `/blog/${post.id}`,
+      type: 'blog'
+    })
+  })
+  
+  return pages
+}
+
+// SEOダッシュボード
+app.get('/admin/seo', (c) => {
+  const pages = getSEOPages()
+  return c.html(renderSEODashboard(pages))
+})
+
+// SEO編集ページ
+app.get('/admin/seo/edit/:pageId', (c) => {
+  const pageId = c.req.param('pageId')
+  const pages = getSEOPages()
+  const page = pages.find(p => p.id === pageId)
+  
+  if (!page) {
+    return c.redirect('/admin/seo')
+  }
+  
+  // ページタイプに応じたデフォルトSEOデータを取得
+  let pageData = null
+  if (pageId.startsWith('course-')) {
+    const courseId = pageId.replace('course-', '')
+    pageData = courses.find(c => c.id === courseId)
+  } else if (pageId.startsWith('blog-')) {
+    const blogId = pageId.replace('blog-', '')
+    pageData = blogPosts.find(p => p.id === blogId)
+  }
+  
+  const seoData = getDefaultSEOData(page.type, pageData)
+  
+  return c.html(renderSEOEditForm(page, seoData))
+})
+
+// SEO更新
+app.post('/admin/seo/update/:pageId', async (c) => {
+  const pageId = c.req.param('pageId')
+  const body = await c.req.parseBody()
+  
+  // TODO: SEOデータをデータベースに保存
+  // 現在は静的なデフォルト値を使用しているため、保存機能は将来実装
+  
+  return c.redirect('/admin/seo')
+})
+
+// SEO分析API
+app.post('/admin/api/seo/analyze/:pageId', async (c) => {
+  const pageId = c.req.param('pageId')
+  const pages = getSEOPages()
+  const page = pages.find(p => p.id === pageId)
+  
+  if (!page) {
+    return c.json({ error: 'ページが見つかりません' }, 404)
+  }
+  
+  // ページデータを取得
+  let pageData = null
+  let pageContent = ''
+  
+  if (pageId === 'home') {
+    pageContent = 'mirAIcafe - カフェで学ぶAI。AI・プログラミング講座を提供する学習カフェ。初心者から上級者まで対応。'
+  } else if (pageId === 'courses') {
+    pageContent = '講座一覧。AI基礎、プログラミング、データ分析など様々な講座をご用意。'
+    courses.forEach(c => {
+      pageContent += ` ${c.title}: ${c.description}`
+    })
+  } else if (pageId === 'blog') {
+    pageContent = 'mirAIcafeブログ。AI・プログラミングに関する情報を発信。'
+    blogPosts.forEach(p => {
+      pageContent += ` ${p.title}: ${p.excerpt}`
+    })
+  } else if (pageId === 'contact') {
+    pageContent = 'お問い合わせ。講座に関するご質問、法人研修のご相談など。'
+  } else if (pageId.startsWith('course-')) {
+    const courseId = pageId.replace('course-', '')
+    const course = courses.find(c => c.id === courseId)
+    if (course) {
+      pageData = course
+      pageContent = `${course.title}。${course.description}。${course.longDescription || ''}`
+    }
+  } else if (pageId.startsWith('blog-')) {
+    const blogId = pageId.replace('blog-', '')
+    const post = blogPosts.find(p => p.id === blogId)
+    if (post) {
+      pageData = post
+      pageContent = `${post.title}。${post.excerpt}。${post.content?.substring(0, 500) || ''}`
+    }
+  }
+  
+  const seoData = getDefaultSEOData(page.type, pageData)
+  
+  const contentData: PageContent = {
+    url: page.url,
+    title: seoData.title,
+    description: seoData.description,
+    content: pageContent,
+    pageType: page.type as any
+  }
+  
+  try {
+    const analysis = await generateSEOSuggestions(c.env, contentData)
+    return c.json(analysis)
+  } catch (error) {
+    console.error('SEO analysis error:', error)
+    return c.json({ error: 'SEO分析に失敗しました' }, 500)
   }
 })
 

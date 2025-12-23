@@ -7,6 +7,7 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
     { id: 'courses', icon: 'fas fa-book-open', label: '講座管理', href: '/admin/courses' },
     { id: 'reviews', icon: 'fas fa-star', label: '口コミ管理', href: '/admin/reviews' },
     { id: 'contacts', icon: 'fas fa-envelope', label: 'お問い合わせ', href: '/admin/contacts' },
+    { id: 'seo', icon: 'fas fa-search', label: 'SEO管理', href: '/admin/seo' },
   ]
 
   return `
