@@ -2031,90 +2031,180 @@ ${(content || '').substring(0, 500)}...
 // メタディスクリプション自動生成API
 app.post('/admin/api/ai/generate-meta', async (c) => {
   try {
-    const { title, content, type } = await c.req.json()
+    const { title, content } = await c.req.json()
     
     if (!content && !title) {
       return c.json({ error: 'タイトルまたは本文を入力してください' }, 400)
     }
     
-    const contentType = type === 'blog' ? 'ブログ記事' : '講座'
+    // Gemini APIキーの存在確認
+    if (!c.env.GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY is not configured')
+      // APIキーがない場合はフォールバック
+      const fallbackMeta = createFallbackMeta(title, content)
+      return c.json({ 
+        meta_description: fallbackMeta,
+        length: fallbackMeta.length
+      })
+    }
     
-    const prompt = `あなたはSEOの専門家です。以下の${contentType}の内容から、検索エンジン用のメタディスクリプションを作成してください。
+    // コンテンツを800文字に制限
+    const truncatedContent = (content || '').substring(0, 800)
+    
+    const prompt = `あなたはSEOの専門家です。以下の記事のタイトルとコンテンツから、メタディスクリプションを作成してください。
 
 【タイトル】
 ${title || '未設定'}
 
-【内容】
-${(content || '').substring(0, 1000)}
+【コンテンツ】
+${truncatedContent}
 
 【条件】
-- 120文字以内で簡潔に
-- 読者の興味を引く表現
-- キーワードを自然に含める
-- 行動を促す表現を入れる
-- 句読点を適切に使用
+- 120文字以内（厳守）
+- 記事の要点を簡潔に
+- SEOキーワードを自然に含める
+- 読者の興味を引く
 
 【出力】
 メタディスクリプションのみを出力してください（説明や前置きは不要）`
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${c.env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 256
+    // 使用するモデルのリスト（フォールバック順）
+    const models = [
+      'gemini-2.0-flash-exp',
+      'gemini-1.5-flash-latest',
+      'gemini-1.5-flash',
+      'gemini-pro'
+    ]
+    
+    let metaDescription = ''
+    let lastError: Error | null = null
+    
+    // 各モデルを順番に試行
+    for (const model of models) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${c.env.GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{ text: prompt }]
+              }],
+              generationConfig: {
+                temperature: 0.5,
+                maxOutputTokens: 256
+              }
+            })
           }
-        })
-      }
-    )
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } }
-      const errorMessage = errorData.error?.message || `HTTP ${response.status}`
-      
-      if (response.status === 429 || errorMessage.includes('quota')) {
-        return c.json({ error: 'APIの利用制限に達しました。しばらく待ってから再度お試しください。' }, 429)
-      }
-      
-      throw new Error(`Gemini API error: ${errorMessage}`)
-    }
-    
-    const data = await response.json() as {
-      candidates?: Array<{
-        content?: {
-          parts?: Array<{ text?: string }>
+        )
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } }
+          const errorMessage = errorData.error?.message || `HTTP ${response.status}`
+          
+          if (response.status === 429 || errorMessage.includes('quota')) {
+            // レート制限の場合は次のモデルを試行
+            console.log(`Model ${model} rate limited, trying next...`)
+            continue
+          }
+          
+          throw new Error(`Gemini API error (${model}): ${errorMessage}`)
         }
-      }>
-      error?: { message?: string }
+        
+        const data = await response.json() as {
+          candidates?: Array<{
+            content?: {
+              parts?: Array<{ text?: string }>
+            }
+          }>
+          error?: { message?: string }
+        }
+        
+        if (data.error) {
+          throw new Error(data.error.message || 'AI処理でエラーが発生しました')
+        }
+        
+        const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        
+        if (generatedText) {
+          // 余分な改行や空白を削除
+          metaDescription = generatedText
+            .replace(/\n/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+          
+          // 120文字を超える場合は117文字 + '...'に
+          if (metaDescription.length > 120) {
+            metaDescription = metaDescription.substring(0, 117) + '...'
+          }
+          
+          // 成功したらループを抜ける
+          break
+        }
+      } catch (error) {
+        lastError = error as Error
+        console.error(`Model ${model} failed:`, error)
+        // 次のモデルを試行
+        continue
+      }
     }
     
-    if (data.error) {
-      return c.json({ error: data.error.message || 'AI処理でエラーが発生しました' }, 500)
+    // すべてのモデルが失敗した場合のフォールバック
+    if (!metaDescription) {
+      console.log('All models failed, using fallback')
+      metaDescription = createFallbackMeta(title, content)
     }
-    
-    let metaDescription = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    
-    // 余分な改行や空白を削除し、120文字に制限
-    metaDescription = metaDescription
-      .replace(/\n/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .substring(0, 120)
     
     return c.json({ 
       meta_description: metaDescription,
-      char_count: metaDescription.length
+      length: metaDescription.length
     })
   } catch (error) {
     console.error('Meta generation error:', error)
-    return c.json({ error: 'メタディスクリプションの生成に失敗しました' }, 500)
+    // 一般エラー時もフォールバック
+    const { title, content } = await c.req.json().catch(() => ({ title: '', content: '' }))
+    const fallbackMeta = createFallbackMeta(title, content)
+    return c.json({ 
+      meta_description: fallbackMeta,
+      length: fallbackMeta.length
+    })
   }
 })
+
+// フォールバックメタディスクリプション生成
+function createFallbackMeta(title: string, content: string): string {
+  // コンテンツがある場合は最初の文を使用
+  if (content) {
+    // 最初の文を取得（。！？.!?で終わる部分）
+    const firstSentenceMatch = content.match(/^[^。！？.!?]*[。！？.!?]/)
+    if (firstSentenceMatch) {
+      const firstSentence = firstSentenceMatch[0].trim()
+      if (firstSentence.length <= 120) {
+        return firstSentence
+      }
+      // 120文字を超える場合は117文字 + '...'
+      return firstSentence.substring(0, 117) + '...'
+    }
+    
+    // 文の区切りがない場合はコンテンツの先頭を使用
+    const cleanContent = content.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
+    if (cleanContent.length <= 120) {
+      return cleanContent
+    }
+    return cleanContent.substring(0, 117) + '...'
+  }
+  
+  // コンテンツがない場合はタイトルベース
+  if (title) {
+    const titleMeta = `${title}についての記事です。詳細はこちらをご覧ください。`
+    if (titleMeta.length <= 120) {
+      return titleMeta
+    }
+    return titleMeta.substring(0, 117) + '...'
+  }
+  
+  return '記事の詳細については本文をご覧ください。'
+}
 
 export default app
