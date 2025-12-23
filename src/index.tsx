@@ -2028,4 +2028,93 @@ ${(content || '').substring(0, 500)}...
   }
 })
 
+// メタディスクリプション自動生成API
+app.post('/admin/api/ai/generate-meta', async (c) => {
+  try {
+    const { title, content, type } = await c.req.json()
+    
+    if (!content && !title) {
+      return c.json({ error: 'タイトルまたは本文を入力してください' }, 400)
+    }
+    
+    const contentType = type === 'blog' ? 'ブログ記事' : '講座'
+    
+    const prompt = `あなたはSEOの専門家です。以下の${contentType}の内容から、検索エンジン用のメタディスクリプションを作成してください。
+
+【タイトル】
+${title || '未設定'}
+
+【内容】
+${(content || '').substring(0, 1000)}
+
+【条件】
+- 120文字以内で簡潔に
+- 読者の興味を引く表現
+- キーワードを自然に含める
+- 行動を促す表現を入れる
+- 句読点を適切に使用
+
+【出力】
+メタディスクリプションのみを出力してください（説明や前置きは不要）`
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${c.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: prompt }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 256
+          }
+        })
+      }
+    )
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } }
+      const errorMessage = errorData.error?.message || `HTTP ${response.status}`
+      
+      if (response.status === 429 || errorMessage.includes('quota')) {
+        return c.json({ error: 'APIの利用制限に達しました。しばらく待ってから再度お試しください。' }, 429)
+      }
+      
+      throw new Error(`Gemini API error: ${errorMessage}`)
+    }
+    
+    const data = await response.json() as {
+      candidates?: Array<{
+        content?: {
+          parts?: Array<{ text?: string }>
+        }
+      }>
+      error?: { message?: string }
+    }
+    
+    if (data.error) {
+      return c.json({ error: data.error.message || 'AI処理でエラーが発生しました' }, 500)
+    }
+    
+    let metaDescription = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    
+    // 余分な改行や空白を削除し、120文字に制限
+    metaDescription = metaDescription
+      .replace(/\n/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .substring(0, 120)
+    
+    return c.json({ 
+      meta_description: metaDescription,
+      char_count: metaDescription.length
+    })
+  } catch (error) {
+    console.error('Meta generation error:', error)
+    return c.json({ error: 'メタディスクリプションの生成に失敗しました' }, 500)
+  }
+})
+
 export default app

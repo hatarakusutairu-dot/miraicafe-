@@ -224,10 +224,19 @@ export const renderCourseForm = (course?: Course, error?: string) => {
               メタディスクリプション
               <span class="text-xs text-gray-500 ml-1">（検索結果に表示される説明文）</span>
             </label>
-            <textarea name="meta_description" rows="3" maxlength="160"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-              placeholder="この講座の内容を120文字程度で要約してください">${escapeAttr(course?.meta_description || '')}</textarea>
-            <div class="flex justify-end mt-1">
+            <div class="flex gap-2 items-start">
+              <textarea name="meta_description" id="meta_description" rows="3" maxlength="160"
+                class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                placeholder="この講座の内容を120文字程度で要約してください">${escapeAttr(course?.meta_description || '')}</textarea>
+              <button type="button" id="generate-meta-btn"
+                class="px-4 py-2 text-white font-bold rounded-lg transition-all hover:opacity-90 hover:scale-105 whitespace-nowrap"
+                style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); min-height: 80px;"
+                onclick="generateMetaDescription()">
+                <i class="fas fa-magic mr-1"></i><br>AI生成
+              </button>
+            </div>
+            <div class="flex justify-between mt-1">
+              <span class="text-xs text-gray-500">💡 内容から自動で要約を生成します</span>
               <span class="text-xs text-gray-500"><span id="meta-char-count">0</span>/160</span>
             </div>
           </div>
@@ -726,6 +735,56 @@ export const renderCourseForm = (course?: Course, error?: string) => {
           input.value = value;
           input.dispatchEvent(new Event('input'));
           showToast('メタディスクリプションを反映しました');
+        }
+      }
+      
+      // メタディスクリプション自動生成
+      async function generateMetaDescription() {
+        const btn = document.getElementById('generate-meta-btn');
+        const metaInput = document.getElementById('meta_description');
+        const titleInput = document.querySelector('input[name="title"]');
+        const descInput = document.querySelector('textarea[name="description"]');
+        
+        const title = titleInput ? titleInput.value : '';
+        const content = descInput ? descInput.value : '';
+        
+        if (!title && !content) {
+          alert('講座名または説明を入力してください');
+          return;
+        }
+        
+        // ボタンをローディング状態に
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><br>生成中...';
+        btn.style.opacity = '0.7';
+        
+        try {
+          const res = await fetch('/admin/api/ai/generate-meta', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, content, type: 'course' })
+          });
+          
+          const data = await res.json();
+          
+          if (!res.ok) {
+            throw new Error(data.error || '生成に失敗しました');
+          }
+          
+          if (data.meta_description) {
+            metaInput.value = data.meta_description;
+            metaInput.dispatchEvent(new Event('input'));
+            showToast('メタディスクリプションを生成しました (' + data.char_count + '文字)');
+          } else {
+            throw new Error('メタディスクリプションを生成できませんでした');
+          }
+        } catch (error) {
+          alert(error.message || 'メタディスクリプションの生成に失敗しました');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = originalHtml;
+          btn.style.opacity = '1';
         }
       }
       
