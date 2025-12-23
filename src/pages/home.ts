@@ -87,12 +87,228 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       </div>
     </section>
 
-    <!-- Features Section (WHY mirAIcafe?) -->
+    <!-- 1. AI News Section (白背景、アニメーションなし) -->
+    <section id="ai-news" class="py-16 bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-8">
+          <span class="inline-flex items-center bg-blue-100 text-blue-600 font-medium px-4 py-2 rounded-full text-sm mb-4">
+            <i class="fas fa-robot mr-2"></i>AI NEWS
+          </span>
+          <h2 class="text-3xl font-bold text-cafe-text">最新AIニュース</h2>
+          <p class="text-cafe-textLight mt-2">AI業界の最新トピックスをチェック</p>
+        </div>
+        
+        <div class="news-scroll-container flex gap-5 overflow-x-auto pb-4 scroll-smooth" id="newsContainer" style="scrollbar-width: thin;">
+          <p class="text-center text-cafe-textLight w-full py-8">準備中です。近日公開予定!</p>
+        </div>
+        
+        <div class="text-center mt-6">
+          <a href="/blog" class="inline-flex items-center px-6 py-3 bg-blue-500 text-white rounded-full font-medium hover:bg-blue-600 transition">
+            もっと見る <i class="fas fa-arrow-right ml-2"></i>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Blog Section (葉っぱアニメーション見える) -->
+    <section id="blog" class="py-20 bg-cafe-cream/70 relative overflow-hidden">
+      <!-- 葉っぱアニメーション背景 -->
+      <div class="absolute inset-0 pointer-events-none overflow-hidden">
+        <div class="hero-glow-orb hero-glow-1"></div>
+        <div class="hero-glow-orb hero-glow-2"></div>
+        <div class="hero-diamond" style="top: 15%; left: 10%; animation-delay: 0s;"></div>
+        <div class="hero-diamond" style="top: 60%; right: 15%; animation-delay: -3s;"></div>
+        <div class="hero-diamond" style="bottom: 20%; left: 20%; animation-delay: -5s;"></div>
+      </div>
+      
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-12">
+          <div class="text-center md:text-left mb-6 md:mb-0">
+            <span class="inline-flex items-center bg-purple-100 text-purple-600 font-medium px-4 py-2 rounded-full text-sm mb-4">
+              <i class="fas fa-pen-nib mr-2"></i>BLOG
+            </span>
+            <h2 class="text-4xl font-bold text-cafe-text">開発日記・AI活用ブログ</h2>
+          </div>
+          <a href="/blog" class="btn-outline inline-flex items-center px-6 py-3 font-medium">
+            すべて見る <i class="fas fa-arrow-right ml-2"></i>
+          </a>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="blogGrid">
+          ${recentPosts.slice(0, 3).map(post => `
+            <a href="/blog/${post.id}" class="group bg-white rounded-xl overflow-hidden shadow-lg border border-gray-100 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
+              <div class="aspect-video overflow-hidden">
+                <img src="${post.image}" alt="${post.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+              </div>
+              <div class="p-6">
+                <div class="flex items-center gap-3 text-sm text-cafe-textLight mb-3">
+                  <span class="bg-nature-mint text-nature-forest font-medium px-3 py-1 rounded-full">${post.category}</span>
+                  <span><i class="fas fa-clock mr-1"></i>${post.readTime}</span>
+                </div>
+                <h3 class="text-xl font-bold text-cafe-text mb-3 line-clamp-2 group-hover:text-cafe-wood transition">${post.title}</h3>
+                <p class="text-cafe-textLight text-sm line-clamp-2">${post.excerpt}</p>
+                <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500">
+                  <span><i class="fas fa-user mr-1"></i>${post.author}</span>
+                  <span>${post.date}</span>
+                </div>
+              </div>
+            </a>
+          `).join('')}
+        </div>
+        
+        <div class="text-center mt-10">
+          <a href="/blog" class="inline-flex items-center px-8 py-4 bg-cafe-wood text-white rounded-full font-bold hover:bg-cafe-brown hover:-translate-y-1 transition-all shadow-lg">
+            <i class="fas fa-newspaper mr-2"></i>ブログをもっと見る <i class="fas fa-arrow-right ml-2"></i>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Profile Section (白背景、アニメーションなし) -->
+    <section id="profile" class="py-20 bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+          <span class="inline-flex items-center bg-pink-100 text-pink-600 font-medium px-4 py-2 rounded-full text-sm mb-4">
+            <i class="fas fa-user-circle mr-2"></i>INSTRUCTOR
+          </span>
+          <h2 class="text-4xl font-bold text-cafe-text">講師紹介</h2>
+        </div>
+        
+        <div class="flex flex-col lg:flex-row gap-10 items-center">
+          <!-- 左側: プロフィール画像 -->
+          <div class="lg:w-72 flex-shrink-0 mx-auto lg:mx-0">
+            <img src="/static/mion-profile.png" alt="mion(ミオン)" class="w-full max-w-xs mx-auto rounded-2xl shadow-xl">
+          </div>
+          
+          <!-- 右側: プロフィール本文（短縮版） -->
+          <div class="flex-1 text-center lg:text-left">
+            <h3 class="text-3xl font-bold text-cafe-text mb-2">mion(ミオン)</h3>
+            <p class="text-lg text-cafe-textLight mb-6">現役AI講師 / AIキャリア教育コンサルタント</p>
+            
+            <div class="bg-gray-50 p-6 rounded-xl border-l-4 border-blue-500 shadow-sm mb-8">
+              <p class="text-lg leading-relaxed">「AIをカフェで学ぶように、気軽に・楽しく・実践的に。」<br>
+              そんな想いで、mirAIcafeを運営しています。</p>
+            </div>
+            
+            <h4 class="text-xl font-bold text-cafe-text mb-4 pb-2 border-b-2 border-blue-500 inline-block">毎日、AIと共に働いています。</h4>
+            
+            <div class="bg-yellow-50 p-6 rounded-xl border-l-4 border-yellow-400 mb-8 mt-4">
+              <p class="text-lg leading-relaxed">
+                AIは「難しい技術」ではなく、<strong>「使い方次第で人生を豊かにする相棒」</strong>です。<br>
+                私自身、<strong>AIは人の生き方を広げる相棒</strong>だと信じています。
+              </p>
+            </div>
+            
+            <a href="https://hatarakustyle.jp/" target="_blank" class="inline-flex items-center px-6 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition">
+              <i class="fas fa-external-link-alt mr-2"></i>メンタルヘルス・キャリアコンサルタントとしての活動はこちら
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Portfolio Section (アニメーション見える) -->
+    <section id="portfolio" class="py-20 bg-cafe-cream/70 relative overflow-hidden">
+      <!-- アニメーション背景 -->
+      <div class="absolute inset-0 pointer-events-none overflow-hidden">
+        <div class="hero-glow-orb hero-glow-2"></div>
+        <div class="hero-glow-orb hero-glow-3"></div>
+        <div class="hero-diamond" style="top: 20%; right: 10%; animation-delay: -1s;"></div>
+        <div class="hero-diamond" style="bottom: 30%; left: 15%; animation-delay: -4s;"></div>
+      </div>
+      
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-12">
+          <div class="text-center md:text-left mb-6 md:mb-0">
+            <span class="inline-flex items-center bg-amber-100 text-amber-600 font-medium px-4 py-2 rounded-full text-sm mb-4">
+              <i class="fas fa-briefcase mr-2"></i>PORTFOLIO
+            </span>
+            <h2 class="text-4xl font-bold text-cafe-text">実績・ポートフォリオ</h2>
+          </div>
+          <a href="/contact" class="btn-outline inline-flex items-center px-6 py-3 font-medium">
+            お問い合わせ <i class="fas fa-arrow-right ml-2"></i>
+          </a>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="portfolioGrid">
+          ${(portfolios || []).slice(0, 3).map(item => `
+            <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+              <div class="aspect-video overflow-hidden">
+                <img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500">
+              </div>
+              <div class="p-6">
+                <span class="text-xs font-medium text-cafe-wood bg-cafe-latte/50 px-2 py-1 rounded">${item.category}</span>
+                <h3 class="text-xl font-bold text-cafe-text mt-3 mb-2">${item.title}</h3>
+                <p class="text-cafe-textLight text-sm mb-4">${item.description}</p>
+                <div class="flex flex-wrap gap-2 mb-4">
+                  ${item.technologies.map(tech => `
+                    <span class="bg-blue-500 text-white text-xs px-3 py-1 rounded-full">${tech}</span>
+                  `).join('')}
+                </div>
+                ${item.demoUrl ? `
+                  <div class="flex gap-3">
+                    <a href="${item.demoUrl}" target="_blank" class="inline-flex items-center px-4 py-2 bg-cafe-wood text-white rounded-lg text-sm hover:bg-cafe-brown transition">
+                      <i class="fas fa-external-link-alt mr-2"></i>デモを見る
+                    </a>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        
+        <div class="text-center mt-10">
+          <a href="/contact" class="inline-flex items-center px-8 py-4 bg-amber-500 text-white rounded-full font-bold hover:bg-amber-600 hover:-translate-y-1 transition-all shadow-lg">
+            <i class="fas fa-envelope mr-2"></i>制作のご相談はこちら <i class="fas fa-arrow-right ml-2"></i>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Characters Section - AI COMPANIONS (白背景、アニメーションなし) -->
+    <section class="py-20 bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div>
+            <span class="inline-flex items-center bg-cafe-latte/50 text-cafe-brown font-medium px-4 py-2 rounded-full text-sm mb-4">
+              <i class="fas fa-heart mr-2"></i>AI COMPANIONS
+            </span>
+            <h2 class="text-4xl font-bold text-cafe-text mb-6">
+              あなたの学習を<br><span class="text-wood-gradient">サポートする仲間たち</span>
+            </h2>
+            <p class="text-cafe-textLight text-lg mb-8 leading-relaxed">
+              mirAIcafeのかわいいキャラクターたちが、あなたの学習をサポート。
+              楽しみながら、着実にスキルアップできる環境を提供します。
+            </p>
+            <a href="/courses" class="btn-warm inline-flex items-center px-6 py-3 font-bold">
+              <i class="fas fa-arrow-right mr-2"></i>講座を見る
+            </a>
+          </div>
+          <div class="relative flex justify-center items-end gap-4">
+            <div class="absolute inset-0 bg-nature-mint rounded-3xl opacity-30 blur-2xl"></div>
+            <img src="/static/companion-green.png" alt="リーフ" class="relative w-28 md:w-36 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char1 6s ease-in-out infinite;">
+            <img src="/static/companion-rabbit.png" alt="ロボうさぎ" class="relative w-32 md:w-40 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char2 7s ease-in-out infinite;">
+            <img src="/static/companion-pink.png" alt="ピンク" class="relative w-24 md:w-32 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char3 5s ease-in-out infinite;">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Features Section - WHY mirAIcafe? (アニメーション見える) -->
     <section class="py-24 relative overflow-hidden bg-cafe-cream/70">
+      <!-- アニメーション背景 -->
+      <div class="absolute inset-0 pointer-events-none overflow-hidden">
+        <div class="hero-glow-orb hero-glow-1"></div>
+        <div class="hero-glow-orb hero-glow-3"></div>
+        <div class="hero-diamond" style="top: 10%; left: 5%; animation-delay: 0s;"></div>
+        <div class="hero-diamond" style="top: 50%; right: 10%; animation-delay: -2s;"></div>
+        <div class="hero-diamond" style="bottom: 15%; left: 25%; animation-delay: -4s;"></div>
+      </div>
+      
       <!-- Wood Wave Top -->
       <div class="absolute top-0 left-0 right-0 h-16 overflow-hidden transform rotate-180">
         <svg viewBox="0 0 1440 60" class="w-full h-full" preserveAspectRatio="none">
-          <path fill="#FAF8F3" d="M0,30L80,35C160,40,320,50,480,50C640,50,800,40,960,35C1120,30,1280,30,1360,30L1440,30L1440,60L0,60Z"></path>
+          <path fill="#FFFFFF" d="M0,30L80,35C160,40,320,50,480,50C640,50,800,40,960,35C1120,30,1280,30,1360,30L1440,30L1440,60L0,60Z"></path>
         </svg>
       </div>
       
@@ -143,198 +359,8 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       </div>
     </section>
 
-    <!-- Characters Section (AI COMPANIONS) -->
-    <section class="py-20 bg-cafe-ivory">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div>
-            <span class="inline-flex items-center bg-cafe-latte/50 text-cafe-brown font-medium px-4 py-2 rounded-full text-sm mb-4">
-              <i class="fas fa-heart mr-2"></i>AI COMPANIONS
-            </span>
-            <h2 class="text-4xl font-bold text-cafe-text mb-6">
-              あなたの学習を<br><span class="text-wood-gradient">サポートする仲間たち</span>
-            </h2>
-            <p class="text-cafe-textLight text-lg mb-8 leading-relaxed">
-              mirAIcafeのかわいいキャラクターたちが、あなたの学習をサポート。
-              楽しみながら、着実にスキルアップできる環境を提供します。
-            </p>
-            <a href="/courses" class="btn-warm inline-flex items-center px-6 py-3 font-bold">
-              <i class="fas fa-arrow-right mr-2"></i>講座を見る
-            </a>
-          </div>
-          <div class="relative flex justify-center items-end gap-4">
-            <div class="absolute inset-0 bg-nature-mint rounded-3xl opacity-30 blur-2xl"></div>
-            <img src="/static/companion-green.png" alt="リーフ" class="relative w-28 md:w-36 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char1 6s ease-in-out infinite;">
-            <img src="/static/companion-rabbit.png" alt="ロボうさぎ" class="relative w-32 md:w-40 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char2 7s ease-in-out infinite;">
-            <img src="/static/companion-pink.png" alt="ピンク" class="relative w-24 md:w-32 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char3 5s ease-in-out infinite;">
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- AI News Section -->
-    <section id="ai-news" class="py-16 bg-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-8">
-          <span class="inline-flex items-center bg-blue-100 text-blue-600 font-medium px-4 py-2 rounded-full text-sm mb-4">
-            <i class="fas fa-robot mr-2"></i>AI NEWS
-          </span>
-          <h2 class="text-3xl font-bold text-cafe-text">最新AIニュース</h2>
-          <p class="text-cafe-textLight mt-2">AI業界の最新トピックスをチェック</p>
-        </div>
-        
-        <div class="news-scroll-container flex gap-5 overflow-x-auto pb-4 scroll-smooth" id="newsContainer" style="scrollbar-width: thin;">
-          <p class="text-center text-cafe-textLight w-full py-8">準備中です。近日公開予定!</p>
-        </div>
-        
-        <div class="text-center mt-6">
-          <a href="/blog" class="inline-flex items-center px-6 py-3 bg-blue-500 text-white rounded-full font-medium hover:bg-blue-600 transition">
-            もっと見る <i class="fas fa-arrow-right ml-2"></i>
-          </a>
-        </div>
-      </div>
-    </section>
-
-    <!-- Blog Section (3件表示) -->
-    <section id="blog" class="py-20 bg-gradient-to-b from-gray-50 to-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex flex-col md:flex-row justify-between items-center mb-12">
-          <div class="text-center md:text-left mb-6 md:mb-0">
-            <span class="inline-flex items-center bg-purple-100 text-purple-600 font-medium px-4 py-2 rounded-full text-sm mb-4">
-              <i class="fas fa-pen-nib mr-2"></i>BLOG
-            </span>
-            <h2 class="text-4xl font-bold text-cafe-text">開発日記・AI活用ブログ</h2>
-          </div>
-          <a href="/blog" class="btn-outline inline-flex items-center px-6 py-3 font-medium">
-            すべて見る <i class="fas fa-arrow-right ml-2"></i>
-          </a>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="blogGrid">
-          ${recentPosts.slice(0, 3).map(post => `
-            <a href="/blog/${post.id}" class="group bg-white rounded-xl overflow-hidden shadow-lg border border-gray-100 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
-              <div class="aspect-video overflow-hidden">
-                <img src="${post.image}" alt="${post.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
-              </div>
-              <div class="p-6">
-                <div class="flex items-center gap-3 text-sm text-cafe-textLight mb-3">
-                  <span class="bg-nature-mint text-nature-forest font-medium px-3 py-1 rounded-full">${post.category}</span>
-                  <span><i class="fas fa-clock mr-1"></i>${post.readTime}</span>
-                </div>
-                <h3 class="text-xl font-bold text-cafe-text mb-3 line-clamp-2 group-hover:text-cafe-wood transition">${post.title}</h3>
-                <p class="text-cafe-textLight text-sm line-clamp-2">${post.excerpt}</p>
-                <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500">
-                  <span><i class="fas fa-user mr-1"></i>${post.author}</span>
-                  <span>${post.date}</span>
-                </div>
-              </div>
-            </a>
-          `).join('')}
-        </div>
-        
-        <div class="text-center mt-10">
-          <a href="/blog" class="inline-flex items-center px-8 py-4 bg-cafe-wood text-white rounded-full font-bold hover:bg-cafe-brown hover:-translate-y-1 transition-all shadow-lg">
-            <i class="fas fa-newspaper mr-2"></i>ブログをもっと見る <i class="fas fa-arrow-right ml-2"></i>
-          </a>
-        </div>
-      </div>
-    </section>
-
-    <!-- Portfolio Section (3件表示) -->
-    <section id="portfolio" class="py-20 bg-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex flex-col md:flex-row justify-between items-center mb-12">
-          <div class="text-center md:text-left mb-6 md:mb-0">
-            <span class="inline-flex items-center bg-amber-100 text-amber-600 font-medium px-4 py-2 rounded-full text-sm mb-4">
-              <i class="fas fa-briefcase mr-2"></i>PORTFOLIO
-            </span>
-            <h2 class="text-4xl font-bold text-cafe-text">実績・ポートフォリオ</h2>
-          </div>
-          <a href="/contact" class="btn-outline inline-flex items-center px-6 py-3 font-medium">
-            お問い合わせ <i class="fas fa-arrow-right ml-2"></i>
-          </a>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="portfolioGrid">
-          ${(portfolios || []).slice(0, 3).map(item => `
-            <div class="bg-gray-50 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-              <div class="aspect-video overflow-hidden">
-                <img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500">
-              </div>
-              <div class="p-6">
-                <span class="text-xs font-medium text-cafe-wood bg-cafe-latte/50 px-2 py-1 rounded">${item.category}</span>
-                <h3 class="text-xl font-bold text-cafe-text mt-3 mb-2">${item.title}</h3>
-                <p class="text-cafe-textLight text-sm mb-4">${item.description}</p>
-                <div class="flex flex-wrap gap-2 mb-4">
-                  ${item.technologies.map(tech => `
-                    <span class="bg-blue-500 text-white text-xs px-3 py-1 rounded-full">${tech}</span>
-                  `).join('')}
-                </div>
-                ${item.demoUrl ? `
-                  <div class="flex gap-3">
-                    <a href="${item.demoUrl}" target="_blank" class="inline-flex items-center px-4 py-2 bg-cafe-wood text-white rounded-lg text-sm hover:bg-cafe-brown transition">
-                      <i class="fas fa-external-link-alt mr-2"></i>デモを見る
-                    </a>
-                  </div>
-                ` : ''}
-              </div>
-            </div>
-          `).join('')}
-        </div>
-        
-        <div class="text-center mt-10">
-          <a href="/contact" class="inline-flex items-center px-8 py-4 bg-amber-500 text-white rounded-full font-bold hover:bg-amber-600 hover:-translate-y-1 transition-all shadow-lg">
-            <i class="fas fa-envelope mr-2"></i>制作のご相談はこちら <i class="fas fa-arrow-right ml-2"></i>
-          </a>
-        </div>
-      </div>
-    </section>
-
-    <!-- Profile Section (短縮版) -->
-    <section id="profile" class="py-20 bg-gradient-to-br from-gray-50 to-gray-100">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-12">
-          <span class="inline-flex items-center bg-pink-100 text-pink-600 font-medium px-4 py-2 rounded-full text-sm mb-4">
-            <i class="fas fa-user-circle mr-2"></i>INSTRUCTOR
-          </span>
-          <h2 class="text-4xl font-bold text-cafe-text">講師紹介</h2>
-        </div>
-        
-        <div class="flex flex-col lg:flex-row gap-10 items-center">
-          <!-- 左側: プロフィール画像 -->
-          <div class="lg:w-72 flex-shrink-0 mx-auto lg:mx-0">
-            <img src="/static/mion-profile.png" alt="mion(ミオン)" class="w-full max-w-xs mx-auto rounded-2xl shadow-xl">
-          </div>
-          
-          <!-- 右側: プロフィール本文（短縮版） -->
-          <div class="flex-1 text-center lg:text-left">
-            <h3 class="text-3xl font-bold text-cafe-text mb-2">mion(ミオン)</h3>
-            <p class="text-lg text-cafe-textLight mb-6">現役AI講師 / AIキャリア教育コンサルタント</p>
-            
-            <div class="bg-white p-6 rounded-xl border-l-4 border-blue-500 shadow-sm mb-8">
-              <p class="text-lg leading-relaxed">「AIをカフェで学ぶように、気軽に・楽しく・実践的に。」<br>
-              そんな想いで、mirAIcafeを運営しています。</p>
-            </div>
-            
-            <h4 class="text-xl font-bold text-cafe-text mb-4 pb-2 border-b-2 border-blue-500 inline-block">毎日、AIと共に働いています。</h4>
-            
-            <div class="bg-yellow-50 p-6 rounded-xl border-l-4 border-yellow-400 mb-8 mt-4">
-              <p class="text-lg leading-relaxed">
-                AIは「難しい技術」ではなく、<strong>「使い方次第で人生を豊かにする相棒」</strong>です。<br>
-                私自身、<strong>AIは人の生き方を広げる相棒</strong>だと信じています。
-              </p>
-            </div>
-            
-            <a href="https://hatarakustyle.jp/" target="_blank" class="inline-flex items-center px-6 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition">
-              <i class="fas fa-external-link-alt mr-2"></i>メンタルヘルス・キャリアコンサルタントとしての活動はこちら
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- How It Works Section (3ステップで始める) -->
-    <section class="py-24 bg-cafe-ivory relative overflow-hidden">
+    <!-- 7. How It Works Section - 3ステップで始める (白背景、アニメーションなし) -->
+    <section class="py-24 bg-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <span class="inline-flex items-center bg-nature-sage/50 text-nature-forest font-medium px-4 py-2 rounded-full text-sm mb-4">
@@ -350,7 +376,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           <div class="hidden md:block absolute top-16 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-cafe-wood via-cafe-caramel to-cafe-wood"></div>
           
           <div class="relative">
-            <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
+            <div class="card-hover bg-gray-50 p-8 text-center border border-cafe-beige shadow-md">
               <div class="w-16 h-16 bg-cafe-wood rounded-full flex items-center justify-center mx-auto mb-6 text-white font-bold text-2xl shadow-lg relative z-10">1</div>
               <h3 class="text-xl font-bold text-cafe-text mb-3">講座を選ぶ</h3>
               <p class="text-cafe-textLight">目的やレベルに合わせて最適な講座を選択</p>
@@ -358,7 +384,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           </div>
           
           <div class="relative">
-            <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
+            <div class="card-hover bg-gray-50 p-8 text-center border border-cafe-beige shadow-md">
               <div class="w-16 h-16 bg-cafe-wood rounded-full flex items-center justify-center mx-auto mb-6 text-white font-bold text-2xl shadow-lg relative z-10">2</div>
               <h3 class="text-xl font-bold text-cafe-text mb-3">日程を予約</h3>
               <p class="text-cafe-textLight">カレンダーから都合の良い日程を選択</p>
@@ -366,7 +392,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           </div>
           
           <div class="relative">
-            <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
+            <div class="card-hover bg-gray-50 p-8 text-center border border-cafe-beige shadow-md">
               <div class="w-16 h-16 bg-cafe-wood rounded-full flex items-center justify-center mx-auto mb-6 text-white font-bold text-2xl shadow-lg relative z-10">3</div>
               <h3 class="text-xl font-bold text-cafe-text mb-3">決済して参加</h3>
               <p class="text-cafe-textLight">安全なStripe決済でオンライン受講</p>
@@ -382,7 +408,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       </div>
     </section>
 
-    <!-- Course Introduction Section (簡素化、講師情報削除) -->
+    <!-- 8. Course Introduction Section - 人気の講座 (そのまま) -->
     <section class="py-20 bg-cafe-cream/70 relative overflow-hidden">
       <div class="absolute top-0 right-0 w-96 h-96 bg-nature-mint rounded-full opacity-20 blur-3xl"></div>
       
@@ -433,7 +459,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       </div>
     </section>
 
-    <!-- Contact CTA Section -->
+    <!-- 9. Contact CTA Section (そのまま) -->
     <section class="py-24 relative overflow-hidden">
       <div class="absolute inset-0 bg-gradient-to-br from-cafe-wood via-cafe-caramel to-cafe-brown"></div>
       <div class="absolute top-0 left-0 w-64 h-64 bg-cafe-latte rounded-full opacity-20 blur-3xl"></div>
