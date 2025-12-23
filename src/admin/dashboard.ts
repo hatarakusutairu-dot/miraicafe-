@@ -5,11 +5,13 @@ interface DashboardStats {
   blogs: number
   reviews: { total: number; pending: number }
   contacts: { total: number; new: number }
+  bookings: { total: number; pending: number; confirmed: number }
 }
 
 interface RecentActivity {
   contacts: Array<{ id: number; name: string; type: string; subject: string; created_at: string; status: string }>
   reviews: Array<{ id: number; course_id: string; reviewer_name: string; rating: number; comment: string; created_at: string }>
+  bookings: Array<{ id: number; customer_name: string; course_name: string; preferred_date: string; status: string; created_at: string }>
 }
 
 export const renderDashboard = (stats: DashboardStats, recent: RecentActivity) => {
@@ -19,8 +21,8 @@ export const renderDashboard = (stats: DashboardStats, recent: RecentActivity) =
       <p class="text-gray-500 mt-1">mirAIcafe管理画面へようこそ</p>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Stats Cards - Row 1 -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
       <div class="card-stat bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500">
         <div class="flex items-center justify-between">
           <div>
@@ -84,9 +86,96 @@ export const renderDashboard = (stats: DashboardStats, recent: RecentActivity) =
       </div>
     </div>
 
+    <!-- Stats Cards - Row 2: Bookings -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div class="card-stat bg-white rounded-xl shadow-sm p-6 border-l-4 border-indigo-500">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-500">総予約数</p>
+            <p class="text-3xl font-bold text-gray-800" id="total-bookings-count">${stats.bookings?.total || 0}</p>
+          </div>
+          <div class="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+            <i class="fas fa-calendar-alt text-indigo-500 text-xl"></i>
+          </div>
+        </div>
+        <a href="/admin/bookings" class="text-sm text-indigo-500 hover:text-indigo-700 mt-4 inline-block">
+          詳細を見る <i class="fas fa-arrow-right ml-1"></i>
+        </a>
+      </div>
+
+      <div class="card-stat bg-white rounded-xl shadow-sm p-6 border-l-4 border-yellow-500">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-500">新規予約</p>
+            <p class="text-3xl font-bold text-yellow-600" id="pending-bookings-count">${stats.bookings?.pending || 0}</p>
+            ${(stats.bookings?.pending || 0) > 0 ? `<p class="text-xs text-yellow-600 mt-1">確認待ち</p>` : ''}
+          </div>
+          <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+            <i class="fas fa-clock text-yellow-500 text-xl"></i>
+          </div>
+        </div>
+        <a href="/admin/bookings?tab=pending" class="text-sm text-yellow-500 hover:text-yellow-700 mt-4 inline-block">
+          確認する <i class="fas fa-arrow-right ml-1"></i>
+        </a>
+      </div>
+
+      <div class="card-stat bg-white rounded-xl shadow-sm p-6 border-l-4 border-teal-500">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-500">確定済み予約</p>
+            <p class="text-3xl font-bold text-teal-600" id="confirmed-bookings-count">${stats.bookings?.confirmed || 0}</p>
+          </div>
+          <div class="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
+            <i class="fas fa-check-circle text-teal-500 text-xl"></i>
+          </div>
+        </div>
+        <a href="/admin/bookings?tab=confirmed" class="text-sm text-teal-500 hover:text-teal-700 mt-4 inline-block">
+          詳細を見る <i class="fas fa-arrow-right ml-1"></i>
+        </a>
+      </div>
+    </div>
+
     <!-- Recent Activity -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       
+      <!-- Recent Bookings -->
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-gray-800 flex items-center">
+            <i class="fas fa-calendar-check text-indigo-500 mr-2"></i>
+            新着予約
+          </h2>
+          <a href="/admin/bookings" class="text-sm text-blue-500 hover:text-blue-700">すべて見る</a>
+        </div>
+        ${(recent.bookings?.length || 0) > 0 ? `
+          <div class="space-y-3">
+            ${recent.bookings.map(b => `
+              <a href="/admin/bookings/${b.id}" class="block p-3 rounded-lg hover:bg-gray-50 transition border border-gray-100">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center">
+                    <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+                      <i class="fas fa-user text-indigo-500 text-xs"></i>
+                    </div>
+                    <div>
+                      <p class="font-medium text-gray-800 text-sm">${escapeHtml(b.customer_name)}</p>
+                      <p class="text-xs text-gray-500 truncate max-w-[150px]">${escapeHtml(b.course_name) || '講座名未設定'}</p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <span class="inline-block px-2 py-1 text-xs rounded ${getStatusStyle(b.status)}">
+                      ${getStatusLabel(b.status)}
+                    </span>
+                    <p class="text-xs text-gray-400 mt-1">${formatDate(b.created_at)}</p>
+                  </div>
+                </div>
+              </a>
+            `).join('')}
+          </div>
+        ` : `
+          <p class="text-gray-500 text-sm text-center py-8">予約はありません</p>
+        `}
+      </div>
+
       <!-- Recent Contacts -->
       <div class="bg-white rounded-xl shadow-sm p-6">
         <div class="flex items-center justify-between mb-4">
@@ -107,7 +196,7 @@ export const renderDashboard = (stats: DashboardStats, recent: RecentActivity) =
                     </div>
                     <div>
                       <p class="font-medium text-gray-800 text-sm">${c.name}</p>
-                      <p class="text-xs text-gray-500 truncate max-w-[200px]">${c.subject}</p>
+                      <p class="text-xs text-gray-500 truncate max-w-[150px]">${c.subject}</p>
                     </div>
                   </div>
                   <div class="text-right">
@@ -171,6 +260,30 @@ export const renderDashboard = (stats: DashboardStats, recent: RecentActivity) =
         `}
       </div>
     </div>
+
+    <script>
+      // 予約数をリアルタイムで取得・更新
+      async function loadBookingStats() {
+        try {
+          const res = await fetch('/admin/api/bookings');
+          const data = await res.json();
+          
+          if (data.bookings) {
+            const pending = data.bookings.filter(b => b.status === 'pending').length;
+            const confirmed = data.bookings.filter(b => b.status === 'confirmed').length;
+            
+            document.getElementById('total-bookings-count').textContent = data.bookings.length;
+            document.getElementById('pending-bookings-count').textContent = pending;
+            document.getElementById('confirmed-bookings-count').textContent = confirmed;
+          }
+        } catch (error) {
+          console.error('Failed to load booking stats:', error);
+        }
+      }
+      
+      // ページ読み込み時に予約統計を更新
+      loadBookingStats();
+    </script>
   `
 
   return renderAdminLayout('ダッシュボード', content, 'dashboard')
@@ -187,4 +300,34 @@ function formatDate(dateStr: string): string {
   if (days < 7) return `${days}日前`
   
   return `${date.getMonth() + 1}/${date.getDate()}`
+}
+
+function escapeHtml(text: string | null | undefined): string {
+  if (!text) return ''
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+function getStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    pending: '新規',
+    confirmed: '確定済み',
+    completed: '完了',
+    cancelled: 'キャンセル'
+  }
+  return labels[status] || status
+}
+
+function getStatusStyle(status: string): string {
+  const styles: Record<string, string> = {
+    pending: 'bg-yellow-100 text-yellow-700',
+    confirmed: 'bg-blue-100 text-blue-700',
+    completed: 'bg-green-100 text-green-700',
+    cancelled: 'bg-red-100 text-red-700'
+  }
+  return styles[status] || 'bg-gray-100 text-gray-700'
 }

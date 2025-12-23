@@ -531,6 +531,15 @@ app.get('/admin', async (c) => {
       FROM contacts
     `).first()
     
+    // 予約統計を取得
+    const bookingsResult = await c.env.DB.prepare(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) as confirmed
+      FROM bookings
+    `).first()
+    
     // 最近のお問い合わせ
     const recentContacts = await c.env.DB.prepare(`
       SELECT id, name, type, subject, status, created_at
@@ -548,6 +557,15 @@ app.get('/admin', async (c) => {
       LIMIT 5
     `).all()
     
+    // 最近の予約
+    const recentBookings = await c.env.DB.prepare(`
+      SELECT b.id, b.customer_name, c.title as course_name, b.preferred_date, b.status, b.created_at
+      FROM bookings b
+      LEFT JOIN courses c ON b.course_id = c.id
+      ORDER BY b.created_at DESC
+      LIMIT 5
+    `).all()
+    
     const stats = {
       courses: courses.length,
       blogs: blogPosts.length,
@@ -558,12 +576,18 @@ app.get('/admin', async (c) => {
       contacts: {
         total: (contactsResult as any)?.total || 0,
         new: (contactsResult as any)?.new || 0
+      },
+      bookings: {
+        total: (bookingsResult as any)?.total || 0,
+        pending: (bookingsResult as any)?.pending || 0,
+        confirmed: (bookingsResult as any)?.confirmed || 0
       }
     }
     
     const recent = {
       contacts: recentContacts.results as any[],
-      reviews: pendingReviews.results as any[]
+      reviews: pendingReviews.results as any[],
+      bookings: recentBookings.results as any[]
     }
     
     return c.html(renderDashboard(stats, recent))
@@ -574,9 +598,10 @@ app.get('/admin', async (c) => {
       courses: courses.length,
       blogs: blogPosts.length,
       reviews: { total: 0, pending: 0 },
-      contacts: { total: 0, new: 0 }
+      contacts: { total: 0, new: 0 },
+      bookings: { total: 0, pending: 0, confirmed: 0 }
     }
-    const recent = { contacts: [], reviews: [] }
+    const recent = { contacts: [], reviews: [], bookings: [] }
     return c.html(renderDashboard(stats, recent))
   }
 })
