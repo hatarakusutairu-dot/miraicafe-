@@ -1492,4 +1492,150 @@ app.post('/admin/api/seo/analyze/:pageId', async (c) => {
   }
 })
 
+// SEOスコア計算API
+app.post('/admin/api/ai/analyze-seo', async (c) => {
+  try {
+    const { title, content } = await c.req.json()
+    
+    let score = 0
+    const feedback: string[] = []
+    
+    // タイトル文字数チェック
+    const titleLength = title?.length || 0
+    if (titleLength >= 30 && titleLength <= 60) {
+      score += 30
+      feedback.push('✅ タイトル文字数が最適です')
+    } else if (titleLength < 30) {
+      feedback.push('⚠️ タイトルが短すぎます（30文字以上推奨）')
+    } else {
+      feedback.push('⚠️ タイトルが長すぎます（60文字以内推奨）')
+    }
+    
+    // 数字の有無
+    if (/\d/.test(title || '')) {
+      score += 15
+      feedback.push('✅ タイトルに数字が含まれています')
+    } else {
+      feedback.push('💡 タイトルに数字を入れると効果的です')
+    }
+    
+    // キーワード密度
+    if ((title || '').includes('AI') || (title || '').includes('ChatGPT') || (title || '').includes('初心者')) {
+      score += 20
+      feedback.push('✅ 重要キーワードが含まれています')
+    } else {
+      feedback.push('💡 メインキーワードを含めましょう')
+    }
+    
+    // 疑問形・具体性
+    if ((title || '').includes('？') || (title || '').includes('方法') || (title || '').includes('完全ガイド')) {
+      score += 15
+      feedback.push('✅ 読者の興味を引く表現です')
+    }
+    
+    // コンテンツ文字数
+    const contentLength = content?.length || 0
+    if (contentLength >= 1500) {
+      score += 20
+      feedback.push('✅ 十分な文字数があります')
+    } else if (contentLength >= 800) {
+      score += 10
+      feedback.push('⚠️ もう少し詳しく書くと良いです')
+    } else {
+      feedback.push('⚠️ 文字数が少なすぎます（1500文字以上推奨）')
+    }
+    
+    return c.json({ 
+      score: Math.min(score, 100),
+      feedback,
+      color: score >= 80 ? 'green' : score >= 60 ? 'yellow' : 'red'
+    })
+  } catch (error) {
+    console.error('SEO analyze error:', error)
+    return c.json({ error: 'SEO分析に失敗しました' }, 500)
+  }
+})
+
+// AI SEO提案API
+app.post('/admin/api/ai/suggest-seo', async (c) => {
+  try {
+    const { title, content, type } = await c.req.json()
+    
+    const prompt = `あなたはSEO専門家です。以下の${type === 'blog' ? 'ブログ記事' : '講座'}のタイトルと内容を分析し、SEOを改善する提案をしてください。
+
+【現在のタイトル】
+${title || '未設定'}
+
+【内容の一部】
+${(content || '').substring(0, 500)}...
+
+【出力形式】※必ずこの形式で
+## 改善タイトル案
+1. [案1]
+2. [案2]
+3. [案3]
+
+## メタディスクリプション
+[120文字以内]
+
+## 推奨キーワード
+[5個、カンマ区切り]
+
+## 改善ポイント
+• [ポイント1]
+• [ポイント2]
+• [ポイント3]`
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${c.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: prompt }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2048
+          }
+        })
+      }
+    )
+    
+    if (!response.ok) {
+      throw new Error(`Gemini API error: ${response.status}`)
+    }
+    
+    const data = await response.json() as {
+      candidates?: Array<{
+        content?: {
+          parts?: Array<{ text?: string }>
+        }
+      }>
+    }
+    
+    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    
+    // パース処理
+    const titleMatch = generatedText.match(/## 改善タイトル案\n1\. (.+)\n2\. (.+)\n3\. (.+)/)
+    const metaMatch = generatedText.match(/## メタディスクリプション\n(.+)/)
+    const keywordsMatch = generatedText.match(/## 推奨キーワード\n(.+)/)
+    const pointsMatch = generatedText.match(/## 改善ポイント\n([\s\S]+?)(?=\n##|\n\n|$)/)
+    
+    return c.json({
+      suggested_titles: titleMatch ? [titleMatch[1], titleMatch[2], titleMatch[3]] : [],
+      meta_description: metaMatch ? metaMatch[1] : '',
+      keywords: keywordsMatch ? keywordsMatch[1].split(',').map((k: string) => k.trim()) : [],
+      improvement_points: pointsMatch ? 
+        pointsMatch[1].split('\n').filter((p: string) => p.trim().startsWith('•')).map((p: string) => p.replace('•', '').trim()) 
+        : [],
+      raw_response: generatedText
+    })
+  } catch (error) {
+    console.error('SEO suggest error:', error)
+    return c.json({ error: 'AI提案の取得に失敗しました' }, 500)
+  }
+})
+
 export default app
