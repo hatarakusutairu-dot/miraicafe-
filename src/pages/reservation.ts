@@ -178,14 +178,14 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
                   </span>
                 </label>
                 
-                <!-- キャンセルポリシー -->
+                <!-- キャンセル・返金ポリシー -->
                 <label class="flex items-start gap-3 cursor-pointer group">
                   <input type="checkbox" id="cancellation-agree" class="mt-1 w-5 h-5 rounded border-2 border-future-sky text-ai-blue focus:ring-ai-blue cursor-pointer">
                   <span class="text-sm text-future-textLight leading-relaxed">
                     <a href="/cancellation-policy" target="_blank" class="text-ai-blue hover:text-ai-purple underline font-medium transition-colors">
-                      キャンセルポリシー
+                      キャンセル・返金ポリシー
                     </a>
-                    に同意します <span class="text-red-500">*</span>
+                    <span class="text-future-textLight">（返金不可、日程変更は当所判断）</span>を確認し、同意します <span class="text-red-500">*</span>
                   </span>
                 </label>
                 
