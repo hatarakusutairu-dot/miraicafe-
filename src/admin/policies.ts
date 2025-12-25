@@ -25,6 +25,11 @@ export const renderPoliciesList = (policies: Policy[]) => {
       icon: 'fa-calendar-times', 
       description: '予約キャンセルに関するポリシー', 
       color: 'bg-orange-500'
+    },
+    tokushoho: { 
+      icon: 'fa-store', 
+      description: '特定商取引法に基づく表記', 
+      color: 'bg-purple-500'
     }
   }
 
@@ -33,7 +38,7 @@ export const renderPoliciesList = (policies: Policy[]) => {
       <h1 class="text-3xl font-bold text-gray-800 mb-2">
         <i class="fas fa-file-alt mr-3 text-blue-500"></i>ポリシー管理
       </h1>
-      <p class="text-gray-600">利用規約・プライバシーポリシー・キャンセルポリシーを管理します</p>
+      <p class="text-gray-600">利用規約・プライバシーポリシー・キャンセルポリシー・特定商取引法を管理します</p>
     </div>
 
     <div class="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -73,7 +78,7 @@ export const renderPoliciesList = (policies: Policy[]) => {
                   </div>
                 </div>
                 <div class="flex items-center gap-3">
-                  <a href="/${policy.id === 'cancellation' ? 'cancellation-policy' : policy.id}" target="_blank" 
+                  <a href="/${policy.id === 'cancellation' ? 'cancellation-policy' : (policy.id === 'privacy' ? 'privacy' : policy.id)}" target="_blank" 
                      class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition font-medium">
                     <i class="fas fa-external-link-alt mr-2"></i>プレビュー
                   </a>
@@ -110,13 +115,15 @@ export const renderPolicyEditForm = (policy: Policy | null, policyId: string) =>
   const titles: Record<string, string> = {
     terms: '利用規約',
     privacy: 'プライバシーポリシー',
-    cancellation: 'キャンセルポリシー'
+    cancellation: 'キャンセルポリシー',
+    tokushoho: '特定商取引法に基づく表記'
   }
 
   const icons: Record<string, string> = {
     terms: 'fa-file-contract',
     privacy: 'fa-shield-alt',
-    cancellation: 'fa-calendar-times'
+    cancellation: 'fa-calendar-times',
+    tokushoho: 'fa-store'
   }
 
   const title = policy?.title || titles[policyId] || 'ポリシー'

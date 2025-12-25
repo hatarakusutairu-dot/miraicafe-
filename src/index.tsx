@@ -278,9 +278,14 @@ app.get('/cancellation-policy', async (c) => {
   }
 })
 
-// 特定商取引法に基づく表記
-app.get('/tokushoho', (c) => {
-  return c.html(renderTokushohoPage())
+// 特定商取引法に基づく表記（DBから取得）
+app.get('/tokushoho', async (c) => {
+  try {
+    const result = await c.env.DB.prepare('SELECT * FROM policies WHERE id = ?').bind('tokushoho').first<Policy>()
+    return c.html(renderTokushohoPage(result))
+  } catch (error) {
+    return c.html(renderTokushohoPage(null))
+  }
 })
 
 // AI News Page
@@ -3131,7 +3136,25 @@ app.get('/api/site-stats', async (c) => {
 // ポリシー一覧
 app.get('/admin/policies', async (c) => {
   try {
-    const result = await c.env.DB.prepare('SELECT * FROM policies ORDER BY id').all<AdminPolicy>()
+    // デフォルトのポリシーID（tokushohoを追加）
+    const defaultPolicies = [
+      { id: 'terms', title: '利用規約', content: '（内容準備中）' },
+      { id: 'privacy', title: 'プライバシーポリシー', content: '（内容準備中）' },
+      { id: 'cancellation', title: 'キャンセルポリシー', content: '（内容準備中）' },
+      { id: 'tokushoho', title: '特定商取引法に基づく表記', content: '（内容準備中）' }
+    ]
+    
+    // 存在しないポリシーを自動作成
+    for (const policy of defaultPolicies) {
+      const exists = await c.env.DB.prepare('SELECT id FROM policies WHERE id = ?').bind(policy.id).first()
+      if (!exists) {
+        await c.env.DB.prepare(
+          'INSERT INTO policies (id, title, content) VALUES (?, ?, ?)'
+        ).bind(policy.id, policy.title, policy.content).run()
+      }
+    }
+    
+    const result = await c.env.DB.prepare('SELECT * FROM policies ORDER BY CASE id WHEN \'terms\' THEN 1 WHEN \'privacy\' THEN 2 WHEN \'cancellation\' THEN 3 WHEN \'tokushoho\' THEN 4 ELSE 5 END').all<AdminPolicy>()
     return c.html(renderPoliciesList(result.results || []))
   } catch (error) {
     console.error('Policies list error:', error)
@@ -3151,17 +3174,29 @@ app.get('/admin/policies/edit/:id', async (c) => {
   }
 })
 
-// ポリシー更新API
+// ポリシー更新API（UPSERT対応）
 app.put('/admin/api/policies/:id', async (c) => {
   const policyId = c.req.param('id')
   try {
     const body = await c.req.json<{ title: string; content: string }>()
     
-    await c.env.DB.prepare(`
-      UPDATE policies 
-      SET title = ?, content = ?, last_updated = CURRENT_TIMESTAMP 
-      WHERE id = ?
-    `).bind(body.title, body.content, policyId).run()
+    // まず存在確認
+    const exists = await c.env.DB.prepare('SELECT id FROM policies WHERE id = ?').bind(policyId).first()
+    
+    if (exists) {
+      // 存在する場合はUPDATE
+      await c.env.DB.prepare(`
+        UPDATE policies 
+        SET title = ?, content = ?, last_updated = CURRENT_TIMESTAMP 
+        WHERE id = ?
+      `).bind(body.title, body.content, policyId).run()
+    } else {
+      // 存在しない場合はINSERT
+      await c.env.DB.prepare(`
+        INSERT INTO policies (id, title, content, last_updated) 
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      `).bind(policyId, body.title, body.content).run()
+    }
     
     return c.json({ success: true, message: '保存しました' })
   } catch (error) {
