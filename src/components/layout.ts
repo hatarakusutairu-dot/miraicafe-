@@ -14,7 +14,7 @@ export const renderLayout = (title: string, content: string, activeNav: string =
   <meta property="og:site_name" content="mirAIcafe">
   <meta property="og:title" content="${title} | mirAIcafe">
   <meta property="og:description" content="mirAIcafeは、リラックスした雰囲気でAI・プログラミングを学べる新しいスタイルの学習カフェです。">
-  <meta property="og:image" content="https://miraicafe.work/static/logo.png">
+  <meta property="og:image" content="https://miraicafe.work/static/og-image.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${title} | mirAIcafe">
   <meta name="twitter:description" content="mirAIcafeは、リラックスした雰囲気でAI・プログラミングを学べる新しいスタイルの学習カフェです。">
