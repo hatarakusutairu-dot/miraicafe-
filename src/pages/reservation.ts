@@ -150,7 +150,7 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
                 </div>
               </div>
 
-              <!-- 利用規約・プライバシーポリシー・キャンセルポリシー同意 -->
+              <!-- 利用規約・キャンセルポリシー同意 -->
               <div class="mb-4 p-4 bg-future-light rounded-xl border border-future-sky space-y-3">
                 <p class="text-sm font-medium text-future-text mb-2">
                   <i class="fas fa-file-signature mr-2 text-ai-blue"></i>ご予約にあたっての同意事項
@@ -162,17 +162,6 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
                   <span class="text-sm text-future-textLight leading-relaxed">
                     <a href="/terms" target="_blank" class="text-ai-blue hover:text-ai-purple underline font-medium transition-colors">
                       利用規約
-                    </a>
-                    に同意します <span class="text-red-500">*</span>
-                  </span>
-                </label>
-                
-                <!-- プライバシーポリシー -->
-                <label class="flex items-start gap-3 cursor-pointer group">
-                  <input type="checkbox" id="privacy-agree" class="mt-1 w-5 h-5 rounded border-2 border-future-sky text-ai-blue focus:ring-ai-blue cursor-pointer">
-                  <span class="text-sm text-future-textLight leading-relaxed">
-                    <a href="/privacy" target="_blank" class="text-ai-blue hover:text-ai-purple underline font-medium transition-colors">
-                      プライバシーポリシー
                     </a>
                     に同意します <span class="text-red-500">*</span>
                   </span>
@@ -272,7 +261,6 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
       const summaryTime = document.getElementById('summary-time');
       const summaryPrice = document.getElementById('summary-price');
       const termsAgree = document.getElementById('terms-agree');
-      const privacyAgree = document.getElementById('privacy-agree');
       const cancellationAgree = document.getElementById('cancellation-agree');
       const policyError = document.getElementById('policy-error');
 
@@ -325,11 +313,11 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
 
       // 全ての同意チェックボックスをチェック
       function areAllPoliciesAgreed() {
-        return termsAgree.checked && privacyAgree.checked && cancellationAgree.checked;
+        return termsAgree.checked && cancellationAgree.checked;
       }
 
       // 規約同意チェックボックスの監視
-      [termsAgree, privacyAgree, cancellationAgree].forEach(checkbox => {
+      [termsAgree, cancellationAgree].forEach(checkbox => {
         checkbox.addEventListener('change', function() {
           policyError.classList.add('hidden');
           updateSummary();
