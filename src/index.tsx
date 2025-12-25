@@ -9,7 +9,9 @@ import { renderCoursesPage, renderCourseDetailPage } from './pages/courses'
 import { renderReservationPage } from './pages/reservation'
 import { renderBlogPage, renderBlogPostPage } from './pages/blog'
 import { renderContactPage } from './pages/contact'
+import { renderPolicyPage, type Policy } from './pages/policy'
 import { renderAINewsPage } from './pages/ai-news'
+import { renderPortfolioListPage, renderPortfolioDetailPage } from './pages/portfolio'
 
 // Admin Pages
 import { renderAdminLayout, renderLoginPage } from './admin/layout'
@@ -23,6 +25,12 @@ import { renderBookingsList, renderBookingDetail, type Booking } from './admin/b
 import { renderAINewsList, type AINews } from './admin/ai-news'
 import { renderAIWriterPage } from './admin/ai-writer'
 import { renderAICourseGeneratorPage } from './admin/ai-course-generator'
+import { renderPoliciesList, renderPolicyEditForm, type Policy as AdminPolicy } from './admin/policies'
+import { renderPortfoliosList, renderPortfolioForm, type Portfolio } from './admin/portfolios'
+import { renderAIPortfolioGeneratorPage } from './admin/ai-portfolio-generator'
+import { renderCommentsList, type Comment } from './admin/comments'
+import { renderSurveyDashboard, renderSurveyQuestions, renderSurveyResponses, renderSurveySettings } from './admin/surveys'
+import { renderSurveyPage } from './pages/survey'
 
 // Services
 import { 
@@ -65,7 +73,39 @@ app.use('/static/*', serveStatic({ root: './public' }))
 app.get('/', async (c) => {
   const allCourses = await getAllCoursesForFront(c.env.DB)
   const allPosts = await getAllBlogPosts(c.env.DB)
-  return c.html(renderHomePage(allCourses.slice(0, 3), allPosts.slice(0, 5), portfolios))
+  
+  // DBからポートフォリオを取得（公開中のみ）
+  let allPortfolios: any[] = [...portfolios] // 静的データをベースに
+  try {
+    const dbPortfolios = await c.env.DB.prepare(`
+      SELECT * FROM portfolios WHERE status = 'published' ORDER BY sort_order ASC, created_at DESC LIMIT 6
+    `).all()
+    
+    if (dbPortfolios.results && dbPortfolios.results.length > 0) {
+      // DBのデータを静的データの形式に変換
+      const convertedPortfolios = dbPortfolios.results.map((p: any) => ({
+        id: p.slug || `db-${p.id}`,
+        title: p.title,
+        description: p.description || '',
+        image: p.thumbnail || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=60',
+        technologies: JSON.parse(p.technologies || '[]'),
+        demoUrl: p.demo_url || p.live_url,
+        githubUrl: p.github_url,
+        category: p.category || 'Webアプリ',
+        // DB専用フィールド
+        demo_type: p.demo_type,
+        video_url: p.video_url,
+        images: p.images,
+        content: p.content
+      }))
+      // DBデータと静的データを結合（DBデータを優先）
+      allPortfolios = convertedPortfolios
+    }
+  } catch (e) {
+    console.log('Portfolio fetch error, using static data:', e)
+  }
+  
+  return c.html(renderHomePage(allCourses.slice(0, 3), allPosts.slice(0, 5), allPortfolios))
 })
 
 // Courses（DBと静的データをマージ）
@@ -101,12 +141,55 @@ app.get('/blog/:id', async (c) => {
   const post = await getBlogPostById(c.env.DB, id)
   if (!post) return c.notFound()
   const allPosts = await getAllBlogPosts(c.env.DB)
-  return c.html(renderBlogPostPage(post, allPosts))
+  const allCourses = await getAllCoursesForFront(c.env.DB)
+  
+  // 承認済みコメントを取得
+  let comments: any[] = []
+  try {
+    const result = await c.env.DB.prepare(`
+      SELECT * FROM comments 
+      WHERE post_id = ? AND status = 'approved'
+      ORDER BY created_at DESC
+    `).bind(id).all()
+    comments = result.results || []
+  } catch (e) {
+    // テーブルがない場合はスキップ
+  }
+  
+  return c.html(renderBlogPostPage(post, allPosts, allCourses.slice(0, 3), comments))
 })
 
 // Contact
 app.get('/contact', (c) => {
   return c.html(renderContactPage())
+})
+
+// Policy Pages (Terms, Privacy, Cancellation)
+app.get('/terms', async (c) => {
+  try {
+    const result = await c.env.DB.prepare('SELECT * FROM policies WHERE id = ?').bind('terms').first<Policy>()
+    return c.html(renderPolicyPage(result, 'terms'))
+  } catch (error) {
+    return c.html(renderPolicyPage(null, 'terms'))
+  }
+})
+
+app.get('/privacy', async (c) => {
+  try {
+    const result = await c.env.DB.prepare('SELECT * FROM policies WHERE id = ?').bind('privacy').first<Policy>()
+    return c.html(renderPolicyPage(result, 'privacy'))
+  } catch (error) {
+    return c.html(renderPolicyPage(null, 'privacy'))
+  }
+})
+
+app.get('/cancellation-policy', async (c) => {
+  try {
+    const result = await c.env.DB.prepare('SELECT * FROM policies WHERE id = ?').bind('cancellation').first<Policy>()
+    return c.html(renderPolicyPage(result, 'cancellation'))
+  } catch (error) {
+    return c.html(renderPolicyPage(null, 'cancellation'))
+  }
 })
 
 // AI News Page
@@ -128,11 +211,465 @@ app.get('/ai-news', async (c) => {
   }
 })
 
+// Portfolio（ポートフォリオ一覧・詳細）
+app.get('/portfolio', async (c) => {
+  try {
+    const result = await c.env.DB.prepare(`
+      SELECT * FROM portfolios WHERE status = 'published' ORDER BY sort_order ASC, created_at DESC
+    `).all()
+    
+    // DBにデータがある場合はDBデータを使用、なければ静的データを使用
+    if (result.results && result.results.length > 0) {
+      return c.html(renderPortfolioListPage(result.results as any[]))
+    } else {
+      // 静的データをDB形式に変換
+      const staticPortfolios = portfolios.map(p => ({
+        id: 0,
+        title: p.title,
+        slug: p.id,
+        description: p.description,
+        category: p.category,
+        thumbnail: p.image,
+        demo_type: 'link',
+        demo_url: p.demoUrl,
+        github_url: p.githubUrl,
+        live_url: null,
+        video_url: null,
+        images: '[]',
+        technologies: JSON.stringify(p.technologies),
+        content: null,
+        duration: null,
+        client: null,
+        role: null,
+        status: 'published',
+        meta_description: null,
+        keywords: null,
+        created_at: new Date().toISOString()
+      }))
+      return c.html(renderPortfolioListPage(staticPortfolios))
+    }
+  } catch (error) {
+    console.error('Portfolio page error:', error)
+    // エラー時も静的データを使用
+    const staticPortfolios = portfolios.map(p => ({
+      id: 0,
+      title: p.title,
+      slug: p.id,
+      description: p.description,
+      category: p.category,
+      thumbnail: p.image,
+      demo_type: 'link',
+      demo_url: p.demoUrl,
+      github_url: p.githubUrl,
+      live_url: null,
+      video_url: null,
+      images: '[]',
+      technologies: JSON.stringify(p.technologies),
+      content: null,
+      duration: null,
+      client: null,
+      role: null,
+      status: 'published',
+      meta_description: null,
+      keywords: null,
+      created_at: new Date().toISOString()
+    }))
+    return c.html(renderPortfolioListPage(staticPortfolios))
+  }
+})
+
+app.get('/portfolio/:slug', async (c) => {
+  const slug = c.req.param('slug')
+  try {
+    // まずDBから検索
+    const portfolio = await c.env.DB.prepare(`
+      SELECT * FROM portfolios WHERE slug = ? AND status = 'published'
+    `).bind(slug).first()
+    
+    if (portfolio) {
+      // DBにある場合
+      const related = await c.env.DB.prepare(`
+        SELECT * FROM portfolios 
+        WHERE status = 'published' AND id != ? 
+        ORDER BY category = ? DESC, created_at DESC 
+        LIMIT 3
+      `).bind(portfolio.id, portfolio.category).all()
+      
+      const allCourses = await getAllCoursesForFront(c.env.DB)
+      return c.html(renderPortfolioDetailPage(portfolio as any, related.results as any[] || [], allCourses.slice(0, 3)))
+    }
+    
+    // 静的データから検索
+    const staticPortfolio = portfolios.find(p => p.id === slug)
+    if (!staticPortfolio) return c.notFound()
+    
+    // 静的データをDB形式に変換
+    const convertedPortfolio = {
+      id: 0,
+      title: staticPortfolio.title,
+      slug: staticPortfolio.id,
+      description: staticPortfolio.description,
+      category: staticPortfolio.category,
+      thumbnail: staticPortfolio.image,
+      demo_type: 'link',
+      demo_url: staticPortfolio.demoUrl,
+      github_url: staticPortfolio.githubUrl,
+      live_url: null,
+      video_url: null,
+      images: '[]',
+      technologies: JSON.stringify(staticPortfolio.technologies),
+      content: null,
+      duration: null,
+      client: null,
+      role: null,
+      status: 'published',
+      meta_description: null,
+      keywords: null,
+      created_at: new Date().toISOString()
+    }
+    
+    // 関連ポートフォリオ（静的データから）
+    const relatedStatic = portfolios
+      .filter(p => p.id !== slug && p.category === staticPortfolio.category)
+      .slice(0, 3)
+      .map(p => ({
+        id: 0,
+        title: p.title,
+        slug: p.id,
+        description: p.description,
+        category: p.category,
+        thumbnail: p.image,
+        demo_type: 'link',
+        demo_url: p.demoUrl,
+        github_url: p.githubUrl,
+        live_url: null,
+        video_url: null,
+        images: '[]',
+        technologies: JSON.stringify(p.technologies),
+        content: null,
+        duration: null,
+        client: null,
+        role: null,
+        status: 'published',
+        meta_description: null,
+        keywords: null,
+        created_at: new Date().toISOString()
+      }))
+    
+    const allCourses = await getAllCoursesForFront(c.env.DB)
+    return c.html(renderPortfolioDetailPage(convertedPortfolio, relatedStatic, allCourses.slice(0, 3)))
+  } catch (error) {
+    console.error('Portfolio detail error:', error)
+    
+    // エラー時も静的データで試行
+    const staticPortfolio = portfolios.find(p => p.id === slug)
+    if (!staticPortfolio) return c.notFound()
+    
+    const convertedPortfolio = {
+      id: 0,
+      title: staticPortfolio.title,
+      slug: staticPortfolio.id,
+      description: staticPortfolio.description,
+      category: staticPortfolio.category,
+      thumbnail: staticPortfolio.image,
+      demo_type: 'link',
+      demo_url: staticPortfolio.demoUrl,
+      github_url: staticPortfolio.githubUrl,
+      live_url: null,
+      video_url: null,
+      images: '[]',
+      technologies: JSON.stringify(staticPortfolio.technologies),
+      content: null,
+      duration: null,
+      client: null,
+      role: null,
+      status: 'published',
+      meta_description: null,
+      keywords: null,
+      created_at: new Date().toISOString()
+    }
+    
+    return c.html(renderPortfolioDetailPage(convertedPortfolio, [], []))
+  }
+})
+
 // ===== API Endpoints =====
 
 // Get courses
 app.get('/api/courses', (c) => {
   return c.json(courses)
+})
+
+// ===== コメント API =====
+
+// コメント投稿（承認待ち）
+app.post('/api/comments', async (c) => {
+  try {
+    const { post_id, author_name, content } = await c.req.json<{
+      post_id: string
+      author_name: string
+      content: string
+    }>()
+
+    // バリデーション
+    if (!post_id || !author_name || !content) {
+      return c.json({ success: false, error: '必須項目が入力されていません' }, 400)
+    }
+
+    if (author_name.length > 50) {
+      return c.json({ success: false, error: 'お名前は50文字以内で入力してください' }, 400)
+    }
+
+    if (content.length > 2000) {
+      return c.json({ success: false, error: 'コメントは2000文字以内で入力してください' }, 400)
+    }
+
+    // コメント保存（承認待ち状態）
+    await c.env.DB.prepare(`
+      INSERT INTO comments (post_id, author_name, content, status, created_at)
+      VALUES (?, ?, ?, 'pending', datetime('now'))
+    `).bind(post_id, author_name.trim(), content.trim()).run()
+
+    return c.json({ 
+      success: true, 
+      message: 'コメントを送信しました。承認後に表示されます。' 
+    })
+  } catch (error) {
+    console.error('Comment submission error:', error)
+    return c.json({ success: false, error: 'コメントの送信に失敗しました' }, 500)
+  }
+})
+
+// 承認済みコメント取得
+app.get('/api/comments/:postId', async (c) => {
+  try {
+    const postId = c.req.param('postId')
+    const result = await c.env.DB.prepare(`
+      SELECT id, author_name, content, created_at, admin_reply, admin_reply_at
+      FROM comments 
+      WHERE post_id = ? AND status = 'approved'
+      ORDER BY created_at DESC
+    `).bind(postId).all()
+
+    return c.json({ success: true, comments: result.results || [] })
+  } catch (error) {
+    return c.json({ success: true, comments: [] })
+  }
+})
+
+// ===== 講座推薦チャットボットAPI =====
+app.post('/api/chat/course-recommendation', async (c) => {
+  const { message, conversation_history } = await c.req.json<{
+    message: string
+    conversation_history?: Array<{ role: string; parts: Array<{ text: string }> }>
+  }>()
+
+  if (!c.env.GEMINI_API_KEY) {
+    return c.json({ success: false, error: 'GEMINI_API_KEY is not configured' }, 500)
+  }
+
+  try {
+    // DBから公開中の講座を取得
+    let dbCourses: any[] = []
+    try {
+      const result = await c.env.DB.prepare(`
+        SELECT id, title, catchphrase, description, category, level, price, duration, image
+        FROM courses
+        WHERE status = 'published'
+        ORDER BY created_at DESC
+      `).all()
+      dbCourses = result.results || []
+    } catch (e) {
+      console.error('DB courses fetch error:', e)
+    }
+
+    // 静的講座データとマージ
+    const allCourses = [
+      ...courses.map(c => ({
+        id: c.id,
+        title: c.title,
+        catchphrase: c.catchphrase || '',
+        description: c.description,
+        category: c.category,
+        level: c.level,
+        price: c.price,
+        duration: c.duration
+      })),
+      ...dbCourses
+    ]
+
+    // プロンプト設計（簡素化版: 2-3ステップで推薦）
+    const systemPrompt = `
+あなたはmirAIcafeのAI講座推薦アシスタント「mion」です。
+できるだけ早く、ユーザーに最適な講座を推薦してください。
+
+【会話の流れ（最大2-3ステップ）】
+
+**ステップ1: 初回質問（1つの質問で複数情報を取得）**
+- ユーザーの目的 + AIレベル + 興味のある内容を一度に聞く
+- 例: 「どんな場面でAIを使いたいですか？また、AIを使ったことはありますか？」
+
+**ステップ2: 仮おすすめを即座に提示**
+- 初回の回答だけで、2-3件の講座を推薦
+- 「とりあえずこの講座がおすすめです！もっと知りたければ教えてくださいね」というスタンス
+
+**ステップ3（オプション）: 追加質問**
+- ユーザーが「もっと絞り込みたい」と言った場合のみ、予算・期間などを確認
+- ユーザーが満足していれば、ここで終了
+
+【会話のトーン】
+- 親しみやすく、カフェで話すような口調
+- 専門用語は避け、わかりやすく
+- 「〜ですね」「〜しましょう」など柔らかい表現
+- 絵文字を適度に使用（😊、🎯、💡、☕など）
+
+【利用可能な講座データ】
+${JSON.stringify(allCourses, null, 2)}
+
+【重要な応答ルール】
+必ず以下のJSON形式で応答してください。
+
+1. 初回質問（1つの質問で複数情報を取得）:
+{
+  "message": "質問内容",
+  "options": ["選択肢1", "選択肢2"],
+  "should_continue": true
+}
+
+2. 仮おすすめを即座に提示（2-3件）:
+{
+  "message": "あなたにはこの講座がおすすめです！気になるものがあれば、詳細をチェックしてみてくださいね☕️",
+  "recommended_courses": [
+    {"id": "講座ID", "title": "講座タイトル", "reason": "おすすめ理由（50文字程度）"}
+  ],
+  "has_more_options": true,
+  "should_continue": false
+}
+
+3. 追加質問（ユーザーが絞り込み希望時のみ）:
+{
+  "message": "もっと詳しく教えてください！",
+  "options": ["予算は1万円以内", "予算は1万円以上OK", "短期間で学びたい", "じっくり学びたい"],
+  "should_continue": true
+}
+
+4. 最終推薦（追加条件で絞り込み後）:
+{
+  "message": "条件に合った講座はこちらです！",
+  "recommended_courses": [...],
+  "has_more_options": false,
+  "should_continue": false
+}
+
+【重要な指示】
+- 最優先: 早くおすすめを出す（初回の回答後、すぐに2-3件推薦）
+- 質問は最小限（1つの質問で複数情報を取得）
+- 選択肢は4つ以内
+- 推薦理由は簡潔（50文字程度）
+- 追加質問はオプション（ユーザーが満足していれば終了）
+- 避けるべき: 目的→レベル→内容→予算→期間のような段階的な質問
+- JSONのみを返す（説明文は含めない）
+`
+
+    // Gemini APIリクエスト
+    const conversationHistoryText = (conversation_history || [])
+      .map(h => `${h.role === 'user' ? 'ユーザー' : 'アシスタント'}: ${h.parts[0].text}`)
+      .join('\n')
+
+    const fullPrompt = `${systemPrompt}
+
+【これまでの会話】
+${conversationHistoryText || 'なし（最初の会話）'}
+
+【ユーザーの最新メッセージ】
+${message}
+
+【応答】
+JSON形式で応答してください:`
+
+    // Gemini API呼び出し
+    const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-pro']
+    let responseText = ''
+    let success = false
+
+    for (const modelName of models) {
+      try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${c.env.GEMINI_API_KEY}`
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: fullPrompt }] }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 1024
+            }
+          })
+        })
+
+        if (response.ok) {
+          const data = await response.json() as any
+          responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+          if (responseText) {
+            success = true
+            break
+          }
+        }
+      } catch (e) {
+        console.error('[講座推薦チャット] ' + modelName + ' error:', e)
+      }
+    }
+
+    if (!success) {
+      return c.json({
+        success: false,
+        error: 'AI応答の生成に失敗しました'
+      }, 500)
+    }
+
+    // JSONパース
+    let parsedResponse: any
+    try {
+      // JSON部分を抽出
+      let jsonStr = responseText
+      const jsonBlockMatch = responseText.match(/```json\s*([\s\S]*?)```/)
+      if (jsonBlockMatch) {
+        jsonStr = jsonBlockMatch[1]
+      } else {
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          jsonStr = jsonMatch[0]
+        }
+      }
+      parsedResponse = JSON.parse(jsonStr)
+    } catch (e) {
+      // JSONパースに失敗した場合は、テキストをそのまま返す
+      parsedResponse = {
+        message: responseText.replace(/```json|json```|```/g, '').trim(),
+        should_continue: true
+      }
+    }
+
+    // 会話履歴を更新
+    const updatedHistory = [
+      ...(conversation_history || []),
+      { role: 'user', parts: [{ text: message }] },
+      { role: 'model', parts: [{ text: parsedResponse.message }] }
+    ]
+
+    return c.json({
+      success: true,
+      response: parsedResponse,
+      conversation_history: updatedHistory
+    })
+
+  } catch (error: any) {
+    console.error('[講座推薦チャット] エラー:', error)
+    return c.json({
+      success: false,
+      error: error.message || 'チャット処理中にエラーが発生しました'
+    }, 500)
+  }
 })
 
 // Get schedules
@@ -567,7 +1104,8 @@ app.get('/admin', async (c) => {
     const reviewsResult = await c.env.DB.prepare(`
       SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+        AVG(rating) as avgRating
       FROM reviews
     `).first()
     
@@ -613,12 +1151,34 @@ app.get('/admin', async (c) => {
       LIMIT 5
     `).all()
     
+    // サイト実績設定を取得
+    let siteStats = null
+    try {
+      siteStats = await c.env.DB.prepare(`SELECT * FROM site_stats WHERE id = 'main'`).first()
+    } catch (e) {
+      // テーブルがなければスキップ
+    }
+    
+    // 予約からの受講生数（ユニーク顧客数）を自動カウント
+    let studentCountAuto = 0
+    try {
+      const uniqueCustomers = await c.env.DB.prepare(`
+        SELECT COUNT(DISTINCT customer_email) as count 
+        FROM bookings 
+        WHERE status IN ('confirmed', 'completed')
+      `).first()
+      studentCountAuto = (uniqueCustomers as any)?.count || 0
+    } catch (e) {
+      // テーブルがなければスキップ
+    }
+    
     const stats = {
       courses: courses.length,
       blogs: blogPosts.length,
       reviews: {
         total: (reviewsResult as any)?.total || 0,
-        pending: (reviewsResult as any)?.pending || 0
+        pending: (reviewsResult as any)?.pending || 0,
+        avgRating: (reviewsResult as any)?.avgRating || 0
       },
       contacts: {
         total: (contactsResult as any)?.total || 0,
@@ -637,19 +1197,19 @@ app.get('/admin', async (c) => {
       bookings: recentBookings.results as any[]
     }
     
-    return c.html(renderDashboard(stats, recent))
+    return c.html(renderDashboard(stats, recent, siteStats as any, studentCountAuto))
   } catch (error) {
     console.error('Dashboard error:', error)
     // データベースエラー時はデフォルト値で表示
     const stats = {
       courses: courses.length,
       blogs: blogPosts.length,
-      reviews: { total: 0, pending: 0 },
+      reviews: { total: 0, pending: 0, avgRating: 0 },
       contacts: { total: 0, new: 0 },
       bookings: { total: 0, pending: 0, confirmed: 0 }
     }
     const recent = { contacts: [], reviews: [], bookings: [] }
-    return c.html(renderDashboard(stats, recent))
+    return c.html(renderDashboard(stats, recent, null as any, 0))
   }
 })
 
@@ -1729,14 +2289,102 @@ app.post('/admin/contacts/:id/status', async (c) => {
   const status = body.status as string
   
   try {
-    await c.env.DB.prepare(`
+    const result = await c.env.DB.prepare(`
       UPDATE contacts SET status = ? WHERE id = ?
     `).bind(status, id).run()
+    console.log('Status update result:', result, 'id:', id, 'status:', status)
   } catch (error) {
     console.error('Update status error:', error)
   }
   
-  return c.redirect(`/admin/contacts/${id}`)
+  // キャッシュ無効化ヘッダーを追加してリダイレクト
+  return c.redirect(`/admin/contacts/${id}?t=${Date.now()}`, 302)
+})
+
+// メール送信API（Resend APIを使用）
+app.post('/admin/api/contacts/:id/reply', async (c) => {
+  // 認証チェック
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSession(sessionId)) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+  
+  const id = c.req.param('id')
+  
+  try {
+    const { to, subject, body } = await c.req.json()
+    
+    if (!to || !subject || !body) {
+      return c.json({ error: '宛先、件名、本文は必須です' }, 400)
+    }
+    
+    // Resend APIキーの確認
+    if (!c.env.RESEND_API_KEY) {
+      console.error('RESEND_API_KEY is not configured')
+      return c.json({ 
+        error: 'メール送信サービスが設定されていません。管理者に連絡してください。',
+        detail: 'RESEND_API_KEY not configured'
+      }, 500)
+    }
+    
+    // Resend APIでメール送信
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${c.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'mirAIcafe <info@miraicafe.com>',
+        to: [to],
+        subject: subject,
+        text: body
+      })
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({})) as { message?: string; name?: string }
+      console.error('Resend API error:', errorData)
+      
+      // Resend APIの検証エラー（テスト環境）
+      if (errorData.name === 'validation_error') {
+        return c.json({ 
+          error: 'メール送信の設定に問題があります。ドメイン認証を確認してください。',
+          detail: errorData.message
+        }, 500)
+      }
+      
+      return c.json({ 
+        error: 'メール送信に失敗しました',
+        detail: errorData.message || `HTTP ${response.status}`
+      }, 500)
+    }
+    
+    const result = await response.json()
+    
+    // 送信成功後、お問い合わせを対応済みに更新
+    try {
+      await c.env.DB.prepare(`
+        UPDATE contacts SET status = 'handled' WHERE id = ?
+      `).bind(id).run()
+    } catch (dbError) {
+      console.error('Update contact status error:', dbError)
+      // メール送信は成功しているので続行
+    }
+    
+    return c.json({ 
+      success: true, 
+      message: 'メールを送信しました',
+      email_id: (result as { id?: string }).id
+    })
+    
+  } catch (error) {
+    console.error('Email send error:', error)
+    return c.json({ 
+      error: 'メール送信処理でエラーが発生しました',
+      detail: String(error)
+    }, 500)
+  }
 })
 
 // ===== 画像アップロードAPI =====
@@ -2041,6 +2689,411 @@ app.post('/admin/seo/update/:pageId', async (c) => {
   return c.redirect('/admin/seo')
 })
 
+// ===== ポリシー管理 =====
+
+// ===== ポートフォリオ管理 =====
+
+// ポートフォリオ一覧
+app.get('/admin/portfolios', async (c) => {
+  try {
+    const result = await c.env.DB.prepare(`
+      SELECT * FROM portfolios ORDER BY sort_order ASC, created_at DESC
+    `).all<Portfolio>()
+    return c.html(renderPortfoliosList(result.results || []))
+  } catch (error) {
+    console.error('Portfolios list error:', error)
+    return c.html(renderPortfoliosList([]))
+  }
+})
+
+// AIポートフォリオジェネレーター
+app.get('/admin/portfolios/ai-generator', (c) => {
+  return c.html(renderAIPortfolioGeneratorPage())
+})
+
+// 新規ポートフォリオ作成
+app.get('/admin/portfolios/new', (c) => {
+  return c.html(renderPortfolioForm())
+})
+
+// ポートフォリオ編集
+app.get('/admin/portfolios/:id/edit', async (c) => {
+  const id = c.req.param('id')
+  try {
+    const portfolio = await c.env.DB.prepare('SELECT * FROM portfolios WHERE id = ?').bind(id).first<Portfolio>()
+    if (!portfolio) return c.notFound()
+    return c.html(renderPortfolioForm(portfolio))
+  } catch (error) {
+    console.error('Portfolio edit error:', error)
+    return c.notFound()
+  }
+})
+
+// ポートフォリオ作成（POST）
+app.post('/admin/portfolios', async (c) => {
+  try {
+    const body = await c.req.parseBody()
+    
+    // スラッグ生成
+    let slug = (body.slug as string)?.trim()
+    if (!slug) {
+      slug = (body.title as string).toLowerCase()
+        .replace(/[^a-z0-9\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+      slug = slug + '-' + Date.now().toString(36)
+    }
+    
+    await c.env.DB.prepare(`
+      INSERT INTO portfolios (
+        title, slug, description, category, thumbnail, 
+        demo_type, demo_url, github_url, live_url, video_url,
+        images, technologies, content, duration, client, role,
+        status, sort_order, meta_description, keywords
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      body.title,
+      slug,
+      body.description || null,
+      body.category || 'Webアプリ',
+      body.thumbnail || null,
+      body.demo_type || 'image',
+      body.demo_url || null,
+      body.github_url || null,
+      body.live_url || null,
+      body.video_url || null,
+      body.images || '[]',
+      body.technologies || '[]',
+      body.content || null,
+      body.duration || null,
+      body.client || null,
+      body.role || null,
+      body.status || 'draft',
+      parseInt(body.sort_order as string) || 0,
+      body.meta_description || null,
+      body.keywords || null
+    ).run()
+    
+    return c.redirect('/admin/portfolios')
+  } catch (error) {
+    console.error('Portfolio create error:', error)
+    return c.redirect('/admin/portfolios?error=create')
+  }
+})
+
+// ポートフォリオ更新（POST）
+app.post('/admin/portfolios/:id', async (c) => {
+  const id = c.req.param('id')
+  try {
+    const body = await c.req.parseBody()
+    
+    await c.env.DB.prepare(`
+      UPDATE portfolios SET
+        title = ?, description = ?, category = ?, thumbnail = ?,
+        demo_type = ?, demo_url = ?, github_url = ?, live_url = ?, video_url = ?,
+        images = ?, technologies = ?, content = ?, duration = ?, client = ?, role = ?,
+        status = ?, sort_order = ?, meta_description = ?, keywords = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(
+      body.title,
+      body.description || null,
+      body.category || 'Webアプリ',
+      body.thumbnail || null,
+      body.demo_type || 'image',
+      body.demo_url || null,
+      body.github_url || null,
+      body.live_url || null,
+      body.video_url || null,
+      body.images || '[]',
+      body.technologies || '[]',
+      body.content || null,
+      body.duration || null,
+      body.client || null,
+      body.role || null,
+      body.status || 'draft',
+      parseInt(body.sort_order as string) || 0,
+      body.meta_description || null,
+      body.keywords || null,
+      id
+    ).run()
+    
+    return c.redirect('/admin/portfolios')
+  } catch (error) {
+    console.error('Portfolio update error:', error)
+    return c.redirect(`/admin/portfolios/${id}/edit?error=update`)
+  }
+})
+
+// ポートフォリオ削除（POST）
+app.post('/admin/portfolios/:id/delete', async (c) => {
+  const id = c.req.param('id')
+  try {
+    await c.env.DB.prepare('DELETE FROM portfolios WHERE id = ?').bind(id).run()
+    return c.redirect('/admin/portfolios')
+  } catch (error) {
+    console.error('Portfolio delete error:', error)
+    return c.redirect('/admin/portfolios?error=delete')
+  }
+})
+
+// ===== コメント管理 =====
+
+// コメント一覧
+app.get('/admin/comments', async (c) => {
+  const filter = c.req.query('filter') || 'all'
+  try {
+    const result = await c.env.DB.prepare(`
+      SELECT * FROM comments ORDER BY created_at DESC
+    `).all<Comment>()
+    return c.html(renderCommentsList(result.results || [], filter))
+  } catch (error) {
+    console.error('Comments list error:', error)
+    return c.html(renderCommentsList([], filter))
+  }
+})
+
+// コメントステータス更新
+app.put('/admin/api/comments/:id/status', async (c) => {
+  const id = c.req.param('id')
+  try {
+    const { status } = await c.req.json<{ status: 'pending' | 'approved' | 'rejected' }>()
+    
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return c.json({ success: false, error: '無効なステータスです' }, 400)
+    }
+    
+    const approvedAt = status === 'approved' ? "datetime('now')" : 'NULL'
+    await c.env.DB.prepare(`
+      UPDATE comments 
+      SET status = ?, approved_at = ${status === 'approved' ? "datetime('now')" : 'NULL'}
+      WHERE id = ?
+    `).bind(status, id).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Comment status update error:', error)
+    return c.json({ success: false, error: 'ステータスの更新に失敗しました' }, 500)
+  }
+})
+
+// コメント返信
+app.put('/admin/api/comments/:id/reply', async (c) => {
+  const id = c.req.param('id')
+  try {
+    const { reply } = await c.req.json<{ reply: string }>()
+    
+    if (reply && reply.trim()) {
+      await c.env.DB.prepare(`
+        UPDATE comments 
+        SET admin_reply = ?, admin_reply_at = datetime('now')
+        WHERE id = ?
+      `).bind(reply.trim(), id).run()
+    } else {
+      await c.env.DB.prepare(`
+        UPDATE comments 
+        SET admin_reply = NULL, admin_reply_at = NULL
+        WHERE id = ?
+      `).bind(id).run()
+    }
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Comment reply error:', error)
+    return c.json({ success: false, error: '返信の保存に失敗しました' }, 500)
+  }
+})
+
+// コメント削除
+app.delete('/admin/api/comments/:id', async (c) => {
+  const id = c.req.param('id')
+  try {
+    await c.env.DB.prepare('DELETE FROM comments WHERE id = ?').bind(id).run()
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Comment delete error:', error)
+    return c.json({ success: false, error: '削除に失敗しました' }, 500)
+  }
+})
+
+// ===== サイト実績設定 =====
+
+// 実績設定更新
+app.put('/admin/api/site-stats', async (c) => {
+  try {
+    const body = await c.req.json<{
+      show_stats: number
+      student_count_extra: number
+      student_count_suffix: string
+      course_count_auto: number
+      course_count_manual: number
+      satisfaction_auto: number
+      satisfaction_manual: number
+    }>()
+    
+    // まず既存レコードがあるか確認
+    const existing = await c.env.DB.prepare(`SELECT id FROM site_stats WHERE id = 'main'`).first()
+    
+    if (existing) {
+      await c.env.DB.prepare(`
+        UPDATE site_stats SET
+          show_stats = ?,
+          student_count_extra = ?,
+          student_count_suffix = ?,
+          course_count_auto = ?,
+          course_count_manual = ?,
+          satisfaction_auto = ?,
+          satisfaction_manual = ?,
+          updated_at = datetime('now')
+        WHERE id = 'main'
+      `).bind(
+        body.show_stats,
+        body.student_count_extra,
+        body.student_count_suffix,
+        body.course_count_auto,
+        body.course_count_manual,
+        body.satisfaction_auto,
+        body.satisfaction_manual
+      ).run()
+    } else {
+      await c.env.DB.prepare(`
+        INSERT INTO site_stats (id, show_stats, student_count_extra, student_count_suffix, course_count_auto, course_count_manual, satisfaction_auto, satisfaction_manual)
+        VALUES ('main', ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        body.show_stats,
+        body.student_count_extra,
+        body.student_count_suffix,
+        body.course_count_auto,
+        body.course_count_manual,
+        body.satisfaction_auto,
+        body.satisfaction_manual
+      ).run()
+    }
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Site stats update error:', error)
+    return c.json({ success: false, error: '保存に失敗しました' }, 500)
+  }
+})
+
+// 実績設定取得（公開API）
+app.get('/api/site-stats', async (c) => {
+  try {
+    const stats = await c.env.DB.prepare(`SELECT * FROM site_stats WHERE id = 'main'`).first()
+    
+    // 講座数と満足度を計算
+    let courseCount = 0
+    let satisfactionRate = 0
+    
+    // 予約からの受講生数（ユニーク顧客数）を自動カウント
+    let studentCountAuto = 0
+    try {
+      const uniqueCustomers = await c.env.DB.prepare(`
+        SELECT COUNT(DISTINCT customer_email) as count 
+        FROM bookings 
+        WHERE status IN ('confirmed', 'completed')
+      `).first()
+      studentCountAuto = (uniqueCustomers as any)?.count || 0
+    } catch (e) {
+      // テーブルがなければスキップ
+    }
+    
+    // 手動追加分
+    const studentCountExtra = (stats as any)?.student_count_extra || 0
+    // 合計
+    const studentCountTotal = studentCountAuto + studentCountExtra
+    
+    if (stats) {
+      // 講座数
+      if ((stats as any).course_count_auto) {
+        courseCount = courses.length
+      } else {
+        courseCount = (stats as any).course_count_manual || 0
+      }
+      
+      // 満足度
+      if ((stats as any).satisfaction_auto) {
+        const avgResult = await c.env.DB.prepare(`SELECT AVG(rating) as avg FROM reviews WHERE status = 'approved'`).first()
+        satisfactionRate = Math.round(((avgResult as any)?.avg || 0) * 20)
+      } else {
+        satisfactionRate = (stats as any).satisfaction_manual || 0
+      }
+    }
+    
+    return c.json({
+      show: (stats as any)?.show_stats === 1,
+      students: {
+        auto: studentCountAuto,
+        extra: studentCountExtra,
+        count: studentCountTotal,
+        suffix: (stats as any)?.student_count_suffix || '+'
+      },
+      courses: courseCount,
+      satisfaction: satisfactionRate
+    })
+  } catch (error) {
+    return c.json({ show: false, students: { auto: 0, extra: 0, count: 0, suffix: '+' }, courses: 0, satisfaction: 0 })
+  }
+})
+
+// ポリシー一覧
+app.get('/admin/policies', async (c) => {
+  try {
+    const result = await c.env.DB.prepare('SELECT * FROM policies ORDER BY id').all<AdminPolicy>()
+    return c.html(renderPoliciesList(result.results || []))
+  } catch (error) {
+    console.error('Policies list error:', error)
+    return c.html(renderPoliciesList([]))
+  }
+})
+
+// ポリシー編集ページ
+app.get('/admin/policies/edit/:id', async (c) => {
+  const policyId = c.req.param('id')
+  try {
+    const policy = await c.env.DB.prepare('SELECT * FROM policies WHERE id = ?').bind(policyId).first<AdminPolicy>()
+    return c.html(renderPolicyEditForm(policy, policyId))
+  } catch (error) {
+    console.error('Policy edit error:', error)
+    return c.html(renderPolicyEditForm(null, policyId))
+  }
+})
+
+// ポリシー更新API
+app.put('/admin/api/policies/:id', async (c) => {
+  const policyId = c.req.param('id')
+  try {
+    const body = await c.req.json<{ title: string; content: string }>()
+    
+    await c.env.DB.prepare(`
+      UPDATE policies 
+      SET title = ?, content = ?, last_updated = CURRENT_TIMESTAMP 
+      WHERE id = ?
+    `).bind(body.title, body.content, policyId).run()
+    
+    return c.json({ success: true, message: '保存しました' })
+  } catch (error) {
+    console.error('Policy update error:', error)
+    return c.json({ success: false, message: '保存に失敗しました' }, 500)
+  }
+})
+
+// ポリシー取得API
+app.get('/admin/api/policies/:id', async (c) => {
+  const policyId = c.req.param('id')
+  try {
+    const policy = await c.env.DB.prepare('SELECT * FROM policies WHERE id = ?').bind(policyId).first<AdminPolicy>()
+    if (!policy) {
+      return c.json({ error: 'Not found' }, 404)
+    }
+    return c.json(policy)
+  } catch (error) {
+    console.error('Policy get error:', error)
+    return c.json({ error: 'Internal error' }, 500)
+  }
+})
+
 // SEO分析API
 app.post('/admin/api/seo/analyze/:pageId', async (c) => {
   const pageId = c.req.param('pageId')
@@ -2173,15 +3226,17 @@ app.post('/admin/api/ai/suggest-seo', async (c) => {
   try {
     const { title, content, type } = await c.req.json()
     
-    const prompt = `あなたはSEO専門家です。以下の${type === 'blog' ? 'ブログ記事' : '講座'}のタイトルと内容を分析し、SEOを改善する提案をしてください。
+    const contentType = type === 'blog' ? 'ブログ記事' : '講座'
+    const prompt = `あなたはSEO専門家かつ文章のプロ編集者です。以下の${contentType}のタイトルと内容を分析し、SEOと文章の改善提案をしてください。
 
 【現在のタイトル】
 ${title || '未設定'}
 
-【内容の一部】
-${(content || '').substring(0, 500)}...
+【内容】
+${(content || '').substring(0, 1500)}
 
-【出力形式】※必ずこの形式で
+【出力形式】※必ずこの形式で出力してください
+
 ## 改善タイトル案
 1. [案1]
 2. [案2]
@@ -2196,7 +3251,32 @@ ${(content || '').substring(0, 500)}...
 ## 改善ポイント
 • [ポイント1]
 • [ポイント2]
-• [ポイント3]`
+• [ポイント3]
+
+## 本文の訂正提案
+以下の形式で具体的な修正箇所を3〜5個提案してください。
+
+【訂正1】
+修正前: [現在の文章の一部をそのまま引用]
+修正後: [改善した文章]
+理由: [なぜこの修正が良いか]
+
+【訂正2】
+修正前: [現在の文章の一部をそのまま引用]
+修正後: [改善した文章]
+理由: [なぜこの修正が良いか]
+
+【訂正3】
+修正前: [現在の文章の一部をそのまま引用]
+修正後: [改善した文章]
+理由: [なぜこの修正が良いか]
+
+※訂正提案のポイント:
+- 読みやすさの向上（文の簡潔化、段落の整理）
+- SEOキーワードの自然な追加
+- 専門用語の平易な説明
+- 誤字脱字や文法の修正
+- より魅力的な表現への変更`
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${c.env.GEMINI_API_KEY}`,
@@ -2247,7 +3327,31 @@ ${(content || '').substring(0, 500)}...
     const titleMatch = generatedText.match(/## 改善タイトル案\n1\. (.+)\n2\. (.+)\n3\. (.+)/)
     const metaMatch = generatedText.match(/## メタディスクリプション\n(.+)/)
     const keywordsMatch = generatedText.match(/## 推奨キーワード\n(.+)/)
-    const pointsMatch = generatedText.match(/## 改善ポイント\n([\s\S]+?)(?=\n##|\n\n|$)/)
+    const pointsMatch = generatedText.match(/## 改善ポイント\n([\s\S]+?)(?=\n##|$)/)
+    
+    // 本文の訂正提案をパース
+    const contentCorrectionsMatch = generatedText.match(/## 本文の訂正提案\n([\s\S]+?)(?=\n##|$)/)
+    const contentCorrections: Array<{before: string, after: string, reason: string}> = []
+    
+    if (contentCorrectionsMatch) {
+      const correctionText = contentCorrectionsMatch[1]
+      // 【訂正N】のパターンで分割
+      const correctionBlocks = correctionText.split(/【訂正\d+】/).filter(block => block.trim())
+      
+      correctionBlocks.forEach(block => {
+        const beforeMatch = block.match(/修正前[:：]\s*(.+?)(?=\n修正後|$)/s)
+        const afterMatch = block.match(/修正後[:：]\s*(.+?)(?=\n理由|$)/s)
+        const reasonMatch = block.match(/理由[:：]\s*(.+?)(?=\n【|$)/s)
+        
+        if (beforeMatch && afterMatch) {
+          contentCorrections.push({
+            before: beforeMatch[1].trim(),
+            after: afterMatch[1].trim(),
+            reason: reasonMatch ? reasonMatch[1].trim() : ''
+          })
+        }
+      })
+    }
     
     return c.json({
       suggested_titles: titleMatch ? [titleMatch[1], titleMatch[2], titleMatch[3]] : [],
@@ -2256,6 +3360,7 @@ ${(content || '').substring(0, 500)}...
       improvement_points: pointsMatch ? 
         pointsMatch[1].split('\n').filter((p: string) => p.trim().startsWith('•')).map((p: string) => p.replace('•', '').trim()) 
         : [],
+      content_corrections: contentCorrections,
       raw_response: generatedText
     })
   } catch (error) {
@@ -2264,7 +3369,7 @@ ${(content || '').substring(0, 500)}...
   }
 })
 
-// メタディスクリプション自動生成API
+// メタディスクリプション・キーワード自動生成API
 app.post('/admin/api/ai/generate-meta', async (c) => {
   try {
     const { title, content } = await c.req.json()
@@ -2278,8 +3383,10 @@ app.post('/admin/api/ai/generate-meta', async (c) => {
       console.error('GEMINI_API_KEY is not configured')
       // APIキーがない場合はフォールバック
       const fallbackMeta = createFallbackMeta(title, content)
+      const fallbackKeywords = createFallbackKeywords(title, content)
       return c.json({ 
         meta_description: fallbackMeta,
+        keywords: fallbackKeywords,
         length: fallbackMeta.length,
         fallback: true
       })
@@ -2288,7 +3395,7 @@ app.post('/admin/api/ai/generate-meta', async (c) => {
     // コンテンツを800文字に制限
     const truncatedContent = (content || '').substring(0, 800)
     
-    const prompt = `あなたはSEOの専門家です。以下の記事のタイトルとコンテンツから、メタディスクリプションを作成してください。
+    const prompt = `あなたはSEOの専門家です。以下の記事のタイトルとコンテンツから、メタディスクリプションとSEOキーワードを作成してください。
 
 【タイトル】
 ${title || '未設定'}
@@ -2296,14 +3403,17 @@ ${title || '未設定'}
 【コンテンツ】
 ${truncatedContent}
 
-【条件】
-- 120文字以内（厳守）
-- 記事の要点を簡潔に
-- SEOキーワードを自然に含める
-- 読者の興味を引く
+【出力形式】
+必ず以下のJSON形式で出力してください：
+{
+  "meta_description": "120文字以内のメタディスクリプション",
+  "keywords": "キーワード1, キーワード2, キーワード3, キーワード4, キーワード5"
+}
 
-【出力】
-メタディスクリプションのみを出力してください（説明や前置きは不要）`
+【条件】
+- meta_description: 120文字以内、記事の要点を簡潔に、読者の興味を引く
+- keywords: 3〜5個のSEOキーワードをカンマ区切り、重要度の高い順
+- JSON以外の説明文は不要`
 
     // 使用するモデルのリスト（フォールバック順）
     const models = [
@@ -2314,6 +3424,7 @@ ${truncatedContent}
     ]
     
     let metaDescription = ''
+    let keywords = ''
     let lastError: Error | null = null
     
     // 各モデルを順番に試行
@@ -2365,19 +3476,41 @@ ${truncatedContent}
         const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
         
         if (generatedText) {
-          // 余分な改行や空白を削除
-          metaDescription = generatedText
-            .replace(/\n/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim()
-          
-          // 120文字を超える場合は117文字 + '...'に
-          if (metaDescription.length > 120) {
-            metaDescription = metaDescription.substring(0, 117) + '...'
+          // JSONを解析
+          try {
+            // JSONブロックを抽出（```json...```または{...}）
+            let jsonStr = generatedText
+            const jsonMatch = generatedText.match(/```json\s*([\s\S]*?)\s*```/)
+            if (jsonMatch) {
+              jsonStr = jsonMatch[1]
+            } else {
+              const objMatch = generatedText.match(/\{[\s\S]*\}/)
+              if (objMatch) {
+                jsonStr = objMatch[0]
+              }
+            }
+            
+            const parsed = JSON.parse(jsonStr) as { meta_description?: string; keywords?: string }
+            metaDescription = parsed.meta_description || ''
+            keywords = parsed.keywords || ''
+            
+            // メタディスクリプションを120文字に制限
+            if (metaDescription.length > 120) {
+              metaDescription = metaDescription.substring(0, 117) + '...'
+            }
+            
+            // 成功したらループを抜ける
+            break
+          } catch (parseError) {
+            // JSON解析失敗時はテキストをそのままメタディスクリプションとして使用
+            metaDescription = generatedText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
+            if (metaDescription.length > 120) {
+              metaDescription = metaDescription.substring(0, 117) + '...'
+            }
+            // キーワードはフォールバックで生成
+            keywords = createFallbackKeywords(title, content)
+            break
           }
-          
-          // 成功したらループを抜ける
-          break
         }
       } catch (error) {
         lastError = error as Error
@@ -2391,8 +3524,10 @@ ${truncatedContent}
     if (!metaDescription) {
       console.log('All models failed, using fallback')
       metaDescription = createFallbackMeta(title, content)
+      keywords = createFallbackKeywords(title, content)
       return c.json({ 
         meta_description: metaDescription,
+        keywords: keywords,
         length: metaDescription.length,
         fallback: true
       })
@@ -2400,6 +3535,7 @@ ${truncatedContent}
     
     return c.json({ 
       meta_description: metaDescription,
+      keywords: keywords,
       length: metaDescription.length
     })
   } catch (error) {
@@ -2407,8 +3543,10 @@ ${truncatedContent}
     // 一般エラー時もフォールバック
     const { title, content } = await c.req.json().catch(() => ({ title: '', content: '' }))
     const fallbackMeta = createFallbackMeta(title, content)
+    const fallbackKeywords = createFallbackKeywords(title, content)
     return c.json({ 
       meta_description: fallbackMeta,
+      keywords: fallbackKeywords,
       length: fallbackMeta.length,
       fallback: true
     })
@@ -2448,6 +3586,42 @@ function createFallbackMeta(title: string, content: string): string {
   }
   
   return '記事の詳細については本文をご覧ください。'
+}
+
+// フォールバックキーワード生成
+function createFallbackKeywords(title: string, content: string): string {
+  const keywords: string[] = []
+  
+  // タイトルから主要な単語を抽出
+  if (title) {
+    // 一般的な単語を除外して、重要そうな単語を取得
+    const titleWords = title.split(/[\s、。・]+/).filter(word => word.length >= 2)
+    keywords.push(...titleWords.slice(0, 3))
+  }
+  
+  // コンテンツから頻出キーワードを抽出
+  if (content && keywords.length < 5) {
+    // 括弧内のキーワード、引用符内のキーワードなどを取得
+    const quotedMatch = content.match(/「([^」]+)」/g)
+    if (quotedMatch) {
+      quotedMatch.slice(0, 2).forEach(m => {
+        const keyword = m.replace(/[「」]/g, '')
+        if (keyword.length >= 2 && keyword.length <= 20 && !keywords.includes(keyword)) {
+          keywords.push(keyword)
+        }
+      })
+    }
+  }
+  
+  // AI関連のデフォルトキーワードを追加
+  const defaultKeywords = ['AI', '活用', '初心者向け']
+  defaultKeywords.forEach(kw => {
+    if (keywords.length < 5 && !keywords.includes(kw)) {
+      keywords.push(kw)
+    }
+  })
+  
+  return keywords.slice(0, 5).join(', ')
 }
 
 // AI記事生成API
@@ -2815,6 +3989,155 @@ ${additionalInstructions ? `【追加の指示】\n${additionalInstructions}\n` 
   }
 })
 
+// AIポートフォリオ生成API
+app.post('/admin/api/ai/generate-portfolio', async (c) => {
+  try {
+    const { topic, category, technologies, description, duration, role, additionalInstructions } = await c.req.json()
+    
+    if (!topic) {
+      return c.json({ error: 'プロジェクト名を入力してください' }, 400)
+    }
+    
+    if (!c.env.GEMINI_API_KEY) {
+      return c.json({ error: 'GEMINI_API_KEY is not configured' }, 500)
+    }
+    
+    const techList = (technologies || []).join(', ')
+    
+    const prompt = `あなたはプロのポートフォリオライターです。以下の情報からポートフォリオの説明文を生成してください。
+
+【プロジェクト名/テーマ】
+${topic}
+
+【カテゴリ】
+${category || '一般'}
+
+【使用技術】
+${techList || '未指定'}
+
+【概要・目的】
+${description || '未指定'}
+
+【制作期間】
+${duration || '未指定'}
+
+【担当役割】
+${role || '未指定'}
+
+【追加の指示】
+${additionalInstructions || 'なし'}
+
+【出力形式】
+以下のJSON形式で出力してください：
+{
+  "title": "魅力的なプロジェクトタイトル",
+  "description": "プロジェクトの概要説明（100〜150文字）",
+  "content": "詳細な説明（Markdown形式、300〜500文字程度）。以下を含める：\\n## 概要\\n\\n## 主な機能\\n\\n## 技術的なポイント\\n\\n## 成果・学び",
+  "technologies": ["技術1", "技術2", "技術3"],
+  "meta_description": "SEO用メタディスクリプション（120文字以内）",
+  "keywords": "キーワード1, キーワード2, キーワード3"
+}
+
+【注意事項】
+- 説明は具体的かつ専門性が伝わるように
+- 技術は入力されたものを優先しつつ、関連技術も追加可能
+- Markdownのコンテンツは改行を\\nで表現
+- JSON以外の説明は不要`
+
+    const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-pro']
+    
+    for (const model of models) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${c.env.GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
+            })
+          }
+        )
+        
+        if (!response.ok) {
+          if (response.status === 429) {
+            await new Promise(r => setTimeout(r, 1000))
+            continue
+          }
+          continue
+        }
+        
+        const data = await response.json() as any
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
+        
+        // JSONを抽出
+        const jsonMatch = text.match(/\{[\s\S]*\}/)
+        if (!jsonMatch) continue
+        
+        // 制御文字を除去
+        let cleanJson = jsonMatch[0]
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+          .replace(/("(?:[^"\\]|\\.)*")/g, (match: string) => {
+            return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
+          })
+        
+        let parsed: any
+        try {
+          parsed = JSON.parse(cleanJson)
+        } catch (parseError) {
+          continue
+        }
+        
+        // Unsplash画像検索
+        const images: { url: string; alt: string }[] = []
+        if (c.env.UNSPLASH_ACCESS_KEY) {
+          try {
+            const keyword = topic.split(/[\s、。]/)[0]
+            const unsplashResponse = await fetch(
+              `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keyword + ' technology project')}&per_page=6&orientation=landscape`,
+              {
+                headers: { 'Authorization': `Client-ID ${c.env.UNSPLASH_ACCESS_KEY}` }
+              }
+            )
+            
+            if (unsplashResponse.ok) {
+              const unsplashData = await unsplashResponse.json() as any
+              images.push(...unsplashData.results.map((r: any) => ({
+                url: r.urls.regular,
+                alt: r.alt_description || keyword
+              })))
+            }
+          } catch (error) {
+            console.error('[AI Portfolio Generator] Unsplash error:', error)
+          }
+        }
+        
+        console.log(`[AI Portfolio Generator] Generated successfully with ${model}`)
+        return c.json({
+          title: parsed.title || topic,
+          description: parsed.description || '',
+          content: parsed.content || '',
+          technologies: parsed.technologies || technologies || [],
+          meta_description: parsed.meta_description || '',
+          keywords: parsed.keywords || '',
+          image_suggestions: images
+        })
+        
+      } catch (error: any) {
+        console.error(`[AI Portfolio Generator] ${model} error:`, error.message || error)
+        continue
+      }
+    }
+    
+    return c.json({ error: 'AIポートフォリオ生成に失敗しました。しばらく待ってから再試行してください。' }, 500)
+    
+  } catch (error) {
+    console.error('[AI Portfolio Generator] Error:', error)
+    return c.json({ error: 'エラーが発生しました' }, 500)
+  }
+})
+
 // 講座保存API（JSON）- AI講座生成用
 app.post('/admin/api/courses', async (c) => {
   try {
@@ -2978,6 +4301,537 @@ app.post('/admin/api/ai-news/collect', async (c) => {
   } catch (error) {
     console.error('AI News collection error:', error)
     return c.json({ error: 'Collection failed', message: String(error) }, 500)
+  }
+})
+
+// お問い合わせ返信メールAI生成API
+app.post('/admin/api/ai/generate-email-reply', async (c) => {
+  try {
+    const { name, subject, message, type } = await c.req.json()
+    
+    if (!message) {
+      return c.json({ error: 'お問い合わせ内容が必要です' }, 400)
+    }
+    
+    // Gemini APIキーの存在確認
+    if (!c.env.GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY is not configured')
+      // APIキーがない場合はフォールバック
+      const fallbackBody = createFallbackEmailReply(name, subject, message, type)
+      return c.json({ 
+        body: fallbackBody,
+        fallback: true
+      })
+    }
+    
+    const prompt = `あなたはAI教育サービス「mirAIcafe」のカスタマーサポート担当です。
+以下のお問い合わせに対する、丁寧で親しみやすい返信メールの本文を作成してください。
+
+【お問い合わせ者】
+${name || 'お客様'} 様
+
+【件名】
+${subject || '(件名なし)'}
+
+【お問い合わせ種別】
+${type || '一般的なお問い合わせ'}
+
+【お問い合わせ内容】
+${message}
+
+【返信メール作成のガイドライン】
+1. 冒頭は「${name || 'お客様'} 様」で始める
+2. 最初にお問い合わせへの感謝を述べる
+3. 「mirAIcafe」のカスタマーサポートからの返信であることを明記
+4. お問い合わせの内容を確認し、適切な回答や対応を記載
+5. 回答が具体的にできない場合は、追加情報が必要な旨を丁寧に説明
+6. 最後に「何かご不明な点がございましたら、お気軽にお問い合わせください」という趣旨の文言を入れる
+7. 署名として「mirAIcafe 運営事務局」で締める
+8. 丁寧だが親しみやすいトーンで
+9. メール本文のみを出力（件名や宛先などは不要）
+
+返信メール本文のみを出力してください。`
+
+    // 使用するモデルのリスト（フォールバック順）
+    const models = [
+      'gemini-2.0-flash-exp',
+      'gemini-1.5-flash-latest',
+      'gemini-1.5-flash',
+      'gemini-pro'
+    ]
+    
+    let generatedBody = ''
+    let lastError: Error | null = null
+    
+    // 各モデルを順番に試行
+    for (const model of models) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${c.env.GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{ text: prompt }]
+              }],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 1024
+              }
+            })
+          }
+        )
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } }
+          const errorMessage = errorData.error?.message || `HTTP ${response.status}`
+          
+          if (response.status === 429 || errorMessage.includes('quota')) {
+            console.log(`Model ${model} rate limited, trying next...`)
+            continue
+          }
+          
+          throw new Error(`Gemini API error (${model}): ${errorMessage}`)
+        }
+        
+        const data = await response.json() as {
+          candidates?: Array<{
+            content?: {
+              parts?: Array<{ text?: string }>
+            }
+          }>
+          error?: { message?: string }
+        }
+        
+        if (data.error) {
+          throw new Error(data.error.message || 'AI処理でエラーが発生しました')
+        }
+        
+        generatedBody = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        
+        if (generatedBody) {
+          // 生成成功
+          break
+        }
+      } catch (e) {
+        lastError = e as Error
+        console.error(`Model ${model} failed:`, e)
+        continue
+      }
+    }
+    
+    // 生成結果があればそれを返す
+    if (generatedBody) {
+      return c.json({ 
+        body: generatedBody.trim(),
+        model_used: true
+      })
+    }
+    
+    // すべてのモデルが失敗した場合はフォールバック
+    console.error('All models failed, using fallback')
+    const fallbackBody = createFallbackEmailReply(name, subject, message, type)
+    return c.json({ 
+      body: fallbackBody,
+      fallback: true
+    })
+    
+  } catch (error) {
+    console.error('Email reply generation error:', error)
+    return c.json({ error: 'メール文面の生成に失敗しました' }, 500)
+  }
+})
+
+// メール返信のフォールバック生成
+function createFallbackEmailReply(name: string, subject: string, message: string, type: string): string {
+  const customerName = name || 'お客様'
+  return `${customerName} 様
+
+お問い合わせいただきありがとうございます。
+mirAIcafe 運営事務局です。
+
+「${subject || 'ご連絡'}」についてお問い合わせをいただき、誠にありがとうございます。
+
+お問い合わせの内容を確認させていただきました。
+ご質問の件につきまして、下記の通りご回答申し上げます。
+
+【ご回答】
+（ここに回答内容を記載してください）
+
+ご不明な点がございましたら、お気軽にお問い合わせください。
+今後ともmirAIcafeをよろしくお願いいたします。
+
+--
+mirAIcafe 運営事務局
+Email: info@miraicafe.com`
+}
+
+// ===== アンケート機能 =====
+
+// アンケートフォーム（公開ページ）
+app.get('/survey', async (c) => {
+  const bookingId = c.req.query('booking_id')
+  const courseName = c.req.query('course')
+  
+  try {
+    const questions = await c.env.DB.prepare(`
+      SELECT * FROM survey_questions WHERE is_active = 1 ORDER BY sort_order ASC
+    `).all()
+    
+    // 設定を取得
+    const settings = await c.env.DB.prepare(`SELECT survey_thank_you_video_url, survey_logo_url FROM site_stats WHERE id = 'main'`).first()
+    
+    const surveySettings = {
+      thank_you_video_url: (settings as any)?.survey_thank_you_video_url || '',
+      logo_url: (settings as any)?.survey_logo_url || ''
+    }
+    
+    return c.html(renderSurveyPage(questions.results as any[], bookingId, courseName, surveySettings))
+  } catch (error) {
+    console.error('Survey page error:', error)
+    return c.html(renderSurveyPage([], bookingId, courseName))
+  }
+})
+
+// アンケート回答送信API
+app.post('/api/survey/submit', async (c) => {
+  try {
+    const body = await c.req.json<{
+      booking_id?: number | null
+      respondent_name?: string | null
+      respondent_email?: string | null
+      course_name?: string | null
+      answers: Record<string, any>
+      overall_rating: number
+      publish_consent: string
+    }>()
+    
+    await c.env.DB.prepare(`
+      INSERT INTO survey_responses (booking_id, respondent_name, respondent_email, course_name, answers, overall_rating, publish_consent)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      body.booking_id || null,
+      body.respondent_name || null,
+      body.respondent_email || null,
+      body.course_name || null,
+      JSON.stringify(body.answers),
+      body.overall_rating,
+      body.publish_consent || 'no'
+    ).run()
+    
+    // TODO: お礼動画URLを管理画面から設定可能に
+    const thankYouVideoUrl = null
+    
+    return c.json({ success: true, thankYouVideoUrl })
+  } catch (error) {
+    console.error('Survey submit error:', error)
+    return c.json({ success: false, error: '送信に失敗しました' }, 500)
+  }
+})
+
+// ===== アンケート管理画面 =====
+
+// アンケート分析ダッシュボード
+app.get('/admin/surveys', async (c) => {
+  try {
+    // 質問一覧
+    const questions = await c.env.DB.prepare(`
+      SELECT * FROM survey_questions ORDER BY sort_order ASC
+    `).all()
+    
+    // 統計データ
+    const totalResult = await c.env.DB.prepare(`SELECT COUNT(*) as count FROM survey_responses`).first()
+    const avgResult = await c.env.DB.prepare(`SELECT AVG(overall_rating) as avg FROM survey_responses WHERE overall_rating IS NOT NULL`).first()
+    
+    // 評価分布
+    const distribution: Record<number, number> = {}
+    for (let i = 1; i <= 5; i++) {
+      const count = await c.env.DB.prepare(`SELECT COUNT(*) as count FROM survey_responses WHERE overall_rating = ?`).bind(i).first()
+      distribution[i] = (count as any)?.count || 0
+    }
+    
+    // 公開同意状況
+    const consentStats: Record<string, number> = {}
+    for (const consent of ['yes', 'anonymous', 'no']) {
+      const count = await c.env.DB.prepare(`SELECT COUNT(*) as count FROM survey_responses WHERE publish_consent = ?`).bind(consent).first()
+      consentStats[consent] = (count as any)?.count || 0
+    }
+    
+    // 質問別統計（rating質問のみ）
+    const questionStats: Record<number, { avg: number; count: number }> = {}
+    const ratingQuestions = (questions.results || []).filter((q: any) => q.question_type === 'rating')
+    
+    for (const q of ratingQuestions as any[]) {
+      const responses = await c.env.DB.prepare(`SELECT answers FROM survey_responses`).all()
+      let sum = 0
+      let count = 0
+      for (const r of responses.results || []) {
+        const answers = JSON.parse((r as any).answers || '{}')
+        if (answers[q.id] !== undefined) {
+          sum += Number(answers[q.id])
+          count++
+        }
+      }
+      questionStats[q.id] = { avg: count > 0 ? sum / count : 0, count }
+    }
+    
+    // 最近の回答
+    const recentResponses = await c.env.DB.prepare(`
+      SELECT * FROM survey_responses ORDER BY created_at DESC LIMIT 10
+    `).all()
+    
+    const stats = {
+      totalResponses: (totalResult as any)?.count || 0,
+      avgOverallRating: (avgResult as any)?.avg || 0,
+      ratingDistribution: distribution,
+      publishConsentStats: consentStats,
+      questionStats,
+      recentResponses: recentResponses.results || []
+    }
+    
+    return c.html(renderSurveyDashboard(stats as any, questions.results as any[]))
+  } catch (error) {
+    console.error('Survey dashboard error:', error)
+    const emptyStats = {
+      totalResponses: 0,
+      avgOverallRating: 0,
+      ratingDistribution: {},
+      publishConsentStats: {},
+      questionStats: {},
+      recentResponses: []
+    }
+    return c.html(renderSurveyDashboard(emptyStats as any, []))
+  }
+})
+
+// 質問編集ページ
+app.get('/admin/surveys/questions', async (c) => {
+  try {
+    const questions = await c.env.DB.prepare(`
+      SELECT * FROM survey_questions ORDER BY sort_order ASC
+    `).all()
+    return c.html(renderSurveyQuestions(questions.results as any[]))
+  } catch (error) {
+    console.error('Survey questions error:', error)
+    return c.html(renderSurveyQuestions([]))
+  }
+})
+
+// 回答一覧ページ
+app.get('/admin/surveys/responses', async (c) => {
+  try {
+    const responses = await c.env.DB.prepare(`
+      SELECT * FROM survey_responses ORDER BY created_at DESC
+    `).all()
+    const questions = await c.env.DB.prepare(`
+      SELECT * FROM survey_questions ORDER BY sort_order ASC
+    `).all()
+    return c.html(renderSurveyResponses(responses.results as any[], questions.results as any[]))
+  } catch (error) {
+    console.error('Survey responses error:', error)
+    return c.html(renderSurveyResponses([], []))
+  }
+})
+
+// アンケート設定ページ
+app.get('/admin/surveys/settings', async (c) => {
+  try {
+    const settings = await c.env.DB.prepare(`
+      SELECT survey_thank_you_video_url, survey_logo_url FROM site_stats WHERE id = 'main'
+    `).first()
+    
+    return c.html(renderSurveySettings({
+      thank_you_video_url: (settings as any)?.survey_thank_you_video_url || '',
+      logo_url: (settings as any)?.survey_logo_url || ''
+    }))
+  } catch (error) {
+    console.error('Survey settings error:', error)
+    return c.html(renderSurveySettings({ thank_you_video_url: '', logo_url: '' }))
+  }
+})
+
+// アンケート設定保存API
+app.put('/admin/api/survey/settings', async (c) => {
+  try {
+    const body = await c.req.json<{
+      thank_you_video_url: string
+      logo_url: string
+    }>()
+    
+    await c.env.DB.prepare(`
+      UPDATE site_stats SET 
+        survey_thank_you_video_url = ?,
+        survey_logo_url = ?,
+        updated_at = datetime('now')
+      WHERE id = 'main'
+    `).bind(
+      body.thank_you_video_url || '',
+      body.logo_url || ''
+    ).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Survey settings update error:', error)
+    return c.json({ success: false, error: '保存に失敗しました' }, 500)
+  }
+})
+
+// 質問取得API
+app.get('/admin/api/surveys/questions/:id', async (c) => {
+  const id = c.req.param('id')
+  try {
+    const question = await c.env.DB.prepare(`SELECT * FROM survey_questions WHERE id = ?`).bind(id).first()
+    return c.json(question)
+  } catch (error) {
+    return c.json({ error: '取得に失敗しました' }, 500)
+  }
+})
+
+// 質問追加API
+app.post('/admin/api/surveys/questions', async (c) => {
+  try {
+    const body = await c.req.json<{
+      question_text: string
+      question_type: string
+      question_category: string
+      options: string[] | null
+      sort_order: number
+      is_required: number
+    }>()
+    
+    await c.env.DB.prepare(`
+      INSERT INTO survey_questions (question_text, question_type, question_category, options, sort_order, is_required, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, 1)
+    `).bind(
+      body.question_text,
+      body.question_type,
+      body.question_category,
+      body.options ? JSON.stringify(body.options) : null,
+      body.sort_order,
+      body.is_required
+    ).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Question create error:', error)
+    return c.json({ error: '作成に失敗しました' }, 500)
+  }
+})
+
+// 質問更新API
+app.put('/admin/api/surveys/questions/:id', async (c) => {
+  const id = c.req.param('id')
+  try {
+    const body = await c.req.json<{
+      question_text: string
+      question_type: string
+      question_category: string
+      options: string[] | null
+      sort_order: number
+      is_required: number
+    }>()
+    
+    await c.env.DB.prepare(`
+      UPDATE survey_questions SET
+        question_text = ?,
+        question_type = ?,
+        question_category = ?,
+        options = ?,
+        sort_order = ?,
+        is_required = ?,
+        updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(
+      body.question_text,
+      body.question_type,
+      body.question_category,
+      body.options ? JSON.stringify(body.options) : null,
+      body.sort_order,
+      body.is_required,
+      id
+    ).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Question update error:', error)
+    return c.json({ error: '更新に失敗しました' }, 500)
+  }
+})
+
+// 質問削除API
+app.delete('/admin/api/surveys/questions/:id', async (c) => {
+  const id = c.req.param('id')
+  try {
+    await c.env.DB.prepare(`DELETE FROM survey_questions WHERE id = ?`).bind(id).run()
+    return c.json({ success: true })
+  } catch (error) {
+    return c.json({ error: '削除に失敗しました' }, 500)
+  }
+})
+
+// 質問有効/無効切り替えAPI
+app.post('/admin/api/surveys/questions/:id/toggle', async (c) => {
+  const id = c.req.param('id')
+  try {
+    await c.env.DB.prepare(`
+      UPDATE survey_questions SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END WHERE id = ?
+    `).bind(id).run()
+    return c.json({ success: true })
+  } catch (error) {
+    return c.json({ error: '更新に失敗しました' }, 500)
+  }
+})
+
+// 回答CSVエクスポートAPI
+app.get('/admin/api/surveys/export', async (c) => {
+  try {
+    const responses = await c.env.DB.prepare(`
+      SELECT * FROM survey_responses ORDER BY created_at DESC
+    `).all()
+    const questions = await c.env.DB.prepare(`
+      SELECT * FROM survey_questions ORDER BY sort_order ASC
+    `).all()
+    
+    // CSVヘッダー
+    const headers = ['ID', '回答日時', '回答者名', 'メール', '講座名', '総合評価', '公開同意']
+    const questionHeaders = (questions.results || []).map((q: any) => q.question_text.substring(0, 20))
+    
+    // CSV行
+    const rows = (responses.results || []).map((r: any) => {
+      const answers = JSON.parse(r.answers || '{}')
+      const questionValues = (questions.results || []).map((q: any) => {
+        const val = answers[q.id]
+        if (val === undefined) return ''
+        if (Array.isArray(val)) return val.join(';')
+        return String(val)
+      })
+      
+      return [
+        r.id,
+        r.created_at,
+        r.respondent_name || '',
+        r.respondent_email || '',
+        r.course_name || '',
+        r.overall_rating || '',
+        r.publish_consent,
+        ...questionValues
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
+    })
+    
+    const csv = [
+      [...headers, ...questionHeaders].join(','),
+      ...rows
+    ].join('\n')
+    
+    return new Response(csv, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="survey_responses_${new Date().toISOString().split('T')[0]}.csv"`
+      }
+    })
+  } catch (error) {
+    return c.json({ error: 'エクスポートに失敗しました' }, 500)
   }
 })
 

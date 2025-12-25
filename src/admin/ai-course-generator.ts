@@ -83,8 +83,10 @@ export const renderAICourseGeneratorPage = () => {
                 <i class="fas fa-yen-sign text-amber-500 mr-1"></i>価格帯
               </label>
               <select id="priceRange" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none transition">
-                <option value="5000-10000">¥5,000〜¥10,000</option>
-                <option value="10000-15000" selected>¥10,000〜¥15,000</option>
+                <option value="0">無料</option>
+                <option value="0-5000">〜¥5,000</option>
+                <option value="5000-10000" selected>¥5,000〜¥10,000</option>
+                <option value="10000-15000">¥10,000〜¥15,000</option>
                 <option value="15000-25000">¥15,000〜¥25,000</option>
                 <option value="25000-50000">¥25,000〜¥50,000</option>
               </select>

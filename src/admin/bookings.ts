@@ -661,6 +661,56 @@ export function renderBookingDetail(booking: Booking): string {
                 </span>
               </div>
             </div>
+            
+            <!-- Googleカレンダー追加ボタン -->
+            ${booking.preferred_date ? `
+              <div class="mt-6 pt-4 border-t border-slate-200">
+                <p class="text-sm text-slate-500 mb-3">
+                  <i class="fas fa-calendar-plus mr-1"></i>予定をカレンダーに追加
+                </p>
+                <button onclick="addToGoogleCalendar()" 
+                        class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-slate-200 rounded-lg hover:bg-slate-50 hover:border-blue-400 transition-all group">
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 4H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z" fill="#fff" stroke="#4285F4" stroke-width="1.5"/>
+                    <path d="M16 2v4M8 2v4M3 10h18" stroke="#4285F4" stroke-width="1.5" stroke-linecap="round"/>
+                    <rect x="7" y="13" width="4" height="4" rx="0.5" fill="#34A853"/>
+                    <rect x="13" y="13" width="4" height="4" rx="0.5" fill="#EA4335"/>
+                  </svg>
+                  <span class="font-medium text-slate-700 group-hover:text-blue-600 transition-colors">Googleカレンダーに追加</span>
+                </button>
+              </div>
+              <script>
+                function addToGoogleCalendar() {
+                  const formatDateTime = (date, time) => {
+                    const dt = new Date(date + 'T' + (time || '10:00') + ':00+09:00');
+                    return dt.toISOString().replace(/[-:]/g, '').replace(/\\.\\d{3}/, '');
+                  };
+                  
+                  const date = '${booking.preferred_date || ''}';
+                  const time = '${booking.preferred_time || '10:00'}';
+                  const endTime = time ? (parseInt(time.split(':')[0]) + 2).toString().padStart(2, '0') + ':00' : '12:00';
+                  const courseName = '${escapeHtml(booking.course_name) || '講座'}';
+                  const customerName = '${escapeHtml(booking.customer_name)}';
+                  
+                  const title = '【講座】' + courseName + ' - ' + customerName + '様';
+                  const description = 'AI講座\\n\\n講座名: ' + courseName + '\\n受講者: ' + customerName + '\\n日時: ' + date + ' ' + time;
+                  
+                  const startDT = formatDateTime(date, time);
+                  const endDT = formatDateTime(date, endTime);
+                  
+                  const params = new URLSearchParams({
+                    action: 'TEMPLATE',
+                    text: title,
+                    dates: startDT + '/' + endDT,
+                    details: description,
+                    location: 'オンライン',
+                    trp: 'false'
+                  });
+                  
+                  window.open('https://calendar.google.com/calendar/render?' + params.toString(), '_blank');
+                }
+              </script>
+            ` : ''}
           </div>
 
           <!-- メッセージ -->

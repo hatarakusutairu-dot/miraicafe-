@@ -41,7 +41,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-nature-forest opacity-75"></span>
               <span class="relative inline-flex rounded-full h-2 w-2 bg-nature-forest"></span>
             </span>
-            <span class="text-cafe-text text-sm font-medium">新規登録で初回10%OFF</span>
+            <span class="text-cafe-text text-sm font-medium">初心者大歓迎・少人数制で安心サポート</span>
           </div>
           
           <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold text-cafe-text mb-6 leading-tight">
@@ -63,20 +63,41 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
             </a>
           </div>
           
-          <div class="flex flex-wrap gap-8 mt-12 pt-8 border-t border-cafe-beige hero-fade-in" style="animation-delay: 1.2s;">
+          <!-- 実績（APIから動的取得、非表示対応） -->
+          <div id="hero-stats" class="hidden flex-wrap gap-8 mt-12 pt-8 border-t border-cafe-beige hero-fade-in" style="animation-delay: 1.2s;">
             <div>
-              <div class="text-3xl font-bold text-cafe-wood">500+</div>
+              <div class="text-3xl font-bold text-cafe-wood" id="stat-students">-</div>
               <div class="text-sm text-cafe-textLight">受講生</div>
             </div>
             <div>
-              <div class="text-3xl font-bold text-cafe-wood">6</div>
+              <div class="text-3xl font-bold text-cafe-wood" id="stat-courses">-</div>
               <div class="text-sm text-cafe-textLight">講座数</div>
             </div>
             <div>
-              <div class="text-3xl font-bold text-cafe-wood">98%</div>
+              <div class="text-3xl font-bold text-cafe-wood" id="stat-satisfaction">-</div>
               <div class="text-sm text-cafe-textLight">満足度</div>
             </div>
           </div>
+          
+          <script>
+            // 実績を取得して表示
+            (async function() {
+              try {
+                const res = await fetch('/api/site-stats');
+                const data = await res.json();
+                
+                if (data.show) {
+                  document.getElementById('stat-students').textContent = data.students.count + data.students.suffix;
+                  document.getElementById('stat-courses').textContent = data.courses;
+                  document.getElementById('stat-satisfaction').textContent = data.satisfaction + '%';
+                  document.getElementById('hero-stats').classList.remove('hidden');
+                  document.getElementById('hero-stats').classList.add('flex');
+                }
+              } catch (e) {
+                // 取得失敗時は非表示のまま
+              }
+            })();
+          </script>
         </div>
       </div>
       
@@ -389,33 +410,73 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="portfolioGrid">
-          ${(portfolios || []).slice(0, 3).map(item => `
-            <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-              <div class="aspect-video overflow-hidden">
-                <img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500">
-              </div>
-              <div class="p-6">
-                <span class="text-xs font-medium text-cafe-wood bg-cafe-latte/50 px-2 py-1 rounded">${item.category}</span>
-                <h3 class="text-xl font-bold text-cafe-text mt-3 mb-2">${item.title}</h3>
-                <p class="text-cafe-textLight text-sm mb-4">${item.description}</p>
-                <div class="flex flex-wrap gap-2 mb-4">
-                  ${item.technologies.map(tech => `
-                    <span class="bg-blue-500 text-white text-xs px-3 py-1 rounded-full">${tech}</span>
-                  `).join('')}
-                </div>
-                ${item.demoUrl ? `
-                  <div class="flex gap-3">
-                    <a href="${item.demoUrl}" target="_blank" class="inline-flex items-center px-4 py-2 bg-cafe-wood text-white rounded-lg text-sm hover:bg-cafe-brown transition">
-                      <i class="fas fa-external-link-alt mr-2"></i>デモを見る
-                    </a>
+          ${(portfolios || []).slice(0, 6).map((item: any) => {
+            // デモタイプに応じたアイコン
+            const demoTypeIcon = item.demo_type === 'video' ? 'fa-play-circle' : 
+                                 item.demo_type === 'slides' ? 'fa-images' : 
+                                 item.demo_type === 'image' ? 'fa-image' : 'fa-external-link-alt'
+            const demoLabel = item.demo_type === 'video' ? '動画を見る' : 
+                              item.demo_type === 'slides' ? 'スライドを見る' : 
+                              item.demo_type === 'image' ? '画像を見る' : 'デモを見る'
+            
+            // 技術タグの処理（配列または文字列に対応）
+            const techs = Array.isArray(item.technologies) ? item.technologies : 
+                         (typeof item.technologies === 'string' ? JSON.parse(item.technologies || '[]') : [])
+            
+            return `
+            <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow group">
+              <div class="aspect-video overflow-hidden relative">
+                <img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                ${item.demo_type === 'video' ? `
+                  <div class="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <i class="fas fa-play-circle text-white text-5xl"></i>
                   </div>
                 ` : ''}
               </div>
+              <div class="p-6">
+                <div class="flex items-center gap-2 mb-3">
+                  <span class="text-xs font-medium text-cafe-wood bg-cafe-latte/50 px-2 py-1 rounded">${item.category}</span>
+                  ${item.demo_type ? `
+                    <span class="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                      <i class="fas ${demoTypeIcon} mr-1"></i>${item.demo_type === 'video' ? '動画' : item.demo_type === 'slides' ? 'スライド' : item.demo_type === 'image' ? '画像' : 'リンク'}
+                    </span>
+                  ` : ''}
+                </div>
+                <h3 class="text-xl font-bold text-cafe-text mb-2">${item.title}</h3>
+                <p class="text-cafe-textLight text-sm mb-4 line-clamp-2">${item.description}</p>
+                <div class="flex flex-wrap gap-2 mb-4">
+                  ${techs.slice(0, 4).map((tech: string) => `
+                    <span class="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs px-3 py-1 rounded-full">${tech}</span>
+                  `).join('')}
+                  ${techs.length > 4 ? `<span class="text-gray-400 text-xs">+${techs.length - 4}</span>` : ''}
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                  <!-- 詳細を見るボタン（DBからのデータにはslugがある） -->
+                  ${item.slug ? `
+                    <a href="/portfolio/${item.slug}" class="inline-flex items-center px-4 py-2 bg-cafe-wood text-white rounded-lg text-sm hover:bg-cafe-brown transition">
+                      <i class="fas fa-info-circle mr-2"></i>詳細を見る
+                    </a>
+                  ` : ''}
+                  ${item.demoUrl || item.video_url ? `
+                    <a href="${item.video_url || item.demoUrl}" target="_blank" class="inline-flex items-center px-4 py-2 ${item.slug ? 'bg-blue-600 hover:bg-blue-700' : 'bg-cafe-wood hover:bg-cafe-brown'} text-white rounded-lg text-sm transition">
+                      <i class="fas ${demoTypeIcon} mr-2"></i>${demoLabel}
+                    </a>
+                  ` : ''}
+                  ${item.githubUrl ? `
+                    <a href="${item.githubUrl}" target="_blank" class="inline-flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-900 transition">
+                      <i class="fab fa-github mr-2"></i>GitHub
+                    </a>
+                  ` : ''}
+                </div>
+              </div>
             </div>
-          `).join('')}
+          `}).join('')}
         </div>
         
-        <div class="text-center mt-10">
+        <div class="text-center mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+          <a href="/portfolio" class="inline-flex items-center px-8 py-4 bg-cafe-wood text-white rounded-full font-bold hover:bg-cafe-brown hover:-translate-y-1 transition-all shadow-lg">
+            <i class="fas fa-briefcase mr-2"></i>すべてのポートフォリオを見る <i class="fas fa-arrow-right ml-2"></i>
+          </a>
           <a href="/contact" class="inline-flex items-center px-8 py-4 bg-amber-500 text-white rounded-full font-bold hover:bg-amber-600 hover:-translate-y-1 transition-all shadow-lg">
             <i class="fas fa-envelope mr-2"></i>制作のご相談はこちら <i class="fas fa-arrow-right ml-2"></i>
           </a>
@@ -499,31 +560,31 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
             <div class="w-20 h-20 bg-nature-mint rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md">
-              <i class="fas fa-users text-nature-forest text-2xl"></i>
+              <i class="fas fa-hand-holding-heart text-nature-forest text-2xl"></i>
             </div>
-            <h3 class="text-xl font-bold text-cafe-text mb-3">少人数制</h3>
+            <h3 class="text-xl font-bold text-cafe-text mb-3">初心者でも安心の丁寧な指導</h3>
             <p class="text-cafe-textLight">
-              最大10名の少人数制で、一人ひとりに合わせた丁寧な指導を実現
+              「AIって何？」からスタートでOK。一人ひとりのペースに合わせて丁寧にサポート
             </p>
           </div>
           
           <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
             <div class="w-20 h-20 bg-nature-sky rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md">
-              <i class="fas fa-globe text-nature-blue text-2xl"></i>
+              <i class="fas fa-user-tie text-nature-blue text-2xl"></i>
             </div>
-            <h3 class="text-xl font-bold text-cafe-text mb-3">完全オンライン</h3>
+            <h3 class="text-xl font-bold text-cafe-text mb-3">キャリアコンサルタントが<br>寄り添う</h3>
             <p class="text-cafe-textLight">
-              どこからでも参加可能。自宅やカフェから快適に学習できます
+              AI技術だけでなく、あなたの仕事・学習スタイルに合わせた活用法を一緒に考えます
             </p>
           </div>
           
           <div class="card-hover bg-white p-8 text-center border border-cafe-beige shadow-md">
             <div class="w-20 h-20 bg-cafe-latte rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md">
-              <i class="fas fa-headset text-cafe-brown text-2xl"></i>
+              <i class="fas fa-users text-cafe-brown text-2xl"></i>
             </div>
-            <h3 class="text-xl font-bold text-cafe-text mb-3">個別サポート</h3>
+            <h3 class="text-xl font-bold text-cafe-text mb-3">少人数制でリラックスして学習</h3>
             <p class="text-cafe-textLight">
-              質問・相談いつでもOK。あなたの学習を全力でサポートします
+              最大10名の少人数制。質問しやすい雰囲気で、じっくり理解しながら進められます
             </p>
           </div>
         </div>

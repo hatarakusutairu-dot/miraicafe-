@@ -457,9 +457,11 @@ export const renderAIWriterPage = () => {
         sessionStorage.setItem('aiGeneratedArticle', JSON.stringify({
           title: generatedData.title,
           content: contentHtml,
+          excerpt: generatedData.excerpt || generatedData.metaDescription || '',
           category: selectedCategory,
           tags: (generatedData.tags || []).join(','),
           meta_description: generatedData.metaDescription,
+          keywords: (generatedData.tags || []).join(', '),
           featured_image: selectedImage || ''
         }));
         

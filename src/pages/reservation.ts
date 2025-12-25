@@ -33,7 +33,8 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
                 <span class="w-10 h-10 gradient-ai rounded-xl flex items-center justify-center text-white text-sm font-bold mr-3 shadow">1</span>
                 講座を選択
               </h2>
-              <select id="course-select" class="w-full p-4 border-2 border-future-sky rounded-2xl text-future-text focus:border-ai-blue focus:outline-none transition-colors bg-future-light">
+              <!-- Hidden native select for form submission -->
+              <select id="course-select" class="native-select">
                 <option value="">講座を選択してください</option>
                 ${courses.map(course => `
                   <option value="${course.id}" ${selectedCourse?.id === course.id ? 'selected' : ''} data-price="${course.price}">
@@ -41,6 +42,22 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
                   </option>
                 `).join('')}
               </select>
+              
+              <!-- Custom styled select -->
+              <div class="custom-select" id="custom-course-select">
+                <div class="custom-select-trigger">
+                  <span>${selectedCourse ? `${selectedCourse.title} - ¥${selectedCourse.price.toLocaleString()}` : '講座を選択してください'}</span>
+                  <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="custom-options">
+                  <div class="custom-option ${!selectedCourse ? 'selected' : ''}" data-value="">講座を選択してください</div>
+                  ${courses.map(course => `
+                    <div class="custom-option ${selectedCourse?.id === course.id ? 'selected' : ''}" data-value="${course.id}" data-price="${course.price}">
+                      ${course.title} - ¥${course.price.toLocaleString()}
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
             </div>
 
             <!-- Step 2 -->
@@ -133,6 +150,50 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
                 </div>
               </div>
 
+              <!-- 利用規約・プライバシーポリシー・キャンセルポリシー同意 -->
+              <div class="mb-4 p-4 bg-future-light rounded-xl border border-future-sky space-y-3">
+                <p class="text-sm font-medium text-future-text mb-2">
+                  <i class="fas fa-file-signature mr-2 text-ai-blue"></i>ご予約にあたっての同意事項
+                </p>
+                
+                <!-- 利用規約 -->
+                <label class="flex items-start gap-3 cursor-pointer group">
+                  <input type="checkbox" id="terms-agree" class="mt-1 w-5 h-5 rounded border-2 border-future-sky text-ai-blue focus:ring-ai-blue cursor-pointer">
+                  <span class="text-sm text-future-textLight leading-relaxed">
+                    <a href="/terms" target="_blank" class="text-ai-blue hover:text-ai-purple underline font-medium transition-colors">
+                      利用規約
+                    </a>
+                    に同意します <span class="text-red-500">*</span>
+                  </span>
+                </label>
+                
+                <!-- プライバシーポリシー -->
+                <label class="flex items-start gap-3 cursor-pointer group">
+                  <input type="checkbox" id="privacy-agree" class="mt-1 w-5 h-5 rounded border-2 border-future-sky text-ai-blue focus:ring-ai-blue cursor-pointer">
+                  <span class="text-sm text-future-textLight leading-relaxed">
+                    <a href="/privacy" target="_blank" class="text-ai-blue hover:text-ai-purple underline font-medium transition-colors">
+                      プライバシーポリシー
+                    </a>
+                    に同意します <span class="text-red-500">*</span>
+                  </span>
+                </label>
+                
+                <!-- キャンセルポリシー -->
+                <label class="flex items-start gap-3 cursor-pointer group">
+                  <input type="checkbox" id="cancellation-agree" class="mt-1 w-5 h-5 rounded border-2 border-future-sky text-ai-blue focus:ring-ai-blue cursor-pointer">
+                  <span class="text-sm text-future-textLight leading-relaxed">
+                    <a href="/cancellation-policy" target="_blank" class="text-ai-blue hover:text-ai-purple underline font-medium transition-colors">
+                      キャンセルポリシー
+                    </a>
+                    に同意します <span class="text-red-500">*</span>
+                  </span>
+                </label>
+                
+                <p id="policy-error" class="text-red-500 text-xs mt-2 hidden">
+                  <i class="fas fa-exclamation-circle mr-1"></i>すべての規約への同意が必要です
+                </p>
+              </div>
+
               <button id="checkout-btn" disabled class="btn-ai w-full text-white py-4 rounded-full font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
                 <i class="fas fa-credit-card mr-2"></i>決済に進む
               </button>
@@ -169,7 +230,25 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
             <i class="fas fa-check text-white text-3xl"></i>
           </div>
           <h3 class="text-2xl font-bold text-future-text mb-2">予約完了！</h3>
-          <p class="text-future-textLight mb-6">ご予約ありがとうございます。<br>確認メールをお送りしました。</p>
+          <p class="text-future-textLight mb-4">ご予約ありがとうございます。<br>確認メールをお送りしました。</p>
+          
+          <!-- Googleカレンダー追加ボタン -->
+          <div class="mb-6 p-4 bg-future-light rounded-2xl border border-future-sky">
+            <p class="text-sm text-future-textLight mb-3">
+              <i class="fas fa-calendar-plus mr-1 text-ai-blue"></i>予定をカレンダーに追加しましょう
+            </p>
+            <a id="google-calendar-link" href="#" target="_blank" rel="noopener noreferrer"
+               class="inline-flex items-center gap-2 px-5 py-3 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-ai-blue transition-all shadow-sm group">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19 4H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z" fill="#fff" stroke="#4285F4" stroke-width="1.5"/>
+                <path d="M16 2v4M8 2v4M3 10h18" stroke="#4285F4" stroke-width="1.5" stroke-linecap="round"/>
+                <rect x="7" y="13" width="4" height="4" rx="0.5" fill="#34A853"/>
+                <rect x="13" y="13" width="4" height="4" rx="0.5" fill="#EA4335"/>
+              </svg>
+              <span class="font-medium text-gray-700 group-hover:text-ai-blue transition-colors">Googleカレンダーに追加</span>
+            </a>
+          </div>
+          
           <a href="/" class="btn-ai inline-flex items-center justify-center gradient-ai text-white px-6 py-3 rounded-full font-bold shadow-lg">
             <i class="fas fa-home mr-2"></i>トップに戻る
           </a>
@@ -192,9 +271,70 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
       const summaryDate = document.getElementById('summary-date');
       const summaryTime = document.getElementById('summary-time');
       const summaryPrice = document.getElementById('summary-price');
+      const termsAgree = document.getElementById('terms-agree');
+      const privacyAgree = document.getElementById('privacy-agree');
+      const cancellationAgree = document.getElementById('cancellation-agree');
+      const policyError = document.getElementById('policy-error');
+
+      // Custom Select Logic
+      const customSelect = document.getElementById('custom-course-select');
+      const customTrigger = customSelect.querySelector('.custom-select-trigger');
+      const customOptions = customSelect.querySelectorAll('.custom-option');
+      
+      customTrigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        customSelect.classList.toggle('open');
+      });
+      
+      customOptions.forEach(option => {
+        option.addEventListener('click', function() {
+          const value = this.dataset.value;
+          const text = this.textContent.trim();
+          
+          // Update display
+          customTrigger.querySelector('span').textContent = text;
+          
+          // Update selected state
+          customOptions.forEach(opt => opt.classList.remove('selected'));
+          this.classList.add('selected');
+          
+          // Update native select
+          courseSelect.value = value;
+          
+          // Close dropdown
+          customSelect.classList.remove('open');
+          
+          // Trigger change
+          selectedCourseId = value;
+          selectedScheduleId = null;
+          updateScheduleList();
+          updateSummary();
+          renderCalendar();
+        });
+      });
+      
+      // Close on outside click
+      document.addEventListener('click', function(e) {
+        if (!customSelect.contains(e.target)) {
+          customSelect.classList.remove('open');
+        }
+      });
 
       if (selectedCourseId) updateScheduleList();
       renderCalendar();
+
+      // 全ての同意チェックボックスをチェック
+      function areAllPoliciesAgreed() {
+        return termsAgree.checked && privacyAgree.checked && cancellationAgree.checked;
+      }
+
+      // 規約同意チェックボックスの監視
+      [termsAgree, privacyAgree, cancellationAgree].forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+          policyError.classList.add('hidden');
+          updateSummary();
+        });
+      });
 
       courseSelect.addEventListener('change', function() {
         selectedCourseId = this.value;
@@ -211,13 +351,26 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
         const name = document.getElementById('customer-name').value;
         const email = document.getElementById('customer-email').value;
         const phone = document.getElementById('customer-phone').value;
+        
+        // 全ての規約への同意チェック
+        if (!areAllPoliciesAgreed()) {
+          policyError.classList.remove('hidden');
+          termsAgree.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        
         if (!name || !email) { alert('お名前とメールアドレスは必須です'); return; }
         document.getElementById('payment-modal').classList.remove('hidden');
         try {
           const resResponse = await fetch('/api/reservations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ courseId: selectedCourseId, scheduleId: selectedScheduleId, name, email, phone }) });
           const reservation = await resResponse.json();
           await fetch('/api/create-checkout-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ courseId: selectedCourseId, reservationId: reservation.reservation.id, successUrl: window.location.origin + '/reservation', cancelUrl: window.location.origin + '/reservation' }) });
-          setTimeout(() => { document.getElementById('payment-modal').classList.add('hidden'); document.getElementById('success-modal').classList.remove('hidden'); }, 2000);
+          setTimeout(() => { 
+            document.getElementById('payment-modal').classList.add('hidden'); 
+            document.getElementById('success-modal').classList.remove('hidden');
+            // Googleカレンダー追加用URLを生成
+            updateGoogleCalendarLink();
+          }, 2000);
         } catch (error) { document.getElementById('payment-modal').classList.add('hidden'); alert('エラーが発生しました'); }
       });
 
@@ -275,10 +428,44 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
         summaryDate.textContent = schedule ? schedule.date : '未選択';
         summaryTime.textContent = schedule ? schedule.startTime + ' 〜 ' + schedule.endTime : '--:-- 〜 --:--';
         summaryPrice.textContent = course ? '¥' + course.price.toLocaleString() : '¥0';
-        checkoutBtn.disabled = !course || !schedule;
+        // 講座・日程・全ての規約への同意が揃った場合のみ決済ボタンを有効化
+        checkoutBtn.disabled = !course || !schedule || !areAllPoliciesAgreed();
       }
 
-      if (new URLSearchParams(window.location.search).get('session_id')) document.getElementById('success-modal').classList.remove('hidden');
+      // Googleカレンダー追加用URL生成関数
+      function generateGoogleCalendarUrl(title, description, startDateTime, endDateTime, location) {
+        const formatDateTime = (dateTime) => {
+          return new Date(dateTime).toISOString().replace(/[-:]/g, '').replace(/\\.\\d{3}/, '');
+        };
+        const params = new URLSearchParams({
+          action: 'TEMPLATE',
+          text: title,
+          dates: formatDateTime(startDateTime) + '/' + formatDateTime(endDateTime),
+          details: description,
+          location: location || 'オンライン',
+          trp: 'false'
+        });
+        return 'https://calendar.google.com/calendar/render?' + params.toString();
+      }
+
+      function updateGoogleCalendarLink() {
+        const course = courses.find(c => c.id === selectedCourseId);
+        const schedule = schedules.find(s => s.id === selectedScheduleId);
+        if (!course || !schedule) return;
+        
+        const startDateTime = schedule.date + 'T' + schedule.startTime + ':00+09:00';
+        const endDateTime = schedule.date + 'T' + schedule.endTime + ':00+09:00';
+        const title = '【mirAIcafe】' + course.title;
+        const description = 'mirAIcafe AI講座の予約\\n\\n講座名: ' + course.title + '\\n日時: ' + schedule.date + ' ' + schedule.startTime + '〜' + schedule.endTime;
+        
+        const calendarUrl = generateGoogleCalendarUrl(title, description, startDateTime, endDateTime, 'オンライン');
+        document.getElementById('google-calendar-link').href = calendarUrl;
+      }
+
+      if (new URLSearchParams(window.location.search).get('session_id')) {
+        document.getElementById('success-modal').classList.remove('hidden');
+        updateGoogleCalendarLink();
+      }
     </script>
   `
 

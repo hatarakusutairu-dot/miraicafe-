@@ -366,9 +366,16 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
             // フォームに反映
             if (data.title) document.querySelector('input[name="title"]').value = data.title;
             if (data.content) document.querySelector('textarea[name="content"]').value = data.content;
+            if (data.excerpt) document.querySelector('textarea[name="excerpt"]').value = data.excerpt;
             if (data.category) document.querySelector('select[name="category"]').value = data.category;
             if (data.tags) document.querySelector('input[name="tags"]').value = data.tags;
-            if (data.meta_description) document.querySelector('textarea[name="meta_description"]').value = data.meta_description;
+            if (data.meta_description) {
+              document.querySelector('textarea[name="meta_description"]').value = data.meta_description;
+              // 文字数カウント更新
+              const metaCharCount = document.getElementById('meta-char-count');
+              if (metaCharCount) metaCharCount.textContent = data.meta_description.length;
+            }
+            if (data.keywords) document.querySelector('input[name="keywords"]').value = data.keywords;
             if (data.featured_image) {
               document.getElementById('blog-image-upload-hidden').value = data.featured_image;
               showPreview('blog-image-upload', data.featured_image);
@@ -376,6 +383,12 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
             // 使用済みなので削除
             sessionStorage.removeItem('aiGeneratedArticle');
             showToast('AI生成データを読み込みました');
+            
+            // SEOスコアを自動更新
+            setTimeout(() => {
+              const titleInput = document.querySelector('input[name="title"]');
+              if (titleInput) titleInput.dispatchEvent(new Event('input'));
+            }, 500);
           } catch (e) {
             console.error('AI data parse error:', e);
           }
@@ -554,6 +567,31 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
                 </ul>
               </div>
               
+              \${(data.content_corrections && data.content_corrections.length > 0) ? \`
+              <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 14px; font-weight: 600; color: #475569; margin-bottom: 10px;">✏️ 本文の訂正提案</h3>
+                <div style="space-y: 12px;">
+                  \${data.content_corrections.map((c, i) => \`
+                    <div style="margin-bottom: 12px; padding: 16px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fbbf24; border-radius: 12px;">
+                      <div style="font-size: 12px; font-weight: 600; color: #92400e; margin-bottom: 8px;">訂正 \${i + 1}</div>
+                      <div style="margin-bottom: 8px;">
+                        <div style="font-size: 11px; font-weight: 600; color: #dc2626; margin-bottom: 4px;">❌ 修正前</div>
+                        <div style="padding: 8px 12px; background: #fef2f2; border-left: 3px solid #dc2626; border-radius: 4px; font-size: 13px; color: #7f1d1d;">\${escapeHtml(c.before)}</div>
+                      </div>
+                      <div style="margin-bottom: 8px;">
+                        <div style="font-size: 11px; font-weight: 600; color: #16a34a; margin-bottom: 4px;">✅ 修正後</div>
+                        <div onclick="applyContentCorrection(this)" data-before="\${escapeHtml(c.before)}" data-after="\${escapeHtml(c.after)}" style="padding: 8px 12px; background: #f0fdf4; border-left: 3px solid #16a34a; border-radius: 4px; font-size: 13px; color: #166534; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
+                          \${escapeHtml(c.after)}
+                          <span style="display: block; text-align: right; color: #16a34a; font-size: 11px; font-weight: 600; margin-top: 4px;">[この修正を適用]</span>
+                        </div>
+                      </div>
+                      \${c.reason ? \`<div style="font-size: 12px; color: #78716c; margin-top: 8px;"><i class="fas fa-lightbulb" style="color: #f59e0b; margin-right: 4px;"></i>\${escapeHtml(c.reason)}</div>\` : ''}
+                    </div>
+                  \`).join('')}
+                </div>
+              </div>
+              \` : ''}
+              
               <button onclick="document.getElementById('ai-suggestion-modal').remove();" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
                 閉じる
               </button>
@@ -561,6 +599,28 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
           </div>
         \`;
         document.body.appendChild(modal);
+      }
+      
+      // 本文訂正を適用
+      function applyContentCorrection(el) {
+        const before = el.dataset.before;
+        const after = el.dataset.after;
+        const contentInput = document.querySelector('textarea[name="content"]');
+        
+        if (contentInput && before && after) {
+          const currentContent = contentInput.value;
+          if (currentContent.includes(before)) {
+            contentInput.value = currentContent.replace(before, after);
+            contentInput.dispatchEvent(new Event('input'));
+            showToast('本文を修正しました');
+            el.style.background = '#bbf7d0';
+            el.innerHTML = '<span style="color: #166534;">✅ 適用済み</span>';
+            el.style.cursor = 'default';
+            el.onclick = null;
+          } else {
+            showToast('該当する文章が見つかりませんでした', 'warning');
+          }
+        }
       }
       
       // タイトル適用
@@ -631,6 +691,12 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
               charCountEl.textContent = data.length || data.meta_description.length;
             }
             
+            // キーワードも反映
+            const keywordsInput = document.querySelector('input[name="keywords"]');
+            if (keywordsInput && data.keywords) {
+              keywordsInput.value = data.keywords;
+            }
+            
             // フォーカスを当てる
             metaInput.focus();
             
@@ -645,7 +711,8 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
               btn.innerHTML = '<i class="fas fa-check"></i><br>✅ 生成完了';
               btn.style.opacity = '1';
               
-              showToast('メタディスクリプションを生成しました (' + (data.length || data.meta_description.length) + '文字)');
+              const keywordMsg = data.keywords ? ' + キーワード' : '';
+              showToast('SEO設定を生成しました (' + (data.length || data.meta_description.length) + '文字' + keywordMsg + ')');
               
               // 2秒後に元に戻す
               setTimeout(() => {
@@ -676,10 +743,12 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
       }
       
       // トースト通知
-      function showToast(message) {
+      function showToast(message, type = 'success') {
+        const colors = { success: '#10b981', warning: '#f59e0b', error: '#ef4444' };
+        const icons = { success: 'check-circle', warning: 'exclamation-triangle', error: 'times-circle' };
         const toast = document.createElement('div');
-        toast.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; animation: fadeIn 0.3s;';
-        toast.innerHTML = '<i class="fas fa-check-circle mr-2"></i>' + message;
+        toast.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: ' + (colors[type] || colors.success) + '; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; animation: fadeIn 0.3s;';
+        toast.innerHTML = '<i class="fas fa-' + (icons[type] || icons.success) + ' mr-2"></i>' + message;
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 2000);
       }

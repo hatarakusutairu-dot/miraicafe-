@@ -3,9 +3,23 @@ import { renderAdminLayout } from './layout'
 interface DashboardStats {
   courses: number
   blogs: number
-  reviews: { total: number; pending: number }
+  reviews: { total: number; pending: number; avgRating: number }
   contacts: { total: number; new: number }
   bookings: { total: number; pending: number; confirmed: number }
+}
+
+interface SiteStats {
+  show_stats: number
+  student_count_extra: number  // 手動追加分
+  student_count_suffix: string
+  course_count_auto: number
+  course_count_manual: number
+  satisfaction_auto: number
+  satisfaction_manual: number
+}
+
+interface BookingStudentCount {
+  auto: number  // 予約からの自動カウント
 }
 
 interface RecentActivity {
@@ -14,7 +28,12 @@ interface RecentActivity {
   bookings: Array<{ id: number; customer_name: string; course_name: string; preferred_date: string; status: string; created_at: string }>
 }
 
-export const renderDashboard = (stats: DashboardStats, recent: RecentActivity) => {
+export const renderDashboard = (stats: DashboardStats, recent: RecentActivity, siteStats?: SiteStats, studentCountAuto: number = 0) => {
+  // 計算値
+  const courseCount = siteStats?.course_count_auto ? stats.courses : (siteStats?.course_count_manual || 0)
+  const satisfactionRate = siteStats?.satisfaction_auto ? Math.round(stats.reviews.avgRating * 20) : (siteStats?.satisfaction_manual || 0)
+  const studentCountExtra = siteStats?.student_count_extra || 0
+  const studentCountTotal = studentCountAuto + studentCountExtra
   const content = `
     <div class="mb-8">
       <h1 class="text-2xl font-bold text-gray-800">ダッシュボード</h1>
@@ -261,6 +280,153 @@ export const renderDashboard = (stats: DashboardStats, recent: RecentActivity) =
       </div>
     </div>
 
+    <!-- サイト実績設定 -->
+    <div class="bg-white rounded-xl shadow-sm p-6 mt-8">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-lg font-bold text-gray-800 flex items-center">
+            <i class="fas fa-chart-line text-indigo-500 mr-2"></i>
+            サイト実績表示
+          </h2>
+          <p class="text-sm text-gray-500 mt-1">トップページに表示する実績数値を設定します</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="show-stats-toggle" class="sr-only peer" ${siteStats?.show_stats ? 'checked' : ''}>
+          <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-600"></div>
+          <span class="ml-3 text-sm font-medium text-gray-700" id="show-stats-label">${siteStats?.show_stats ? '表示中' : '非表示'}</span>
+        </label>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- 受講生数 -->
+        <div class="bg-gray-50 rounded-xl p-5 border border-gray-100">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+              <i class="fas fa-users text-blue-500"></i>
+            </div>
+            <span class="font-medium text-gray-700">受講生数</span>
+          </div>
+          
+          <!-- 計算式表示 -->
+          <div class="flex items-center gap-2 mb-4">
+            <!-- 自動カウント -->
+            <div class="flex-1 p-3 bg-blue-50 rounded-lg border border-blue-200 text-center">
+              <div class="text-xs text-blue-600 mb-1">
+                <i class="fas fa-robot mr-1"></i>自動
+              </div>
+              <div class="text-2xl font-bold text-blue-700" id="student-auto">${studentCountAuto}</div>
+              <div class="text-xs text-blue-500">予約から</div>
+            </div>
+            
+            <!-- プラス記号 -->
+            <div class="text-xl font-bold text-gray-400">+</div>
+            
+            <!-- 手動入力 -->
+            <div class="flex-1 p-3 bg-gray-100 rounded-lg border border-gray-200 text-center">
+              <div class="text-xs text-gray-600 mb-1">
+                <i class="fas fa-edit mr-1"></i>手動
+              </div>
+              <input type="number" id="student-extra" value="${studentCountExtra}" min="0" 
+                     class="w-16 text-2xl font-bold text-center bg-white border border-gray-300 rounded-lg focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none mx-auto block">
+              <div class="text-xs text-gray-500 mt-1">追加分</div>
+            </div>
+            
+            <!-- イコール記号 -->
+            <div class="text-xl font-bold text-gray-400">=</div>
+            
+            <!-- 合計表示 -->
+            <div class="flex-1 p-3 bg-indigo-50 rounded-lg border border-indigo-200 text-center">
+              <div class="text-xs text-indigo-600 mb-1">
+                <i class="fas fa-calculator mr-1"></i>合計
+              </div>
+              <div class="flex items-center justify-center gap-1">
+                <span class="text-2xl font-bold text-indigo-700" id="student-total">${studentCountTotal}</span>
+                <input type="text" id="student-suffix" value="${siteStats?.student_count_suffix || '+'}" 
+                       class="w-8 text-lg font-bold text-indigo-600 bg-transparent border-b border-indigo-300 text-center outline-none" placeholder="+">
+              </div>
+              <div class="text-xs text-indigo-500">表示値</div>
+            </div>
+          </div>
+          
+          <p class="text-xs text-gray-400 text-center">
+            <i class="fas fa-info-circle mr-1"></i>
+            自動: 確定予約のユニーク顧客数 ｜ 手動: オフライン受講生など
+          </p>
+        </div>
+        
+        <!-- 講座数 -->
+        <div class="bg-gray-50 rounded-xl p-5 border border-gray-100">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-book-open text-green-500"></i>
+              </div>
+              <span class="font-medium text-gray-700">講座数</span>
+            </div>
+            <label class="flex items-center gap-2 text-xs">
+              <input type="checkbox" id="course-auto" ${siteStats?.course_count_auto ? 'checked' : ''} class="rounded text-indigo-500 focus:ring-indigo-400">
+              <span class="text-gray-500">自動</span>
+            </label>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="number" id="course-count-manual" value="${siteStats?.course_count_manual || stats.courses}" min="0" 
+                   class="w-24 px-3 py-2 border border-gray-200 rounded-lg focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
+                   ${siteStats?.course_count_auto ? 'disabled' : ''}>
+            <span class="text-gray-500 text-sm" id="course-auto-value">${siteStats?.course_count_auto ? `(自動: ${stats.courses})` : ''}</span>
+          </div>
+        </div>
+        
+        <!-- 満足度 -->
+        <div class="bg-gray-50 rounded-xl p-5 border border-gray-100">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                <i class="fas fa-smile text-amber-500"></i>
+              </div>
+              <span class="font-medium text-gray-700">満足度</span>
+            </div>
+            <label class="flex items-center gap-2 text-xs">
+              <input type="checkbox" id="satisfaction-auto" ${siteStats?.satisfaction_auto ? 'checked' : ''} class="rounded text-indigo-500 focus:ring-indigo-400">
+              <span class="text-gray-500">自動</span>
+            </label>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="number" id="satisfaction-manual" value="${siteStats?.satisfaction_manual || 98}" min="0" max="100"
+                   class="w-24 px-3 py-2 border border-gray-200 rounded-lg focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
+                   ${siteStats?.satisfaction_auto ? 'disabled' : ''}>
+            <span class="text-gray-700">%</span>
+            <span class="text-gray-500 text-sm" id="satisfaction-auto-value">${siteStats?.satisfaction_auto ? `(自動: ${satisfactionRate}%)` : ''}</span>
+          </div>
+          <p class="text-xs text-gray-400 mt-2">自動: 口コミ平均×20%</p>
+        </div>
+      </div>
+      
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-100">
+        <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500">
+          <i class="fas fa-eye"></i>
+          <span>プレビュー:</span>
+          <div class="flex items-center gap-1 bg-blue-50 px-3 py-1 rounded-full">
+            <span class="font-bold text-indigo-600" id="preview-students">${studentCountTotal}${siteStats?.student_count_suffix || '+'}</span>
+            <span class="text-gray-500">受講生</span>
+          </div>
+          <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded" id="preview-students-calc">${studentCountAuto}+${studentCountExtra}</span>
+          <span class="text-gray-300">|</span>
+          <div class="flex items-center gap-1 bg-green-50 px-3 py-1 rounded-full">
+            <span class="font-bold text-green-600" id="preview-courses">${courseCount}</span>
+            <span class="text-gray-500">講座</span>
+          </div>
+          <span class="text-gray-300">|</span>
+          <div class="flex items-center gap-1 bg-amber-50 px-3 py-1 rounded-full">
+            <span class="font-bold text-amber-600" id="preview-satisfaction">${satisfactionRate}%</span>
+            <span class="text-gray-500">満足度</span>
+          </div>
+        </div>
+        <button onclick="saveSiteStats()" class="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-medium rounded-lg transition-colors shadow-sm hover:shadow">
+          <i class="fas fa-save mr-2"></i>保存
+        </button>
+      </div>
+    </div>
+
     <script>
       // 予約数をリアルタイムで取得・更新
       async function loadBookingStats() {
@@ -283,6 +449,85 @@ export const renderDashboard = (stats: DashboardStats, recent: RecentActivity) =
       
       // ページ読み込み時に予約統計を更新
       loadBookingStats();
+      
+      // ===== サイト実績設定 =====
+      
+      // 表示/非表示トグル
+      document.getElementById('show-stats-toggle').addEventListener('change', function() {
+        document.getElementById('show-stats-label').textContent = this.checked ? '表示中' : '非表示';
+      });
+      
+      // 講座数自動チェック
+      document.getElementById('course-auto').addEventListener('change', function() {
+        const input = document.getElementById('course-count-manual');
+        const autoValue = document.getElementById('course-auto-value');
+        input.disabled = this.checked;
+        autoValue.textContent = this.checked ? '(自動: ${stats.courses})' : '';
+        updatePreview();
+      });
+      
+      // 満足度自動チェック
+      document.getElementById('satisfaction-auto').addEventListener('change', function() {
+        const input = document.getElementById('satisfaction-manual');
+        const autoValue = document.getElementById('satisfaction-auto-value');
+        input.disabled = this.checked;
+        autoValue.textContent = this.checked ? '(自動: ${satisfactionRate}%)' : '';
+        updatePreview();
+      });
+      
+      // プレビュー更新
+      function updatePreview() {
+        const studentAuto = parseInt(document.getElementById('student-auto').textContent) || 0;
+        const studentExtra = parseInt(document.getElementById('student-extra').value) || 0;
+        const studentTotal = studentAuto + studentExtra;
+        const studentSuffix = document.getElementById('student-suffix').value;
+        const courseAuto = document.getElementById('course-auto').checked;
+        const courseManual = document.getElementById('course-count-manual').value;
+        const satisfactionAuto = document.getElementById('satisfaction-auto').checked;
+        const satisfactionManual = document.getElementById('satisfaction-manual').value;
+        
+        // 受講生合計更新
+        document.getElementById('student-total').textContent = studentTotal;
+        document.getElementById('preview-students').textContent = studentTotal + studentSuffix;
+        document.getElementById('preview-students-calc').textContent = studentAuto + '+' + studentExtra;
+        document.getElementById('preview-courses').textContent = courseAuto ? '${stats.courses}' : courseManual;
+        document.getElementById('preview-satisfaction').textContent = (satisfactionAuto ? '${satisfactionRate}' : satisfactionManual) + '%';
+      }
+      
+      // 入力時にプレビュー更新
+      ['student-extra', 'student-suffix', 'course-count-manual', 'satisfaction-manual'].forEach(id => {
+        document.getElementById(id).addEventListener('input', updatePreview);
+      });
+      
+      // 保存
+      async function saveSiteStats() {
+        const data = {
+          show_stats: document.getElementById('show-stats-toggle').checked ? 1 : 0,
+          student_count_extra: parseInt(document.getElementById('student-extra').value) || 0,
+          student_count_suffix: document.getElementById('student-suffix').value || '+',
+          course_count_auto: document.getElementById('course-auto').checked ? 1 : 0,
+          course_count_manual: parseInt(document.getElementById('course-count-manual').value) || 0,
+          satisfaction_auto: document.getElementById('satisfaction-auto').checked ? 1 : 0,
+          satisfaction_manual: parseInt(document.getElementById('satisfaction-manual').value) || 0
+        };
+        
+        try {
+          const res = await fetch('/admin/api/site-stats', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          
+          const result = await res.json();
+          if (result.success) {
+            alert('実績設定を保存しました');
+          } else {
+            alert('エラー: ' + (result.error || '保存に失敗しました'));
+          }
+        } catch (e) {
+          alert('通信エラーが発生しました');
+        }
+      }
     </script>
   `
 

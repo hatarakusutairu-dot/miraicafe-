@@ -21,6 +21,81 @@ export const renderCoursesPage = (courses: Course[]) => {
       </div>
     </section>
 
+    <!-- AI講座アドバイザー チャットボット -->
+    <section class="py-8 bg-gradient-to-br from-cafe-cream via-cafe-latte/30 to-nature-mint/20">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-cafe-beige">
+          <!-- チャットボットヘッダー -->
+          <div class="bg-gradient-to-r from-cafe-wood to-cafe-caramel p-6 text-white">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                <i class="fas fa-robot text-2xl"></i>
+              </div>
+              <div>
+                <h3 class="text-xl font-bold flex items-center gap-2">
+                  <span>☕</span> mionのAI講座アドバイザー
+                </h3>
+                <p class="text-white/80 text-sm">あなたにぴったりの講座を一緒に探しましょう</p>
+              </div>
+              <button id="chatbot-toggle" class="ml-auto text-white/80 hover:text-white transition p-2">
+                <i class="fas fa-chevron-up text-lg" id="chatbot-toggle-icon"></i>
+              </button>
+            </div>
+          </div>
+          
+          <!-- チャットボット本体 -->
+          <div id="chatbot-body" class="transition-all duration-300">
+            <!-- チャット履歴 -->
+            <div id="chat-messages" class="p-6 max-h-96 overflow-y-auto space-y-4 bg-cafe-ivory/30">
+              <!-- 初期メッセージ -->
+              <div class="chat-message bot flex gap-3">
+                <div class="w-10 h-10 bg-cafe-wood rounded-full flex items-center justify-center flex-shrink-0">
+                  <i class="fas fa-robot text-white text-sm"></i>
+                </div>
+                <div class="flex-1">
+                  <div class="bg-white rounded-2xl rounded-tl-sm p-4 shadow-sm border border-cafe-beige/50 max-w-lg">
+                    <p class="text-cafe-text">こんにちは！mirAIcafeの講座アドバイザーmionです😊</p>
+                    <p class="text-cafe-text mt-2">あなたにぴったりの講座を一緒に探しましょう！まず、どんな目的で学びたいですか？</p>
+                  </div>
+                  <!-- 初期選択肢 -->
+                  <div class="flex flex-wrap gap-2 mt-3" id="initial-options">
+                    <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="仕事でAIを活用して効率化したい">
+                      💼 仕事で効率化したい
+                    </button>
+                    <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="資格取得や勉強に役立てたい">
+                      📚 勉強・資格に役立てたい
+                    </button>
+                    <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="教育現場でAIを活用したい">
+                      🏫 教育現場で活用したい
+                    </button>
+                    <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="趣味や興味でAIを学びたい">
+                      🎨 趣味・興味で学びたい
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 入力エリア -->
+            <div class="p-4 border-t border-cafe-beige bg-white">
+              <div class="flex gap-3">
+                <input type="text" id="chat-input" 
+                       class="flex-1 px-4 py-3 border border-cafe-beige rounded-full focus:border-cafe-wood focus:outline-none transition-colors bg-cafe-ivory/50"
+                       placeholder="または、自由に入力してください...">
+                <button id="chat-send" class="px-6 py-3 bg-cafe-wood hover:bg-cafe-caramel text-white rounded-full font-medium transition-all flex items-center gap-2">
+                  <i class="fas fa-paper-plane"></i>
+                  <span class="hidden sm:inline">送信</span>
+                </button>
+              </div>
+              <p class="text-xs text-cafe-textLight mt-2 text-center">
+                <i class="fas fa-lightbulb mr-1"></i>ボタンを選ぶか、自由に入力して質問できます
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Filter Section - Compact Layout -->
     <section class="py-3 bg-white/95 backdrop-blur-sm sticky top-20 z-40 border-b border-future-sky shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -59,7 +134,7 @@ export const renderCoursesPage = (courses: Course[]) => {
               <span class="text-future-textLight font-medium">カテゴリ:</span>
               <button class="filter-btn category-btn active px-5 py-2 rounded-full font-medium transition-all shadow-sm" data-category="all">すべて</button>
               <button class="filter-btn category-btn px-5 py-2 rounded-full font-medium transition-all" data-category="AI基礎">AI基礎</button>
-              <button class="filter-btn category-btn px-5 py-2 rounded-full font-medium transition-all" data-category="プログラミング">プログラミング</button>
+              <button class="filter-btn category-btn px-5 py-2 rounded-full font-medium transition-all" data-category="AIツール活用">AIツール活用</button>
               <button class="filter-btn category-btn px-5 py-2 rounded-full font-medium transition-all" data-category="データ分析">データ分析</button>
               <button class="filter-btn category-btn px-5 py-2 rounded-full font-medium transition-all" data-category="資格対策">資格対策</button>
               <button class="filter-btn category-btn px-5 py-2 rounded-full font-medium transition-all" data-category="教育者向け">教育者向け</button>
@@ -441,6 +516,310 @@ export const renderCoursesPage = (courses: Course[]) => {
 
       // Initial application
       applyFilters();
+    })();
+
+    // ===== 講座推薦チャットボット =====
+    (function() {
+      const chatMessages = document.getElementById('chat-messages');
+      const chatInput = document.getElementById('chat-input');
+      const chatSend = document.getElementById('chat-send');
+      const chatbotToggle = document.getElementById('chatbot-toggle');
+      const chatbotBody = document.getElementById('chatbot-body');
+      const chatbotToggleIcon = document.getElementById('chatbot-toggle-icon');
+      
+      let conversationHistory = [];
+      let isLoading = false;
+      
+      // チャットボット開閉
+      if (chatbotToggle) {
+        chatbotToggle.addEventListener('click', function() {
+          chatbotBody.classList.toggle('hidden');
+          chatbotToggleIcon.classList.toggle('fa-chevron-up');
+          chatbotToggleIcon.classList.toggle('fa-chevron-down');
+        });
+      }
+      
+      // 選択肢ボタンのイベント（初期 + 動的生成分）
+      document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('chat-option')) {
+          const value = e.target.dataset.value;
+          if (value && !isLoading) {
+            // 「最初からやり直す」の場合はリセット
+            if (value === '最初からやり直す') {
+              resetChat();
+              return;
+            }
+            
+            sendMessage(value);
+            // 選択肢を非表示
+            const optionsContainer = e.target.parentElement;
+            if (optionsContainer) {
+              optionsContainer.style.display = 'none';
+            }
+          }
+        }
+      });
+      
+      // チャットをリセット
+      function resetChat() {
+        conversationHistory = [];
+        chatMessages.innerHTML = \`
+          <div class="chat-message bot flex gap-3">
+            <div class="w-10 h-10 bg-cafe-wood rounded-full flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-robot text-white text-sm"></i>
+            </div>
+            <div class="flex-1">
+              <div class="bg-white rounded-2xl rounded-tl-sm p-4 shadow-sm border border-cafe-beige/50 max-w-lg">
+                <p class="text-cafe-text">こんにちは！mirAIcafeの講座アドバイザーmionです😊</p>
+                <p class="text-cafe-text mt-2">あなたにぴったりの講座を一緒に探しましょう！まず、どんな目的で学びたいですか？</p>
+              </div>
+              <div class="flex flex-wrap gap-2 mt-3" id="initial-options">
+                <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="仕事でAIを活用して効率化したい">
+                  💼 仕事で効率化したい
+                </button>
+                <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="資格取得や勉強に役立てたい">
+                  📚 勉強・資格に役立てたい
+                </button>
+                <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="教育現場でAIを活用したい">
+                  🏫 教育現場で活用したい
+                </button>
+                <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="趣味や興味でAIを学びたい">
+                  🎨 趣味・興味で学びたい
+                </button>
+              </div>
+            </div>
+          </div>
+        \`;
+      }
+      
+      // 送信ボタン
+      if (chatSend) {
+        chatSend.addEventListener('click', function() {
+          const message = chatInput.value.trim();
+          if (message && !isLoading) {
+            sendMessage(message);
+            chatInput.value = '';
+          }
+        });
+      }
+      
+      // Enterキーで送信
+      if (chatInput) {
+        chatInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter' && !isLoading) {
+            const message = chatInput.value.trim();
+            if (message) {
+              sendMessage(message);
+              chatInput.value = '';
+            }
+          }
+        });
+      }
+      
+      // メッセージ送信
+      async function sendMessage(message) {
+        if (isLoading) return;
+        isLoading = true;
+        
+        // ユーザーメッセージを表示
+        addMessage(message, 'user');
+        
+        // 初期選択肢を非表示
+        const initialOptions = document.getElementById('initial-options');
+        if (initialOptions) {
+          initialOptions.style.display = 'none';
+        }
+        
+        // ローディング表示
+        const loadingId = addLoadingMessage();
+        
+        try {
+          const response = await fetch('/api/chat/course-recommendation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: message,
+              conversation_history: conversationHistory
+            })
+          });
+          
+          const data = await response.json();
+          
+          // ローディング削除
+          removeLoadingMessage(loadingId);
+          
+          if (data.success && data.response) {
+            conversationHistory = data.conversation_history || [];
+            
+            // ボットの応答を表示
+            addBotMessage(data.response);
+          } else {
+            addMessage('申し訳ございません、エラーが発生しました。もう一度お試しください。', 'bot');
+          }
+        } catch (error) {
+          console.error('Chat error:', error);
+          removeLoadingMessage(loadingId);
+          addMessage('通信エラーが発生しました。もう一度お試しください。', 'bot');
+        }
+        
+        isLoading = false;
+      }
+      
+      // メッセージ追加（ユーザー）
+      function addMessage(text, type) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'chat-message ' + type + ' flex gap-3 ' + (type === 'user' ? 'justify-end' : '');
+        
+        if (type === 'user') {
+          messageDiv.innerHTML = \`
+            <div class="flex-1 flex justify-end">
+              <div class="bg-cafe-wood text-white rounded-2xl rounded-tr-sm p-4 shadow-sm max-w-lg">
+                <p>\${escapeHtml(text)}</p>
+              </div>
+            </div>
+            <div class="w-10 h-10 bg-cafe-caramel rounded-full flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-user text-white text-sm"></i>
+            </div>
+          \`;
+        } else {
+          messageDiv.innerHTML = \`
+            <div class="w-10 h-10 bg-cafe-wood rounded-full flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-robot text-white text-sm"></i>
+            </div>
+            <div class="flex-1">
+              <div class="bg-white rounded-2xl rounded-tl-sm p-4 shadow-sm border border-cafe-beige/50 max-w-lg">
+                <p class="text-cafe-text">\${escapeHtml(text)}</p>
+              </div>
+            </div>
+          \`;
+        }
+        
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+      
+      // ボットメッセージ追加（選択肢・講座提案含む）
+      function addBotMessage(response) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'chat-message bot flex gap-3';
+        
+        let optionsHtml = '';
+        let coursesHtml = '';
+        let followUpHtml = '';
+        
+        // 選択肢がある場合
+        if (response.options && response.options.length > 0) {
+          optionsHtml = '<div class="flex flex-wrap gap-2 mt-3">';
+          response.options.forEach(function(opt) {
+            optionsHtml += '<button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</button>';
+          });
+          optionsHtml += '</div>';
+        }
+        
+        // 講座提案がある場合
+        if (response.recommended_courses && response.recommended_courses.length > 0) {
+          coursesHtml = '<div class="mt-4 space-y-3">';
+          coursesHtml += '<p class="text-sm text-cafe-textLight font-medium">🎯 おすすめ講座:</p>';
+          response.recommended_courses.forEach(function(course) {
+            coursesHtml += \`
+              <a href="/courses/\${course.id}" class="block bg-cafe-ivory hover:bg-cafe-latte/50 rounded-xl p-4 border border-cafe-beige transition-all group">
+                <div class="flex items-start gap-3">
+                  <div class="w-10 h-10 bg-cafe-wood rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-cafe-caramel transition-colors">
+                    <i class="fas fa-book-open text-white"></i>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <h4 class="font-bold text-cafe-text group-hover:text-cafe-wood transition-colors">\${escapeHtml(course.title)}</h4>
+                    <p class="text-sm text-cafe-textLight mt-1">\${escapeHtml(course.reason)}</p>
+                    <span class="inline-flex items-center text-xs text-cafe-wood mt-2 font-medium">
+                      詳細を見る <i class="fas fa-arrow-right ml-1"></i>
+                    </span>
+                  </div>
+                </div>
+              </a>
+            \`;
+          });
+          coursesHtml += '</div>';
+          
+          // 講座提案後のフォローアップボタン
+          if (response.has_more_options) {
+            // さらに絞り込み可能な場合
+            followUpHtml = \`
+              <div class="flex flex-wrap gap-2 mt-3">
+                <button class="chat-option px-4 py-2 bg-cafe-wood hover:bg-cafe-caramel text-white rounded-full text-sm font-medium transition-all" data-value="もっと詳しく絞り込みたい">
+                  <i class="fas fa-filter mr-1"></i>もっと詳しく絞り込む
+                </button>
+                <button class="chat-option chat-option-secondary px-4 py-2 bg-transparent hover:bg-cafe-beige text-cafe-textLight rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="これで十分です、ありがとう">
+                  <i class="fas fa-check mr-1"></i>これで十分です
+                </button>
+              </div>
+            \`;
+          } else {
+            // 最終推薦の場合
+            followUpHtml = \`
+              <div class="flex flex-wrap gap-2 mt-3">
+                <button class="chat-option chat-option-secondary px-4 py-2 bg-transparent hover:bg-cafe-beige text-cafe-textLight rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="最初からやり直す">
+                  <i class="fas fa-redo mr-1"></i>最初からやり直す
+                </button>
+              </div>
+            \`;
+          }
+        }
+        
+        messageDiv.innerHTML = \`
+          <div class="w-10 h-10 bg-cafe-wood rounded-full flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-robot text-white text-sm"></i>
+          </div>
+          <div class="flex-1">
+            <div class="bg-white rounded-2xl rounded-tl-sm p-4 shadow-sm border border-cafe-beige/50 max-w-lg">
+              <p class="text-cafe-text whitespace-pre-wrap">\${escapeHtml(response.message || '')}</p>
+              \${coursesHtml}
+            </div>
+            \${optionsHtml}
+            \${followUpHtml}
+          </div>
+        \`;
+        
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+      
+      // ローディングメッセージ
+      function addLoadingMessage() {
+        const id = 'loading-' + Date.now();
+        const messageDiv = document.createElement('div');
+        messageDiv.id = id;
+        messageDiv.className = 'chat-message bot flex gap-3';
+        messageDiv.innerHTML = \`
+          <div class="w-10 h-10 bg-cafe-wood rounded-full flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-robot text-white text-sm"></i>
+          </div>
+          <div class="flex-1">
+            <div class="bg-white rounded-2xl rounded-tl-sm p-4 shadow-sm border border-cafe-beige/50 max-w-lg">
+              <div class="flex items-center gap-2 text-cafe-textLight">
+                <i class="fas fa-circle-notch fa-spin"></i>
+                <span>考え中...</span>
+              </div>
+            </div>
+          </div>
+        \`;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return id;
+      }
+      
+      function removeLoadingMessage(id) {
+        const loadingMsg = document.getElementById(id);
+        if (loadingMsg) {
+          loadingMsg.remove();
+        }
+      }
+      
+      function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
     })();
     </script>
   `

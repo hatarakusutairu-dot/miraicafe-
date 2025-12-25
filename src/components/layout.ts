@@ -666,6 +666,125 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       0% { transform: translateX(0); }
       100% { transform: translateX(-50%); }
     }
+    
+    /* Custom Select Dropdown Styles */
+    .custom-select-wrapper {
+      position: relative;
+    }
+    
+    .custom-select {
+      position: relative;
+      cursor: pointer;
+    }
+    
+    .custom-select-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.25rem;
+      background: white;
+      border: 2px solid #E8F5E9;
+      border-radius: 1rem;
+      font-size: 1rem;
+      color: #4A4035;
+      transition: all 0.3s ease;
+    }
+    
+    .custom-select-trigger:hover {
+      border-color: #6B9B62;
+    }
+    
+    .custom-select.open .custom-select-trigger {
+      border-color: #6B9B62;
+      border-radius: 1rem 1rem 0 0;
+    }
+    
+    .custom-select-trigger i {
+      color: #6B9B62;
+      transition: transform 0.3s ease;
+    }
+    
+    .custom-select.open .custom-select-trigger i {
+      transform: rotate(180deg);
+    }
+    
+    .custom-options {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 2px solid #6B9B62;
+      border-top: none;
+      border-radius: 0 0 1rem 1rem;
+      max-height: 300px;
+      overflow-y: auto;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all 0.3s ease;
+      z-index: 100;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .custom-select.open .custom-options {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+    
+    .custom-option {
+      padding: 0.875rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .custom-option:hover {
+      background: #E8F5E9;
+    }
+    
+    .custom-option.selected {
+      background: #E8F5E9;
+      color: #6B9B62;
+      font-weight: 500;
+    }
+    
+    .custom-option.selected::before {
+      content: '\\f00c';
+      font-family: 'Font Awesome 6 Free';
+      font-weight: 900;
+      color: #6B9B62;
+    }
+    
+    .custom-option:not(.selected)::before {
+      content: '';
+      width: 1rem;
+    }
+    
+    /* Scrollbar for options */
+    .custom-options::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .custom-options::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 3px;
+    }
+    
+    .custom-options::-webkit-scrollbar-thumb {
+      background: #6B9B62;
+      border-radius: 3px;
+    }
+    
+    /* Hide native select */
+    .native-select {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body class="bg-cafe-ivory min-h-screen flex flex-col overflow-x-hidden">
@@ -853,19 +972,21 @@ export const renderLayout = (title: string, content: string, activeNav: string =
         <!-- Contact Info -->
         <div>
           <h3 class="font-bold text-cafe-cream mb-4">お問い合わせ</h3>
-          <ul class="space-y-2 text-sm text-cafe-latte">
-            <li><i class="fas fa-envelope mr-2"></i>info@miraicafe.jp</li>
+          <ul class="space-y-3 text-sm text-cafe-latte">
+            <li>
+              <a href="mailto:ai.carrier2025@gmail.com" class="hover:text-cafe-cream transition-colors">
+                <i class="fas fa-envelope mr-2"></i>ai.carrier2025@gmail.com
+              </a>
+            </li>
             <li><i class="fas fa-clock mr-2"></i>平日 9:00 - 18:00</li>
           </ul>
-          <div class="flex space-x-4 mt-4">
-            <a href="#" class="w-10 h-10 rounded-full bg-cafe-brown/30 hover:bg-cafe-wood/50 flex items-center justify-center text-cafe-cream transition-colors">
-              <i class="fab fa-twitter"></i>
+          <div class="mt-4 space-y-2">
+            <h4 class="text-cafe-cream text-xs font-semibold mb-2">関連サイト</h4>
+            <a href="https://miraicafe.work" target="_blank" class="flex items-center text-cafe-latte hover:text-cafe-cream transition-colors text-sm">
+              <i class="fas fa-home mr-2"></i>mirAIcafe ホームページ
             </a>
-            <a href="#" class="w-10 h-10 rounded-full bg-cafe-brown/30 hover:bg-cafe-wood/50 flex items-center justify-center text-cafe-cream transition-colors">
-              <i class="fab fa-instagram"></i>
-            </a>
-            <a href="#" class="w-10 h-10 rounded-full bg-cafe-brown/30 hover:bg-cafe-wood/50 flex items-center justify-center text-cafe-cream transition-colors">
-              <i class="fab fa-youtube"></i>
+            <a href="https://hatarakustyle.jp" target="_blank" class="flex items-center text-cafe-latte hover:text-cafe-cream transition-colors text-sm">
+              <i class="fas fa-heart mr-2"></i>メンタルケア・キャリアサイト
             </a>
           </div>
         </div>

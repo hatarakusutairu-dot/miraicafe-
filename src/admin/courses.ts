@@ -122,6 +122,15 @@ export const renderCourseForm = (course?: Course, error?: string) => {
 
   const levelOptions = ['初級', '中級', '上級', '全レベル']
   const categories = courseCategories || ['AI入門', 'ビジネス活用', 'エンジニア向け', 'その他']
+  
+  // 新規作成時のデフォルトFAQ
+  const defaultFaq = [
+    { question: '初心者でも参加できますか？', answer: 'はい、初心者の方でも安心してご参加いただけます。基礎から丁寧に解説しますので、AIに触れたことがない方でも大丈夫です。' },
+    { question: '受講に必要なものは何ですか？', answer: 'パソコン（Windows/Mac）とインターネット環境があればご参加いただけます。スマートフォンやタブレットでも視聴可能ですが、実践演習にはパソコンをお勧めします。' },
+    { question: '講座の録画はありますか？', answer: 'はい、講座終了後に録画をお送りしますので、復習や当日参加できなかった場合もご安心ください。録画は30日間視聴可能です。' },
+    { question: '質問はできますか？', answer: 'はい、講座中はいつでも質問していただけます。チャットでの質問に加え、質疑応答の時間も設けています。' },
+    { question: '支払い方法を教えてください', answer: 'クレジットカード（Visa、Mastercard、JCB、American Express）でのお支払いに対応しています。' }
+  ]
 
   const content = `
     <div class="mb-6">
@@ -396,15 +405,15 @@ export const renderCourseForm = (course?: Course, error?: string) => {
           <i class="fas fa-question-circle text-blue-500 mr-2"></i>よくある質問（FAQ）
         </h2>
         <div id="faq-container" class="space-y-3">
-          ${(course?.faq || [{ question: '', answer: '' }]).map((item, index) => `
+          ${(course?.faq || (isEdit ? [{ question: '', answer: '' }] : defaultFaq)).map((item, index) => `
             <div class="faq-item p-4 border border-gray-200 rounded-lg">
               <div class="space-y-3">
-                <input type="text" name="faq_question[]" value="${item.question || ''}"
+                <input type="text" name="faq_question[]" value="${escapeAttr(item.question || '')}"
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
                   placeholder="質問（例: 初心者でも参加できますか？）">
                 <textarea name="faq_answer[]" rows="2"
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm resize-none"
-                  placeholder="回答">${item.answer || ''}</textarea>
+                  placeholder="回答">${escapeAttr(item.answer || '')}</textarea>
                 <div class="text-right">
                   <button type="button" onclick="removeFaq(this)" class="text-red-500 hover:text-red-700 text-sm">
                     <i class="fas fa-trash mr-1"></i>削除
@@ -419,15 +428,7 @@ export const renderCourseForm = (course?: Course, error?: string) => {
         </button>
       </div>
 
-      <!-- キャンセルポリシー -->
-      <div class="bg-white rounded-xl shadow-sm p-6">
-        <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-          <i class="fas fa-file-contract text-blue-500 mr-2"></i>キャンセルポリシー
-        </h2>
-        <textarea name="cancellationPolicy" rows="4"
-          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-          placeholder="キャンセルポリシーを入力&#10;例: 7日前まで：全額返金 / 3日前まで：50%返金 / 前日以降：返金不可">${course?.cancellationPolicy || ''}</textarea>
-      </div>
+      <!-- キャンセルポリシーは別ページで管理しているため、ここでは非表示 -->
 
       <!-- 特徴・含まれるもの -->
       <div class="bg-white rounded-xl shadow-sm p-6">
@@ -643,6 +644,18 @@ export const renderCourseForm = (course?: Course, error?: string) => {
             // 使用済みなので削除
             sessionStorage.removeItem('aiGeneratedCourse');
             showToast('AI生成データを読み込みました');
+            
+            // SEOスコアを自動更新（遅延実行で確実にイベントを発火）
+            setTimeout(() => {
+              const titleInput = document.querySelector('input[name="title"]');
+              const descInput = document.querySelector('textarea[name="description"]');
+              if (titleInput) {
+                titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+              if (descInput) {
+                descInput.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+            }, 800);
           } catch (e) {
             console.error('AI data parse error:', e);
           }
@@ -821,6 +834,31 @@ export const renderCourseForm = (course?: Course, error?: string) => {
                 </ul>
               </div>
               
+              \${(data.content_corrections && data.content_corrections.length > 0) ? \`
+              <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 14px; font-weight: 600; color: #475569; margin-bottom: 10px;">✏️ 本文の訂正提案</h3>
+                <div style="space-y: 12px;">
+                  \${data.content_corrections.map((c, i) => \`
+                    <div style="margin-bottom: 12px; padding: 16px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fbbf24; border-radius: 12px;">
+                      <div style="font-size: 12px; font-weight: 600; color: #92400e; margin-bottom: 8px;">訂正 \${i + 1}</div>
+                      <div style="margin-bottom: 8px;">
+                        <div style="font-size: 11px; font-weight: 600; color: #dc2626; margin-bottom: 4px;">❌ 修正前</div>
+                        <div style="padding: 8px 12px; background: #fef2f2; border-left: 3px solid #dc2626; border-radius: 4px; font-size: 13px; color: #7f1d1d;">\${escapeHtml(c.before)}</div>
+                      </div>
+                      <div style="margin-bottom: 8px;">
+                        <div style="font-size: 11px; font-weight: 600; color: #16a34a; margin-bottom: 4px;">✅ 修正後</div>
+                        <div onclick="applyContentCorrection(this)" data-before="\${escapeHtml(c.before)}" data-after="\${escapeHtml(c.after)}" style="padding: 8px 12px; background: #f0fdf4; border-left: 3px solid #16a34a; border-radius: 4px; font-size: 13px; color: #166534; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
+                          \${escapeHtml(c.after)}
+                          <span style="display: block; text-align: right; color: #16a34a; font-size: 11px; font-weight: 600; margin-top: 4px;">[この修正を適用]</span>
+                        </div>
+                      </div>
+                      \${c.reason ? \`<div style="font-size: 12px; color: #78716c; margin-top: 8px;"><i class="fas fa-lightbulb" style="color: #f59e0b; margin-right: 4px;"></i>\${escapeHtml(c.reason)}</div>\` : ''}
+                    </div>
+                  \`).join('')}
+                </div>
+              </div>
+              \` : ''}
+              
               <button onclick="document.getElementById('ai-suggestion-modal').remove();" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
                 閉じる
               </button>
@@ -828,6 +866,28 @@ export const renderCourseForm = (course?: Course, error?: string) => {
           </div>
         \`;
         document.body.appendChild(modal);
+      }
+      
+      // 本文訂正を適用
+      function applyContentCorrection(el) {
+        const before = el.dataset.before;
+        const after = el.dataset.after;
+        const contentInput = document.querySelector('textarea[name="description"]');
+        
+        if (contentInput && before && after) {
+          const currentContent = contentInput.value;
+          if (currentContent.includes(before)) {
+            contentInput.value = currentContent.replace(before, after);
+            contentInput.dispatchEvent(new Event('input'));
+            showToast('本文を修正しました');
+            el.style.background = '#bbf7d0';
+            el.innerHTML = '<span style="color: #166534;">✅ 適用済み</span>';
+            el.style.cursor = 'default';
+            el.onclick = null;
+          } else {
+            showToast('該当する文章が見つかりませんでした', 'warning');
+          }
+        }
       }
       
       // タイトル適用
@@ -898,6 +958,12 @@ export const renderCourseForm = (course?: Course, error?: string) => {
               charCountEl.textContent = data.length || data.meta_description.length;
             }
             
+            // キーワードも反映
+            const keywordsInput = document.querySelector('input[name="keywords"]');
+            if (keywordsInput && data.keywords) {
+              keywordsInput.value = data.keywords;
+            }
+            
             // フォーカスを当てる
             metaInput.focus();
             
@@ -912,7 +978,8 @@ export const renderCourseForm = (course?: Course, error?: string) => {
               btn.innerHTML = '<i class="fas fa-check"></i><br>✅ 生成完了';
               btn.style.opacity = '1';
               
-              showToast('メタディスクリプションを生成しました (' + (data.length || data.meta_description.length) + '文字)');
+              const keywordMsg = data.keywords ? ' + キーワード' : '';
+              showToast('SEO設定を生成しました (' + (data.length || data.meta_description.length) + '文字' + keywordMsg + ')');
               
               // 2秒後に元に戻す
               setTimeout(() => {
@@ -943,10 +1010,12 @@ export const renderCourseForm = (course?: Course, error?: string) => {
       }
       
       // トースト通知
-      function showToast(message) {
+      function showToast(message, type = 'success') {
+        const colors = { success: '#10b981', warning: '#f59e0b', error: '#ef4444' };
+        const icons = { success: 'check-circle', warning: 'exclamation-triangle', error: 'times-circle' };
         const toast = document.createElement('div');
-        toast.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; animation: fadeIn 0.3s;';
-        toast.innerHTML = '<i class="fas fa-check-circle mr-2"></i>' + message;
+        toast.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: ' + (colors[type] || colors.success) + '; color: white; padding: 12px 20px; border-radius: 8px; z-index: 10000; animation: fadeIn 0.3s;';
+        toast.innerHTML = '<i class="fas fa-' + (icons[type] || icons.success) + ' mr-2"></i>' + message;
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 2000);
       }

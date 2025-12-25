@@ -6,11 +6,15 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
     { id: 'ai-news', icon: 'fas fa-robot', label: 'AIニュース', href: '/admin/ai-news' },
     { id: 'ai-writer', icon: 'fas fa-magic', label: 'AI記事生成', href: '/admin/blog/ai-writer' },
     { id: 'blog', icon: 'fas fa-newspaper', label: 'ブログ管理', href: '/admin/blog' },
+    { id: 'comments', icon: 'fas fa-comments', label: 'コメント管理', href: '/admin/comments' },
     { id: 'ai-course-generator', icon: 'fas fa-graduation-cap', label: 'AI講座生成', href: '/admin/courses/ai-generator' },
     { id: 'courses', icon: 'fas fa-book-open', label: '講座管理', href: '/admin/courses' },
+    { id: 'portfolios', icon: 'fas fa-briefcase', label: 'ポートフォリオ', href: '/admin/portfolios' },
     { id: 'bookings', icon: 'fas fa-calendar-check', label: '予約管理', href: '/admin/bookings' },
     { id: 'reviews', icon: 'fas fa-star', label: '口コミ管理', href: '/admin/reviews' },
+    { id: 'surveys', icon: 'fas fa-clipboard-list', label: 'アンケート', href: '/admin/surveys' },
     { id: 'contacts', icon: 'fas fa-envelope', label: 'お問い合わせ', href: '/admin/contacts' },
+    { id: 'policies', icon: 'fas fa-file-alt', label: 'ポリシー管理', href: '/admin/policies' },
     { id: 'seo', icon: 'fas fa-search', label: 'SEO管理', href: '/admin/seo' },
   ]
 
