@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# 管理画面はクロール禁止
+Disallow: /admin/
+Disallow: /admin
+
+# APIはクロール禁止
+Disallow: /api/
+
+# サイトマップ
+Sitemap: https://miraicafe.work/sitemap.xml

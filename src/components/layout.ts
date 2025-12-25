@@ -14,13 +14,25 @@ export const renderLayout = (title: string, content: string, activeNav: string =
   <meta property="og:site_name" content="mirAIcafe">
   <meta property="og:title" content="${title} | mirAIcafe">
   <meta property="og:description" content="mirAIcafeは、リラックスした雰囲気でAI・プログラミングを学べる新しいスタイルの学習カフェです。">
-  <meta property="og:image" content="https://miraicafe.work/static/og-image.png">
+  <meta property="og:image" content="https://miraicafe.work/static/logo.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${title} | mirAIcafe">
   <meta name="twitter:description" content="mirAIcafeは、リラックスした雰囲気でAI・プログラミングを学べる新しいスタイルの学習カフェです。">
   <link rel="canonical" href="https://miraicafe.work">
   <link rel="icon" type="image/png" href="/static/favicon.png">
   <link rel="apple-touch-icon" href="/static/favicon.png">
+  
+  <!-- Google Analytics 4 - 測定IDを設定してください -->
+  <!-- 
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX');
+  </script>
+  -->
+  
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -992,8 +1004,14 @@ export const renderLayout = (title: string, content: string, activeNav: string =
         </div>
       </div>
       
-      <div class="border-t border-cafe-brown/30 mt-8 pt-8 text-center text-sm text-cafe-latte/70">
-        <p>&copy; 2024 mirAIcafe. All rights reserved.</p>
+      <div class="border-t border-cafe-brown/30 mt-8 pt-8">
+        <div class="flex flex-wrap justify-center gap-4 mb-4 text-sm">
+          <a href="/privacy" class="text-cafe-latte hover:text-cafe-cream transition-colors">プライバシーポリシー</a>
+          <a href="/terms" class="text-cafe-latte hover:text-cafe-cream transition-colors">利用規約</a>
+          <a href="/tokushoho" class="text-cafe-latte hover:text-cafe-cream transition-colors">特定商取引法に基づく表記</a>
+          <a href="/contact" class="text-cafe-latte hover:text-cafe-cream transition-colors">お問い合わせ</a>
+        </div>
+        <p class="text-center text-cafe-latte/70 text-sm">&copy; 2025 mirAIcafe. All rights reserved.</p>
       </div>
     </div>
   </footer>

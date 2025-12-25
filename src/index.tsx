@@ -12,6 +12,8 @@ import { renderContactPage } from './pages/contact'
 import { renderPolicyPage, type Policy } from './pages/policy'
 import { renderAINewsPage } from './pages/ai-news'
 import { renderPortfolioListPage, renderPortfolioDetailPage } from './pages/portfolio'
+import { renderTokushohoPage } from './pages/tokushoho'
+import { render404Page } from './pages/not-found'
 
 // Admin Pages
 import { renderAdminLayout, renderLoginPage } from './admin/layout'
@@ -66,6 +68,90 @@ app.use('/admin/api/*', cors())
 
 // Static files
 app.use('/static/*', serveStatic({ root: './public' }))
+
+// sitemap.xml and robots.txt (root level)
+app.get('/sitemap.xml', (c) => {
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://miraicafe.work/</loc>
+    <lastmod>2025-12-25</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://miraicafe.work/courses</loc>
+    <lastmod>2025-12-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://miraicafe.work/reservation</loc>
+    <lastmod>2025-12-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://miraicafe.work/blog</loc>
+    <lastmod>2025-12-25</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://miraicafe.work/portfolio</loc>
+    <lastmod>2025-12-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://miraicafe.work/ai-news</loc>
+    <lastmod>2025-12-25</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://miraicafe.work/contact</loc>
+    <lastmod>2025-12-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://miraicafe.work/privacy-policy</loc>
+    <lastmod>2025-12-25</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://miraicafe.work/terms</loc>
+    <lastmod>2025-12-25</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://miraicafe.work/tokushoho</loc>
+    <lastmod>2025-12-25</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>`
+  return c.text(sitemap, 200, { 'Content-Type': 'application/xml' })
+})
+
+app.get('/robots.txt', (c) => {
+  const robots = `User-agent: *
+Allow: /
+
+# 管理画面はクロール禁止
+Disallow: /admin/
+Disallow: /admin
+
+# APIはクロール禁止
+Disallow: /api/
+
+# サイトマップ
+Sitemap: https://miraicafe.work/sitemap.xml`
+  return c.text(robots, 200, { 'Content-Type': 'text/plain' })
+})
 
 // ===== Pages =====
 
@@ -190,6 +276,11 @@ app.get('/cancellation-policy', async (c) => {
   } catch (error) {
     return c.html(renderPolicyPage(null, 'cancellation'))
   }
+})
+
+// 特定商取引法に基づく表記
+app.get('/tokushoho', (c) => {
+  return c.html(renderTokushohoPage())
 })
 
 // AI News Page
@@ -4833,6 +4924,11 @@ app.get('/admin/api/surveys/export', async (c) => {
   } catch (error) {
     return c.json({ error: 'エクスポートに失敗しました' }, 500)
   }
+})
+
+// 404 Not Found - キャッチオールルート
+app.all('*', (c) => {
+  return c.html(render404Page(), 404)
 })
 
 export default app
