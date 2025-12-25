@@ -22,16 +22,14 @@ export const renderLayout = (title: string, content: string, activeNav: string =
   <link rel="icon" type="image/png" href="/static/favicon.png">
   <link rel="apple-touch-icon" href="/static/favicon.png">
   
-  <!-- Google Analytics 4 - 測定IDを設定してください -->
-  <!-- 
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-RE398WK016"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', 'G-XXXXXXXXXX');
+    gtag('config', 'G-RE398WK016');
   </script>
-  -->
   
   <script src="https://cdn.tailwindcss.com"></script>
   <script>

@@ -43,15 +43,50 @@ const defaultContent: Record<string, string> = {
     </div>
   `,
   privacy: `
-    <div class="text-center py-12">
-      <div class="w-24 h-24 gradient-ai rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-        <i class="fas fa-clock text-white text-4xl"></i>
+    <div class="text-left max-w-3xl mx-auto">
+      <section class="mb-8">
+        <h2 class="text-xl font-bold text-future-text mb-4 flex items-center">
+          <i class="fas fa-shield-alt text-ai-blue mr-3"></i>個人情報の取り扱いについて
+        </h2>
+        <p class="text-future-textLight leading-relaxed mb-4">
+          mirAIcafe（以下、「当サービス」）は、お客様の個人情報の保護を重要な責務と考え、適切な管理・利用を行います。
+        </p>
+      </section>
+      
+      <section class="mb-8">
+        <h2 class="text-xl font-bold text-future-text mb-4 flex items-center">
+          <i class="fas fa-chart-line text-ai-purple mr-3"></i>アクセス解析ツールについて
+        </h2>
+        <p class="text-future-textLight leading-relaxed mb-4">
+          当サイトでは、Googleによるアクセス解析ツール「Google Analytics」を使用しています。
+          このGoogle Analyticsはデータの収集のためにCookieを使用しています。
+          このデータは匿名で収集されており、個人を特定するものではありません。
+        </p>
+        <p class="text-future-textLight leading-relaxed mb-4">
+          この機能はCookieを無効にすることで収集を拒否することが出来ますので、
+          お使いのブラウザの設定をご確認ください。
+        </p>
+        <p class="text-future-textLight leading-relaxed">
+          この規約に関しての詳細は
+          <a href="https://marketingplatform.google.com/about/analytics/terms/jp/" target="_blank" rel="noopener noreferrer" class="text-ai-blue hover:text-ai-purple underline">Googleアナリティクスサービス利用規約</a>
+          および
+          <a href="https://policies.google.com/technologies/ads?hl=ja" target="_blank" rel="noopener noreferrer" class="text-ai-blue hover:text-ai-purple underline">Googleポリシーと規約</a>
+          をご覧ください。
+        </p>
+      </section>
+      
+      <section class="mb-8">
+        <h2 class="text-xl font-bold text-future-text mb-4 flex items-center">
+          <i class="fas fa-envelope text-ai-cyan mr-3"></i>お問い合わせ
+        </h2>
+        <p class="text-future-textLight leading-relaxed">
+          個人情報の取り扱いに関するお問い合わせは、<a href="/contact" class="text-ai-blue hover:text-ai-purple underline">お問い合わせページ</a>よりご連絡ください。
+        </p>
+      </section>
+      
+      <div class="text-center text-future-textLight text-sm mt-12 pt-6 border-t border-future-sky">
+        ※ 詳細なプライバシーポリシーは準備中です。近日中に公開予定です。
       </div>
-      <h2 class="text-2xl font-bold text-future-text mb-4">準備中</h2>
-      <p class="text-future-textLight text-lg mb-8">
-        プライバシーポリシーの内容は現在準備中です。<br>
-        近日中に公開予定ですので、しばらくお待ちください。
-      </p>
     </div>
   `,
   cancellation: `
