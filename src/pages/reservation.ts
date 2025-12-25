@@ -158,7 +158,7 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
                 
                 <!-- 利用規約 -->
                 <label class="flex items-start gap-3 cursor-pointer group">
-                  <input type="checkbox" id="terms-agree" class="mt-1 w-5 h-5 rounded border-2 border-future-sky text-ai-blue focus:ring-ai-blue cursor-pointer">
+                  <input type="checkbox" id="terms-agree" class="mt-1 w-5 h-5 min-w-5 min-h-5 rounded border-2 border-future-sky text-ai-blue focus:ring-ai-blue cursor-pointer flex-shrink-0">
                   <span class="text-sm text-future-textLight leading-relaxed">
                     <a href="/terms" target="_blank" class="text-ai-blue hover:text-ai-purple underline font-medium transition-colors">
                       利用規約
@@ -169,7 +169,7 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
                 
                 <!-- キャンセル・返金ポリシー -->
                 <label class="flex items-start gap-3 cursor-pointer group">
-                  <input type="checkbox" id="cancellation-agree" class="mt-1 w-5 h-5 rounded border-2 border-future-sky text-ai-blue focus:ring-ai-blue cursor-pointer">
+                  <input type="checkbox" id="cancellation-agree" class="mt-1 w-5 h-5 min-w-5 min-h-5 rounded border-2 border-future-sky text-ai-blue focus:ring-ai-blue cursor-pointer flex-shrink-0">
                   <span class="text-sm text-future-textLight leading-relaxed">
                     <a href="/cancellation-policy" target="_blank" class="text-ai-blue hover:text-ai-purple underline font-medium transition-colors">
                       キャンセル・返金ポリシー
