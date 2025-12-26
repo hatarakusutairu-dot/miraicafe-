@@ -1741,19 +1741,24 @@ app.post('/admin/courses/create', async (c) => {
     const features = (body.features as string || '').split('\n').map(s => s.trim()).filter(s => s)
     const galleryUrls = (body.gallery as string || '').split('\n').map(s => s.trim()).filter(s => s)
     
-    // カリキュラムの処理
-    const curriculumTitles = Array.isArray(body.curriculum_title) ? body.curriculum_title : [body.curriculum_title].filter(Boolean)
-    const curriculumDurations = Array.isArray(body.curriculum_duration) ? body.curriculum_duration : [body.curriculum_duration].filter(Boolean)
-    const curriculumDescriptions = Array.isArray(body.curriculum_description) ? body.curriculum_description : [body.curriculum_description].filter(Boolean)
+    // カリキュラムの処理（フォームのname属性は curriculum_title[] なので両方のキーをチェック）
+    const rawCurriculumTitles = body['curriculum_title[]'] || body.curriculum_title
+    const rawCurriculumDurations = body['curriculum_duration[]'] || body.curriculum_duration
+    const rawCurriculumDescriptions = body['curriculum_description[]'] || body.curriculum_description
+    const curriculumTitles = Array.isArray(rawCurriculumTitles) ? rawCurriculumTitles : [rawCurriculumTitles].filter(Boolean)
+    const curriculumDurations = Array.isArray(rawCurriculumDurations) ? rawCurriculumDurations : [rawCurriculumDurations].filter(Boolean)
+    const curriculumDescriptions = Array.isArray(rawCurriculumDescriptions) ? rawCurriculumDescriptions : [rawCurriculumDescriptions].filter(Boolean)
     const curriculum = curriculumTitles.map((title: string, i: number) => ({
       title: title || '',
       duration: curriculumDurations[i] || '',
       description: curriculumDescriptions[i] || ''
     })).filter((item: any) => item.title)
     
-    // FAQの処理
-    const faqQuestions = Array.isArray(body.faq_question) ? body.faq_question : [body.faq_question].filter(Boolean)
-    const faqAnswers = Array.isArray(body.faq_answer) ? body.faq_answer : [body.faq_answer].filter(Boolean)
+    // FAQの処理（フォームのname属性は faq_question[] なので両方のキーをチェック）
+    const rawFaqQuestions = body['faq_question[]'] || body.faq_question
+    const rawFaqAnswers = body['faq_answer[]'] || body.faq_answer
+    const faqQuestions = Array.isArray(rawFaqQuestions) ? rawFaqQuestions : [rawFaqQuestions].filter(Boolean)
+    const faqAnswers = Array.isArray(rawFaqAnswers) ? rawFaqAnswers : [rawFaqAnswers].filter(Boolean)
     const faq = faqQuestions.map((question: string, i: number) => ({
       question: question || '',
       answer: faqAnswers[i] || ''
@@ -1794,12 +1799,17 @@ app.post('/admin/courses/create', async (c) => {
       seoScore
     ).run()
     
-    // スケジュールの保存
-    const scheduleDates = Array.isArray(body.schedule_date) ? body.schedule_date : [body.schedule_date].filter(Boolean)
-    const scheduleStarts = Array.isArray(body.schedule_start) ? body.schedule_start : [body.schedule_start].filter(Boolean)
-    const scheduleEnds = Array.isArray(body.schedule_end) ? body.schedule_end : [body.schedule_end].filter(Boolean)
-    const scheduleCapacities = Array.isArray(body.schedule_capacity) ? body.schedule_capacity : [body.schedule_capacity].filter(Boolean)
-    const scheduleLocations = Array.isArray(body.schedule_location) ? body.schedule_location : [body.schedule_location].filter(Boolean)
+    // スケジュールの保存（フォームのname属性は schedule_date[] なので両方のキーをチェック）
+    const rawScheduleDates = body['schedule_date[]'] || body.schedule_date
+    const rawScheduleStarts = body['schedule_start[]'] || body.schedule_start
+    const rawScheduleEnds = body['schedule_end[]'] || body.schedule_end
+    const rawScheduleCapacities = body['schedule_capacity[]'] || body.schedule_capacity
+    const rawScheduleLocations = body['schedule_location[]'] || body.schedule_location
+    const scheduleDates = Array.isArray(rawScheduleDates) ? rawScheduleDates : [rawScheduleDates].filter(Boolean)
+    const scheduleStarts = Array.isArray(rawScheduleStarts) ? rawScheduleStarts : [rawScheduleStarts].filter(Boolean)
+    const scheduleEnds = Array.isArray(rawScheduleEnds) ? rawScheduleEnds : [rawScheduleEnds].filter(Boolean)
+    const scheduleCapacities = Array.isArray(rawScheduleCapacities) ? rawScheduleCapacities : [rawScheduleCapacities].filter(Boolean)
+    const scheduleLocations = Array.isArray(rawScheduleLocations) ? rawScheduleLocations : [rawScheduleLocations].filter(Boolean)
     
     for (let i = 0; i < scheduleDates.length; i++) {
       if (scheduleDates[i] && scheduleStarts[i] && scheduleEnds[i]) {
@@ -1837,19 +1847,24 @@ app.post('/admin/courses/update/:id', async (c) => {
     const features = (body.features as string || '').split('\n').map(s => s.trim()).filter(s => s)
     const galleryUrls = (body.gallery as string || '').split('\n').map(s => s.trim()).filter(s => s)
     
-    // カリキュラムの処理
-    const curriculumTitles = Array.isArray(body.curriculum_title) ? body.curriculum_title : [body.curriculum_title].filter(Boolean)
-    const curriculumDurations = Array.isArray(body.curriculum_duration) ? body.curriculum_duration : [body.curriculum_duration].filter(Boolean)
-    const curriculumDescriptions = Array.isArray(body.curriculum_description) ? body.curriculum_description : [body.curriculum_description].filter(Boolean)
+    // カリキュラムの処理（フォームのname属性は curriculum_title[] なので両方のキーをチェック）
+    const rawCurriculumTitles = body['curriculum_title[]'] || body.curriculum_title
+    const rawCurriculumDurations = body['curriculum_duration[]'] || body.curriculum_duration
+    const rawCurriculumDescriptions = body['curriculum_description[]'] || body.curriculum_description
+    const curriculumTitles = Array.isArray(rawCurriculumTitles) ? rawCurriculumTitles : [rawCurriculumTitles].filter(Boolean)
+    const curriculumDurations = Array.isArray(rawCurriculumDurations) ? rawCurriculumDurations : [rawCurriculumDurations].filter(Boolean)
+    const curriculumDescriptions = Array.isArray(rawCurriculumDescriptions) ? rawCurriculumDescriptions : [rawCurriculumDescriptions].filter(Boolean)
     const curriculum = curriculumTitles.map((title: string, i: number) => ({
       title: title || '',
       duration: curriculumDurations[i] || '',
       description: curriculumDescriptions[i] || ''
     })).filter((item: any) => item.title)
     
-    // FAQの処理
-    const faqQuestions = Array.isArray(body.faq_question) ? body.faq_question : [body.faq_question].filter(Boolean)
-    const faqAnswers = Array.isArray(body.faq_answer) ? body.faq_answer : [body.faq_answer].filter(Boolean)
+    // FAQの処理（フォームのname属性は faq_question[] なので両方のキーをチェック）
+    const rawFaqQuestions = body['faq_question[]'] || body.faq_question
+    const rawFaqAnswers = body['faq_answer[]'] || body.faq_answer
+    const faqQuestions = Array.isArray(rawFaqQuestions) ? rawFaqQuestions : [rawFaqQuestions].filter(Boolean)
+    const faqAnswers = Array.isArray(rawFaqAnswers) ? rawFaqAnswers : [rawFaqAnswers].filter(Boolean)
     const faq = faqQuestions.map((question: string, i: number) => ({
       question: question || '',
       answer: faqAnswers[i] || ''
@@ -1930,12 +1945,17 @@ app.post('/admin/courses/update/:id', async (c) => {
       ).run()
     }
     
-    // スケジュールの更新（既存を削除して新規追加）
-    const scheduleDates = Array.isArray(body.schedule_date) ? body.schedule_date : [body.schedule_date].filter(Boolean)
-    const scheduleStarts = Array.isArray(body.schedule_start) ? body.schedule_start : [body.schedule_start].filter(Boolean)
-    const scheduleEnds = Array.isArray(body.schedule_end) ? body.schedule_end : [body.schedule_end].filter(Boolean)
-    const scheduleCapacities = Array.isArray(body.schedule_capacity) ? body.schedule_capacity : [body.schedule_capacity].filter(Boolean)
-    const scheduleLocations = Array.isArray(body.schedule_location) ? body.schedule_location : [body.schedule_location].filter(Boolean)
+    // スケジュールの更新（既存を削除して新規追加）（フォームのname属性は schedule_date[] なので両方のキーをチェック）
+    const rawScheduleDates2 = body['schedule_date[]'] || body.schedule_date
+    const rawScheduleStarts2 = body['schedule_start[]'] || body.schedule_start
+    const rawScheduleEnds2 = body['schedule_end[]'] || body.schedule_end
+    const rawScheduleCapacities2 = body['schedule_capacity[]'] || body.schedule_capacity
+    const rawScheduleLocations2 = body['schedule_location[]'] || body.schedule_location
+    const scheduleDates = Array.isArray(rawScheduleDates2) ? rawScheduleDates2 : [rawScheduleDates2].filter(Boolean)
+    const scheduleStarts = Array.isArray(rawScheduleStarts2) ? rawScheduleStarts2 : [rawScheduleStarts2].filter(Boolean)
+    const scheduleEnds = Array.isArray(rawScheduleEnds2) ? rawScheduleEnds2 : [rawScheduleEnds2].filter(Boolean)
+    const scheduleCapacities = Array.isArray(rawScheduleCapacities2) ? rawScheduleCapacities2 : [rawScheduleCapacities2].filter(Boolean)
+    const scheduleLocations = Array.isArray(rawScheduleLocations2) ? rawScheduleLocations2 : [rawScheduleLocations2].filter(Boolean)
     
     // 新しいスケジュールがある場合のみ既存を削除
     if (scheduleDates.length > 0 && scheduleDates[0]) {
