@@ -306,7 +306,7 @@ export const renderCourseForm = (course?: Course, error?: string) => {
           <i class="fas fa-list-ol text-blue-500 mr-2"></i>カリキュラム
         </h2>
         <div id="curriculum-container" class="space-y-3">
-          ${(course?.curriculum || [{ title: '', duration: '', description: '' }]).map((item, index) => `
+          ${(course?.curriculum && course.curriculum.length > 0 ? course.curriculum : [{ title: '', duration: '', description: '' }]).map((item, index) => `
             <div class="curriculum-item p-4 border border-gray-200 rounded-lg">
               <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                 <div class="md:col-span-5">
@@ -614,20 +614,25 @@ export const renderCourseForm = (course?: Course, error?: string) => {
               data.curriculum.forEach((item, i) => {
                 const div = document.createElement('div');
                 div.className = 'curriculum-item p-4 border border-gray-200 rounded-lg';
+                // XSS対策のためエスケープ
+                const escapeHtml = (str) => {
+                  if (!str) return '';
+                  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                };
                 div.innerHTML = \`
                   <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                     <div class="md:col-span-5">
-                      <input type="text" name="curriculum_title[]" value="\${item.title || ''}"
+                      <input type="text" name="curriculum_title[]" value="\${escapeHtml(item.title)}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
                         placeholder="セッションタイトル">
                     </div>
                     <div class="md:col-span-2">
-                      <input type="text" name="curriculum_duration[]" value="\${item.duration || ''}"
+                      <input type="text" name="curriculum_duration[]" value="\${escapeHtml(item.duration)}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
                         placeholder="所要時間">
                     </div>
                     <div class="md:col-span-4">
-                      <input type="text" name="curriculum_description[]" value="\${item.description || ''}"
+                      <input type="text" name="curriculum_description[]" value="\${escapeHtml(item.description)}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
                         placeholder="説明">
                     </div>
