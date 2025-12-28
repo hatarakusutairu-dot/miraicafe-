@@ -325,7 +325,7 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
             </div>
             
             <!-- 動画URL入力 -->
-            <input type="url" name="video_url" id="video_url" value="${escapeAttr(post?.video_url || '')}"
+            <input type="text" name="video_url" id="video_url" value="${escapeAttr(post?.video_url || '')}"
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="YouTube, Vimeo, MP4ファイルのURLを入力">
             <p class="text-xs text-gray-500 mt-1">
