@@ -21,6 +21,31 @@ function escapeAttr(text: string): string {
     .replace(/>/g, '&gt;')
 }
 
+// 動画URLからプレビューHTMLを生成
+function getVideoPreviewHtml(url: string): string {
+  if (!url) return ''
+  
+  // YouTube
+  const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/)
+  if (youtubeMatch) {
+    return `<iframe src="https://www.youtube.com/embed/${youtubeMatch[1]}" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+  }
+  
+  // Vimeo
+  const vimeoMatch = url.match(/(?:vimeo\.com\/)(\d+)/)
+  if (vimeoMatch) {
+    return `<iframe src="https://player.vimeo.com/video/${vimeoMatch[1]}" class="w-full h-full" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`
+  }
+  
+  // MP4直接リンク（Canva, Sora, Gemini, GenSparkなどで生成した動画）
+  if (url.match(/\.(mp4|webm|ogg)(\?|$)/i) || url.includes('blob.') || url.includes('storage.') || url.includes('cdn.')) {
+    return `<video src="${url}" class="w-full h-full object-contain" controls preload="metadata"></video>`
+  }
+  
+  // その他はiframeで試行
+  return `<video src="${url}" class="w-full h-full object-contain" controls preload="metadata"></video>`
+}
+
 // ブログ一覧ページ
 export const renderBlogList = (posts: BlogPost[]) => {
   const content = `
@@ -264,6 +289,34 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
             </label>
             <div id="blog-image-upload"></div>
           </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <i class="fas fa-video mr-1"></i>動画URL（任意）
+            </label>
+            <input type="url" name="video_url" id="video_url" value="${escapeAttr(post?.video_url || '')}"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="YouTube, Vimeo, MP4ファイルのURLを入力">
+            <p class="text-xs text-gray-500 mt-1">
+              <i class="fas fa-info-circle mr-1"></i>
+              対応形式: YouTube, Vimeo, MP4直接リンク（Canva, Sora, Gemini, GenSparkなどで作成した動画）
+            </p>
+            ${post?.video_url ? `
+              <div class="mt-3 p-3 bg-gray-50 rounded-lg">
+                <p class="text-sm text-gray-600 mb-2">プレビュー:</p>
+                <div id="video-preview" class="aspect-video bg-black rounded-lg overflow-hidden">
+                  ${getVideoPreviewHtml(post.video_url)}
+                </div>
+              </div>
+            ` : `
+              <div id="video-preview-container" class="mt-3 hidden">
+                <div class="p-3 bg-gray-50 rounded-lg">
+                  <p class="text-sm text-gray-600 mb-2">プレビュー:</p>
+                  <div id="video-preview" class="aspect-video bg-black rounded-lg overflow-hidden"></div>
+                </div>
+              </div>
+            `}
+          </div>
         </div>
       </div>
 
@@ -353,10 +406,52 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
     </form>
     
     <script>
+      // 動画プレビュー更新関数
+      function updateVideoPreview() {
+        const url = document.getElementById('video_url').value.trim();
+        const container = document.getElementById('video-preview-container');
+        const preview = document.getElementById('video-preview');
+        
+        if (!url) {
+          if (container) container.classList.add('hidden');
+          return;
+        }
+        
+        if (container) container.classList.remove('hidden');
+        
+        let html = '';
+        
+        // YouTube
+        const youtubeMatch = url.match(/(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/|youtube\\.com\\/embed\\/)([a-zA-Z0-9_-]{11})/);
+        if (youtubeMatch) {
+          html = '<iframe src="https://www.youtube.com/embed/' + youtubeMatch[1] + '" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+        }
+        
+        // Vimeo
+        const vimeoMatch = url.match(/(?:vimeo\\.com\\/)([0-9]+)/);
+        if (!html && vimeoMatch) {
+          html = '<iframe src="https://player.vimeo.com/video/' + vimeoMatch[1] + '" class="w-full h-full" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
+        }
+        
+        // MP4/その他
+        if (!html) {
+          html = '<video src="' + url + '" class="w-full h-full object-contain" controls preload="metadata"></video>';
+        }
+        
+        if (preview) preview.innerHTML = html;
+      }
+      
       // 画像アップロードコンポーネントを初期化
       document.addEventListener('DOMContentLoaded', function() {
         initImageUpload('blog-image-upload', 'image', '${escapeAttr(post?.image || '')}');
         initSEOFeatures('blog');
+        
+        // 動画URLの入力監視
+        const videoUrlInput = document.getElementById('video_url');
+        if (videoUrlInput) {
+          videoUrlInput.addEventListener('input', debounce(updateVideoPreview, 500));
+          videoUrlInput.addEventListener('blur', updateVideoPreview);
+        }
         
         // AI記事生成からのデータを受け取る
         const aiData = sessionStorage.getItem('aiGeneratedArticle');

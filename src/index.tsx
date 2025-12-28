@@ -1316,7 +1316,7 @@ async function getAllBlogPosts(db: D1Database): Promise<any[]> {
   try {
     // D1からブログ記事を取得
     const dbPosts = await db.prepare(`
-      SELECT id, title, excerpt, content, author, date, category, tags, image, read_time as readTime
+      SELECT id, title, excerpt, content, author, date, category, tags, image, read_time as readTime, video_url, meta_description, keywords, seo_score
       FROM blog_posts
       WHERE status = 'published'
       ORDER BY date DESC
@@ -1343,7 +1343,7 @@ async function getAllBlogPosts(db: D1Database): Promise<any[]> {
 async function getBlogPostById(db: D1Database, id: string): Promise<any | null> {
   try {
     const post = await db.prepare(`
-      SELECT id, title, excerpt, content, author, date, category, tags, image, read_time as readTime
+      SELECT id, title, excerpt, content, author, date, category, tags, image, read_time as readTime, video_url, meta_description, keywords, seo_score
       FROM blog_posts WHERE id = ?
     `).bind(id).first()
     
@@ -1435,8 +1435,8 @@ app.post('/admin/blog/create', async (c) => {
     const seoScore = calculateSEOScore(body.title as string, body.content as string)
     
     await c.env.DB.prepare(`
-      INSERT INTO blog_posts (id, title, excerpt, content, author, date, category, tags, image, read_time, meta_description, keywords, seo_score)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO blog_posts (id, title, excerpt, content, author, date, category, tags, image, read_time, meta_description, keywords, seo_score, video_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       body.title,
@@ -1450,7 +1450,8 @@ app.post('/admin/blog/create', async (c) => {
       body.readTime || '5分',
       body.meta_description || '',
       body.keywords || '',
-      seoScore
+      seoScore,
+      body.video_url || ''
     ).run()
     
     return c.redirect('/admin/blog')
@@ -1477,7 +1478,7 @@ app.post('/admin/blog/update/:id', async (c) => {
       // D1のレコードを更新
       await c.env.DB.prepare(`
         UPDATE blog_posts 
-        SET title = ?, excerpt = ?, content = ?, author = ?, date = ?, category = ?, tags = ?, image = ?, read_time = ?, meta_description = ?, keywords = ?, seo_score = ?, updated_at = CURRENT_TIMESTAMP
+        SET title = ?, excerpt = ?, content = ?, author = ?, date = ?, category = ?, tags = ?, image = ?, read_time = ?, meta_description = ?, keywords = ?, seo_score = ?, video_url = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).bind(
         body.title,
@@ -1492,13 +1493,14 @@ app.post('/admin/blog/update/:id', async (c) => {
         body.meta_description || '',
         body.keywords || '',
         seoScore,
+        body.video_url || '',
         id
       ).run()
     } else {
       // 静的データからの編集 → D1に新規挿入
       await c.env.DB.prepare(`
-        INSERT INTO blog_posts (id, title, excerpt, content, author, date, category, tags, image, read_time, meta_description, keywords, seo_score)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO blog_posts (id, title, excerpt, content, author, date, category, tags, image, read_time, meta_description, keywords, seo_score, video_url)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         id,
         body.title,
@@ -1512,7 +1514,8 @@ app.post('/admin/blog/update/:id', async (c) => {
         body.readTime || '5分',
         body.meta_description || '',
         body.keywords || '',
-        seoScore
+        seoScore,
+        body.video_url || ''
       ).run()
     }
     
@@ -1540,7 +1543,7 @@ app.post('/admin/blog/delete/:id', async (c) => {
 app.post('/admin/api/blog-posts', async (c) => {
   try {
     const body = await c.req.json()
-    const { title, content, excerpt, category, tags, meta_description, featured_image, status } = body
+    const { title, content, excerpt, category, tags, meta_description, featured_image, status, video_url } = body
     
     if (!title || !content || !category) {
       return c.json({ error: 'タイトル、本文、カテゴリは必須です' }, 400)
@@ -1553,8 +1556,8 @@ app.post('/admin/api/blog-posts', async (c) => {
     const seoScore = calculateSEOScore(title, content)
     
     await c.env.DB.prepare(`
-      INSERT INTO blog_posts (id, title, excerpt, content, author, date, category, tags, image, read_time, meta_description, keywords, seo_score, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO blog_posts (id, title, excerpt, content, author, date, category, tags, image, read_time, meta_description, keywords, seo_score, status, video_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       title,
@@ -1569,7 +1572,8 @@ app.post('/admin/api/blog-posts', async (c) => {
       meta_description || '',
       tagsArray.join(', '),
       seoScore,
-      status || 'draft'
+      status || 'draft',
+      video_url || ''
     ).run()
     
     return c.json({ success: true, id, message: '記事を保存しました' })

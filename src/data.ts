@@ -391,6 +391,7 @@ export interface BlogPost {
   tags: string[]
   image: string
   readTime: string
+  video_url?: string
 }
 
 export const blogPosts: BlogPost[] = [

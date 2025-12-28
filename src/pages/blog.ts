@@ -1,6 +1,26 @@
 import { renderLayout } from '../components/layout'
 import { BlogPost, blogCategories, BlogCategory } from '../data'
 
+// 動画URLからプレビューHTMLを生成
+function getVideoEmbedHtml(url: string): string {
+  if (!url) return ''
+  
+  // YouTube
+  const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/)
+  if (youtubeMatch) {
+    return `<iframe src="https://www.youtube.com/embed/${youtubeMatch[1]}" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+  }
+  
+  // Vimeo
+  const vimeoMatch = url.match(/(?:vimeo\.com\/)(\d+)/)
+  if (vimeoMatch) {
+    return `<iframe src="https://player.vimeo.com/video/${vimeoMatch[1]}" class="w-full h-full" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`
+  }
+  
+  // MP4直接リンク（Canva, Sora, Gemini, GenSparkなどで生成した動画）
+  return `<video src="${url}" class="w-full h-full object-contain" controls preload="metadata" playsinline></video>`
+}
+
 // カテゴリの色を取得するヘルパー関数
 const getCategoryColor = (categoryName: string): { color: string; bgColor: string } => {
   const found = blogCategories.find(c => c.name === categoryName)
@@ -788,6 +808,19 @@ export const renderBlogPostPage = (post: BlogPost, allPosts: BlogPost[], courses
       <div class="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Main Article Card - 白の半透明ベース -->
         <div class="bg-white/85 backdrop-blur-md rounded-3xl shadow-xl overflow-hidden border border-white/60 relative z-10">
+          
+          ${post.video_url ? `
+          <!-- 動画セクション -->
+          <div class="p-6 md:p-10 border-b border-gray-100">
+            <div class="flex items-center gap-2 mb-4">
+              <i class="fas fa-video text-purple-500"></i>
+              <span class="font-medium text-gray-700">関連動画</span>
+            </div>
+            <div class="aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
+              ${getVideoEmbedHtml(post.video_url)}
+            </div>
+          </div>
+          ` : ''}
           
           <!-- Article Body -->
           <article class="p-6 md:p-10 blog-content">
