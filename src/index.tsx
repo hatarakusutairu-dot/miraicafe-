@@ -2512,6 +2512,8 @@ app.post('/admin/api/contacts/:id/reply', async (c) => {
 // 許可されるMIMEタイプ
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime']
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024 // 100MB
 
 // ファイル名を生成
 function generateFileName(originalName: string): string {
@@ -2641,6 +2643,61 @@ app.post('/admin/api/upload-multiple', async (c) => {
   }
 })
 
+// 動画アップロードエンドポイント
+app.post('/admin/api/upload-video', async (c) => {
+  // 認証チェック
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSession(sessionId)) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+
+  try {
+    const formData = await c.req.formData()
+    const file = formData.get('file') as File | null
+
+    if (!file) {
+      return c.json({ error: 'ファイルが選択されていません' }, 400)
+    }
+
+    // MIMEタイプチェック
+    if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
+      return c.json({ error: '対応していないファイル形式です。MP4, WebM, MOVのみ対応しています。' }, 400)
+    }
+
+    // ファイルサイズチェック
+    if (file.size > MAX_VIDEO_SIZE) {
+      return c.json({ error: 'ファイルサイズが大きすぎます（最大100MB）' }, 400)
+    }
+
+    // ファイル名を生成
+    const fileName = generateFileName(file.name)
+    const key = `videos/${fileName}`
+
+    // R2にアップロード
+    const arrayBuffer = await file.arrayBuffer()
+    
+    await c.env.R2_BUCKET.put(key, arrayBuffer, {
+      httpMetadata: {
+        contentType: file.type,
+      },
+    })
+
+    // 公開URLを生成
+    const url = `/videos/${fileName}`
+
+    return c.json({ 
+      success: true, 
+      url,
+      fileName,
+      size: file.size,
+      type: file.type
+    })
+  } catch (error) {
+    console.error('Video upload error:', error)
+    return c.json({ error: '動画のアップロードに失敗しました' }, 500)
+  }
+})
+
 // 画像削除エンドポイント
 app.delete('/admin/api/upload/:fileName', async (c) => {
   // 認証チェック
@@ -2729,6 +2786,54 @@ app.get('/images/:fileName', async (c) => {
     return new Response(object.body, { headers })
   } catch (error) {
     console.error('Image serve error:', error)
+    return c.notFound()
+  }
+})
+
+// 動画配信エンドポイント（R2から直接配信）
+app.get('/videos/:fileName', async (c) => {
+  try {
+    const fileName = c.req.param('fileName')
+    const key = `videos/${fileName}`
+    
+    const object = await c.env.R2_BUCKET.get(key)
+    
+    if (!object) {
+      return c.notFound()
+    }
+
+    const headers = new Headers()
+    headers.set('Content-Type', object.httpMetadata?.contentType || 'video/mp4')
+    headers.set('Cache-Control', 'public, max-age=31536000') // 1年キャッシュ
+    headers.set('Accept-Ranges', 'bytes')
+    
+    // Range リクエスト対応（動画シーク用）
+    const range = c.req.header('Range')
+    if (range && object.size) {
+      const parts = range.replace(/bytes=/, '').split('-')
+      const start = parseInt(parts[0], 10)
+      const end = parts[1] ? parseInt(parts[1], 10) : object.size - 1
+      const chunkSize = end - start + 1
+      
+      headers.set('Content-Range', `bytes ${start}-${end}/${object.size}`)
+      headers.set('Content-Length', String(chunkSize))
+      
+      // R2のsliceを使って部分取得
+      const slicedObject = await c.env.R2_BUCKET.get(key, {
+        range: { offset: start, length: chunkSize }
+      })
+      
+      if (slicedObject) {
+        return new Response(slicedObject.body, { 
+          status: 206, 
+          headers 
+        })
+      }
+    }
+
+    return new Response(object.body, { headers })
+  } catch (error) {
+    console.error('Video serve error:', error)
     return c.notFound()
   }
 })

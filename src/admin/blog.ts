@@ -292,18 +292,56 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
 
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              <i class="fas fa-video mr-1"></i>動画URL（任意）
+              <i class="fas fa-video mr-1"></i>動画（任意）
             </label>
+            
+            <!-- 動画アップロード -->
+            <div class="mb-3">
+              <div class="flex items-center gap-3">
+                <label class="flex-1 cursor-pointer">
+                  <div id="video-upload-area" class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 hover:bg-blue-50 transition">
+                    <i class="fas fa-cloud-upload-alt text-2xl text-gray-400 mb-2"></i>
+                    <p class="text-sm text-gray-600">MP4ファイルをアップロード</p>
+                    <p class="text-xs text-gray-400 mt-1">最大100MB（MP4, WebM, MOV）</p>
+                  </div>
+                  <input type="file" id="video-file-input" accept="video/mp4,video/webm,video/quicktime" class="hidden">
+                </label>
+              </div>
+              <div id="video-upload-progress" class="hidden mt-2">
+                <div class="flex items-center gap-2">
+                  <div class="flex-1 bg-gray-200 rounded-full h-2">
+                    <div id="video-progress-bar" class="bg-blue-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                  </div>
+                  <span id="video-progress-text" class="text-xs text-gray-500">0%</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- または -->
+            <div class="flex items-center gap-3 mb-3">
+              <div class="flex-1 border-t border-gray-200"></div>
+              <span class="text-xs text-gray-400">または URL を入力</span>
+              <div class="flex-1 border-t border-gray-200"></div>
+            </div>
+            
+            <!-- 動画URL入力 -->
             <input type="url" name="video_url" id="video_url" value="${escapeAttr(post?.video_url || '')}"
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="YouTube, Vimeo, MP4ファイルのURLを入力">
             <p class="text-xs text-gray-500 mt-1">
               <i class="fas fa-info-circle mr-1"></i>
-              対応形式: YouTube, Vimeo, MP4直接リンク（Canva, Sora, Gemini, GenSparkなどで作成した動画）
+              対応: YouTube, Vimeo, MP4（Canva, Sora, Gemini, GenSparkなどで作成した動画）
             </p>
+            
+            <!-- プレビュー -->
             ${post?.video_url ? `
               <div class="mt-3 p-3 bg-gray-50 rounded-lg">
-                <p class="text-sm text-gray-600 mb-2">プレビュー:</p>
+                <div class="flex items-center justify-between mb-2">
+                  <p class="text-sm text-gray-600">プレビュー:</p>
+                  <button type="button" onclick="clearVideo()" class="text-xs text-red-500 hover:text-red-700">
+                    <i class="fas fa-times mr-1"></i>削除
+                  </button>
+                </div>
                 <div id="video-preview" class="aspect-video bg-black rounded-lg overflow-hidden">
                   ${getVideoPreviewHtml(post.video_url)}
                 </div>
@@ -311,7 +349,12 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
             ` : `
               <div id="video-preview-container" class="mt-3 hidden">
                 <div class="p-3 bg-gray-50 rounded-lg">
-                  <p class="text-sm text-gray-600 mb-2">プレビュー:</p>
+                  <div class="flex items-center justify-between mb-2">
+                    <p class="text-sm text-gray-600">プレビュー:</p>
+                    <button type="button" onclick="clearVideo()" class="text-xs text-red-500 hover:text-red-700">
+                      <i class="fas fa-times mr-1"></i>削除
+                    </button>
+                  </div>
                   <div id="video-preview" class="aspect-video bg-black rounded-lg overflow-hidden"></div>
                 </div>
               </div>
@@ -406,6 +449,94 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
     </form>
     
     <script>
+      // 動画ファイルアップロード
+      async function handleVideoUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // ファイルサイズチェック（100MB）
+        if (file.size > 100 * 1024 * 1024) {
+          alert('ファイルサイズが大きすぎます（最大100MB）');
+          return;
+        }
+        
+        // MIMEタイプチェック
+        const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
+        if (!allowedTypes.includes(file.type)) {
+          alert('対応していないファイル形式です。MP4, WebM, MOVのみ対応しています。');
+          return;
+        }
+        
+        const progressContainer = document.getElementById('video-upload-progress');
+        const progressBar = document.getElementById('video-progress-bar');
+        const progressText = document.getElementById('video-progress-text');
+        const uploadArea = document.getElementById('video-upload-area');
+        
+        // プログレス表示
+        progressContainer.classList.remove('hidden');
+        uploadArea.innerHTML = '<i class="fas fa-spinner fa-spin text-2xl text-blue-500 mb-2"></i><p class="text-sm text-blue-600">アップロード中...</p>';
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        try {
+          // XMLHttpRequestでプログレス監視
+          const xhr = new XMLHttpRequest();
+          
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+              const percent = Math.round((e.loaded / e.total) * 100);
+              progressBar.style.width = percent + '%';
+              progressText.textContent = percent + '%';
+            }
+          });
+          
+          xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+              const data = JSON.parse(xhr.responseText);
+              if (data.success && data.url) {
+                // URLを入力欄にセット
+                document.getElementById('video_url').value = data.url;
+                updateVideoPreview();
+                showToast('動画をアップロードしました');
+              } else {
+                throw new Error(data.error || 'アップロードに失敗しました');
+              }
+            } else {
+              throw new Error('アップロードに失敗しました');
+            }
+            
+            // UIをリセット
+            progressContainer.classList.add('hidden');
+            progressBar.style.width = '0%';
+            uploadArea.innerHTML = '<i class="fas fa-cloud-upload-alt text-2xl text-gray-400 mb-2"></i><p class="text-sm text-gray-600">MP4ファイルをアップロード</p><p class="text-xs text-gray-400 mt-1">最大100MB（MP4, WebM, MOV）</p>';
+          });
+          
+          xhr.addEventListener('error', () => {
+            alert('アップロードに失敗しました');
+            progressContainer.classList.add('hidden');
+            uploadArea.innerHTML = '<i class="fas fa-cloud-upload-alt text-2xl text-gray-400 mb-2"></i><p class="text-sm text-gray-600">MP4ファイルをアップロード</p><p class="text-xs text-gray-400 mt-1">最大100MB（MP4, WebM, MOV）</p>';
+          });
+          
+          xhr.open('POST', '/admin/api/upload-video');
+          xhr.send(formData);
+          
+        } catch (err) {
+          alert(err.message || 'アップロードに失敗しました');
+          progressContainer.classList.add('hidden');
+          uploadArea.innerHTML = '<i class="fas fa-cloud-upload-alt text-2xl text-gray-400 mb-2"></i><p class="text-sm text-gray-600">MP4ファイルをアップロード</p><p class="text-xs text-gray-400 mt-1">最大100MB（MP4, WebM, MOV）</p>';
+        }
+      }
+      
+      // 動画クリア
+      function clearVideo() {
+        document.getElementById('video_url').value = '';
+        const container = document.getElementById('video-preview-container');
+        if (container) container.classList.add('hidden');
+        const preview = document.getElementById('video-preview');
+        if (preview) preview.innerHTML = '';
+      }
+      
       // 動画プレビュー更新関数
       function updateVideoPreview() {
         const url = document.getElementById('video_url').value.trim();
@@ -451,6 +582,12 @@ export const renderBlogForm = (post?: BlogPost, error?: string) => {
         if (videoUrlInput) {
           videoUrlInput.addEventListener('input', debounce(updateVideoPreview, 500));
           videoUrlInput.addEventListener('blur', updateVideoPreview);
+        }
+        
+        // 動画ファイルアップロード
+        const videoFileInput = document.getElementById('video-file-input');
+        if (videoFileInput) {
+          videoFileInput.addEventListener('change', handleVideoUpload);
         }
         
         // AI記事生成からのデータを受け取る
