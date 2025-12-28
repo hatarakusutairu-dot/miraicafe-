@@ -833,12 +833,14 @@ export const renderPortfolioForm = (portfolio?: Portfolio) => {
           });
           const data = await res.json();
           
-          if (data.metaDescription) {
-            document.getElementById('meta-description').value = data.metaDescription;
-            document.getElementById('meta-char-count').textContent = data.metaDescription.length;
+          if (data.meta_description) {
+            document.getElementById('meta-description').value = data.meta_description;
+            document.getElementById('meta-char-count').textContent = data.meta_description.length;
           }
           if (data.keywords) {
-            document.getElementById('keywords-input').value = data.keywords.join(', ');
+            // keywordsは文字列またはカンマ区切りの場合がある
+            const keywordsStr = Array.isArray(data.keywords) ? data.keywords.join(', ') : data.keywords;
+            document.getElementById('keywords-input').value = keywordsStr;
           }
           
           // 自動で分析

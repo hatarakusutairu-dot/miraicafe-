@@ -1,5 +1,76 @@
 import { renderLayout } from '../components/layout'
 
+// 簡易Markdown→HTML変換
+function markdownToHtml(markdown: string): string {
+  if (!markdown) return ''
+  
+  let html = markdown
+    // エスケープ処理
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  
+  // 見出し
+  html = html.replace(/^### (.+)$/gm, '<h3 class="text-lg font-bold text-cafe-text mt-6 mb-3">$1</h3>')
+  html = html.replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold text-cafe-text mt-8 mb-4 flex items-center"><i class="fas fa-chevron-right text-amber-500 mr-2 text-sm"></i>$1</h2>')
+  html = html.replace(/^# (.+)$/gm, '<h1 class="text-2xl font-bold text-cafe-text mt-8 mb-4">$1</h1>')
+  
+  // 太字・斜体
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-cafe-text">$1</strong>')
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
+  
+  // リスト（箇条書き）
+  html = html.replace(/^[-*] (.+)$/gm, '<li class="flex items-start gap-2 mb-2"><i class="fas fa-check text-amber-500 mt-1 text-sm"></i><span>$1</span></li>')
+  
+  // 連続するliをulでラップ
+  html = html.replace(/(<li[^>]*>.*?<\/li>\n?)+/g, (match) => {
+    return `<ul class="space-y-1 my-4">${match}</ul>`
+  })
+  
+  // コードブロック
+  html = html.replace(/```([^`]+)```/g, '<pre class="bg-gray-800 text-gray-100 rounded-lg p-4 my-4 overflow-x-auto text-sm"><code>$1</code></pre>')
+  
+  // インラインコード
+  html = html.replace(/`([^`]+)`/g, '<code class="bg-gray-100 text-amber-700 px-1.5 py-0.5 rounded text-sm">$1</code>')
+  
+  // リンク
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-amber-600 hover:text-amber-700 underline" target="_blank" rel="noopener">$1</a>')
+  
+  // 段落（空行で区切られたテキスト）
+  const lines = html.split('\n')
+  let result = ''
+  let inParagraph = false
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    
+    // 見出し、ul、pre、空行はそのまま
+    if (line.startsWith('<h') || line.startsWith('<ul') || line.startsWith('</ul') || 
+        line.startsWith('<pre') || line.startsWith('</pre') || line.startsWith('<li') ||
+        line === '') {
+      if (inParagraph) {
+        result += '</p>'
+        inParagraph = false
+      }
+      result += line + '\n'
+    } else {
+      if (!inParagraph) {
+        result += '<p class="mb-4 leading-relaxed">'
+        inParagraph = true
+      } else {
+        result += '<br>'
+      }
+      result += line
+    }
+  }
+  
+  if (inParagraph) {
+    result += '</p>'
+  }
+  
+  return result
+}
+
 interface Portfolio {
   id: number
   title: string
@@ -311,7 +382,7 @@ export const renderPortfolioDetailPage = (portfolio: Portfolio, relatedPortfolio
                   <i class="fas fa-file-alt text-green-500 mr-2"></i>プロジェクト詳細
                 </h2>
                 <div class="prose prose-lg max-w-none text-cafe-textLight bg-gray-50 rounded-xl p-6">
-                  ${portfolio.content.split('\n').map(p => p.trim() ? `<p class="mb-4">${p}</p>` : '').join('')}
+                  ${markdownToHtml(portfolio.content)}
                 </div>
               </div>
             ` : ''}
