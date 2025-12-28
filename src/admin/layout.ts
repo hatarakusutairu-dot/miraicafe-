@@ -236,7 +236,7 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
           '</div>' +
         '</div>' +
         '<div class="tab-content url-tab hidden">' +
-          '<input type="text" name="' + inputName + '_url_input" value="' + currentUrl + '" placeholder="https://example.com/image.jpg" ' +
+          '<input type="text" id="' + containerId + '-url-input" value="' + currentUrl + '" placeholder="https://example.com/image.jpg" ' +
             'class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" ' +
             'onchange="handleUrlInput(\\'' + containerId + '\\', \\'' + inputName + '\\', this.value)">' +
           '<p class="text-xs text-gray-400 mt-1">外部URLを直接入力できます</p>' +
@@ -463,7 +463,7 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
       const placeholder = document.getElementById(containerId + '-placeholder');
       const preview = document.getElementById(containerId + '-preview');
       const hiddenInput = document.getElementById(containerId + '-hidden');
-      const urlInput = document.querySelector('[name="' + inputName + '_url_input"]');
+      const urlInput = document.getElementById(containerId + '-url-input');
       
       if (placeholder) placeholder.classList.remove('hidden');
       if (preview) preview.classList.add('hidden');
