@@ -4,7 +4,8 @@ import { renderLayout } from '../components/layout'
 function markdownToHtml(markdown: string): string {
   if (!markdown) return ''
   
-  let html = markdown
+  // Windows改行を統一
+  let html = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
     // エスケープ処理
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -22,9 +23,11 @@ function markdownToHtml(markdown: string): string {
   // リスト（箇条書き）
   html = html.replace(/^[-*] (.+)$/gm, '<li class="flex items-start gap-2 mb-2"><i class="fas fa-check text-amber-500 mt-1 text-sm"></i><span>$1</span></li>')
   
-  // 連続するliをulでラップ
-  html = html.replace(/(<li[^>]*>.*?<\/li>\n?)+/g, (match) => {
-    return `<ul class="space-y-1 my-4">${match}</ul>`
+  // 連続するliをulでラップ（空行を含まない連続するli）
+  html = html.replace(/(<li[^>]*>.*?<\/li>\n*)+/g, (match) => {
+    // 空行で区切られた場合は別のulにする
+    const items = match.trim()
+    return `<ul class="space-y-1 my-4">${items}</ul>`
   })
   
   // コードブロック
