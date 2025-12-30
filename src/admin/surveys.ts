@@ -10,6 +10,7 @@ interface SurveyQuestion {
   is_required: number
   sort_order: number
   is_active: number
+  use_for_review: number
 }
 
 interface SurveyResponse {
@@ -21,6 +22,8 @@ interface SurveyResponse {
   answers: string
   overall_rating: number | null
   publish_consent: string
+  published_as_review: number
+  review_id: number | null
   created_at: string
 }
 
@@ -602,7 +605,10 @@ export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
                 </span>
               </td>
               <td class="py-4 px-6">
-                <p class="text-gray-800 font-medium">${escapeHtml(q.question_text)}</p>
+                <div class="flex items-center gap-2">
+                  ${q.use_for_review ? '<span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700"><i class="fas fa-bullhorn mr-1"></i>口コミ用</span>' : ''}
+                  <p class="text-gray-800 font-medium">${escapeHtml(q.question_text)}</p>
+                </div>
                 ${q.options ? `<p class="text-sm text-gray-500 mt-1">選択肢: ${JSON.parse(q.options).join(', ')}</p>` : ''}
               </td>
               <td class="py-4 px-6 text-center">
@@ -694,6 +700,19 @@ export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
               </label>
             </div>
           </div>
+          
+          <!-- 口コミ用設定 -->
+          <div id="review-field" class="bg-green-50 rounded-xl p-4 border border-green-200">
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" name="use_for_review" id="question-use-review"
+                     class="w-5 h-5 text-green-600 rounded focus:ring-green-500">
+              <div>
+                <span class="text-gray-700 font-medium">口コミ用として使用</span>
+                <p class="text-xs text-gray-500 mt-0.5">この質問の回答を口コミとして公開できます（自由記述のみ）</p>
+              </div>
+            </label>
+          </div>
+          
           <div class="flex justify-end gap-3 pt-4 border-t">
             <button type="button" onclick="closeQuestionModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">
               キャンセル
@@ -722,7 +741,13 @@ export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
       function toggleOptionsField() {
         const type = document.getElementById('question-type').value;
         const optionsField = document.getElementById('options-field');
+        const reviewField = document.getElementById('review-field');
         optionsField.classList.toggle('hidden', type !== 'choice' && type !== 'multi_choice');
+        // 口コミ用は自由記述のみ
+        reviewField.classList.toggle('hidden', type !== 'text');
+        if (type !== 'text') {
+          document.getElementById('question-use-review').checked = false;
+        }
       }
 
       async function editQuestion(id) {
@@ -738,6 +763,7 @@ export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
           document.getElementById('question-options').value = q.options ? JSON.parse(q.options).join(', ') : '';
           document.getElementById('question-sort').value = q.sort_order;
           document.getElementById('question-required').checked = q.is_required === 1;
+          document.getElementById('question-use-review').checked = q.use_for_review === 1;
           
           toggleOptionsField();
           document.getElementById('question-modal').classList.remove('hidden');
@@ -783,7 +809,8 @@ export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
           question_category: formData.get('question_category'),
           options: formData.get('options') ? formData.get('options').split(',').map(s => s.trim()).filter(s => s) : null,
           sort_order: parseInt(formData.get('sort_order')) || 0,
-          is_required: formData.get('is_required') ? 1 : 0
+          is_required: formData.get('is_required') ? 1 : 0,
+          use_for_review: formData.get('use_for_review') ? 1 : 0
         };
         
         try {
@@ -813,9 +840,17 @@ export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
 
 // 回答一覧ページ
 export function renderSurveyResponses(responses: SurveyResponse[], questions: SurveyQuestion[]): string {
+  // 公開可能な回答（公開OKまたは匿名OK、かつ未公開）
+  const publishableResponses = responses.filter(r => 
+    (r.publish_consent === 'yes' || r.publish_consent === 'anonymous') && !r.published_as_review
+  )
+  
+  // 口コミ用の質問（自由記述で use_for_review が有効）
+  const reviewQuestions = questions.filter(q => q.use_for_review && q.question_type === 'text')
+  
   const content = `
     <div class="mb-6">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between flex-wrap gap-4">
         <div>
           <a href="/admin/surveys" class="text-gray-500 hover:text-gray-700 text-sm mb-2 inline-flex items-center gap-1">
             <i class="fas fa-arrow-left"></i>分析に戻る
@@ -825,21 +860,53 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
             回答一覧
           </h1>
         </div>
-        <button onclick="exportResponses()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
-          <i class="fas fa-download"></i>CSVエクスポート
-        </button>
+        <div class="flex gap-3">
+          <button onclick="openPublishModal()" class="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg transition flex items-center gap-2 shadow-sm ${publishableResponses.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${publishableResponses.length === 0 ? 'disabled' : ''}>
+            <i class="fas fa-bullhorn"></i>口コミ公開 (${publishableResponses.length})
+          </button>
+          <button onclick="exportResponses()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
+            <i class="fas fa-download"></i>CSVエクスポート
+          </button>
+        </div>
       </div>
     </div>
+    
+    <!-- 口コミ公開設定の案内 -->
+    ${reviewQuestions.length === 0 ? `
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+        <div class="flex items-start gap-3">
+          <i class="fas fa-info-circle text-amber-500 mt-0.5"></i>
+          <div>
+            <p class="text-amber-800 font-medium">口コミ公開用の質問が設定されていません</p>
+            <p class="text-amber-600 text-sm mt-1">
+              <a href="/admin/surveys/questions" class="underline hover:no-underline">質問の編集</a>で、自由記述の質問に「口コミ用」を設定すると、その回答が口コミとして公開できます。
+            </p>
+          </div>
+        </div>
+      </div>
+    ` : ''}
 
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       ${responses.length > 0 ? `
         <div class="divide-y divide-gray-100">
           ${responses.map(r => {
             const answers = JSON.parse(r.answers || '{}')
+            const canPublish = (r.publish_consent === 'yes' || r.publish_consent === 'anonymous') && !r.published_as_review
             return `
-              <div class="p-6 hover:bg-gray-50 transition">
+              <div class="p-6 hover:bg-gray-50 transition ${r.published_as_review ? 'bg-green-50/50' : ''}">
                 <div class="flex items-start justify-between mb-4">
                   <div class="flex items-center gap-4">
+                    ${canPublish ? `
+                      <label class="flex items-center">
+                        <input type="checkbox" class="publish-checkbox w-5 h-5 text-green-600 rounded focus:ring-green-500" 
+                               data-id="${r.id}" 
+                               data-name="${escapeHtml(r.respondent_name) || ''}"
+                               data-consent="${r.publish_consent}"
+                               data-rating="${r.overall_rating || 0}"
+                               data-course="${escapeHtml(r.course_name) || ''}"
+                               data-answers='${escapeHtml(JSON.stringify(answers))}'>
+                      </label>
+                    ` : ''}
                     <div class="flex text-yellow-400 text-lg">
                       ${renderStars(r.overall_rating || 0)}
                     </div>
@@ -849,14 +916,25 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
                     </div>
                   </div>
                   <div class="flex items-center gap-3">
-                    <span class="text-xs px-3 py-1 rounded-full ${
-                      r.publish_consent === 'yes' ? 'bg-green-100 text-green-700' :
-                      r.publish_consent === 'anonymous' ? 'bg-purple-100 text-purple-700' :
-                      'bg-gray-100 text-gray-600'
-                    }">
-                      ${r.publish_consent === 'yes' ? '公開OK' : r.publish_consent === 'anonymous' ? '匿名OK' : '非公開'}
-                    </span>
+                    ${r.published_as_review ? `
+                      <span class="text-xs px-3 py-1 rounded-full bg-green-100 text-green-700 flex items-center gap-1">
+                        <i class="fas fa-check"></i>公開済み
+                      </span>
+                    ` : `
+                      <span class="text-xs px-3 py-1 rounded-full ${
+                        r.publish_consent === 'yes' ? 'bg-green-100 text-green-700' :
+                        r.publish_consent === 'anonymous' ? 'bg-purple-100 text-purple-700' :
+                        'bg-gray-100 text-gray-600'
+                      }">
+                        ${r.publish_consent === 'yes' ? '公開OK' : r.publish_consent === 'anonymous' ? '匿名OK' : '非公開'}
+                      </span>
+                    `}
                     <span class="text-sm text-gray-400">${formatDate(r.created_at)}</span>
+                    ${canPublish ? `
+                      <button onclick="openSinglePublishModal(${r.id})" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition" title="この回答を口コミとして公開">
+                        <i class="fas fa-bullhorn"></i>
+                      </button>
+                    ` : ''}
                   </div>
                 </div>
                 
@@ -868,8 +946,11 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   ${questions.filter(q => answers[q.id] !== undefined).map(q => `
-                    <div class="bg-gray-50 rounded-lg p-3">
-                      <p class="text-xs text-gray-500 mb-1">${escapeHtml(q.question_text)}</p>
+                    <div class="rounded-lg p-3 ${q.use_for_review ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}">
+                      <p class="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                        ${q.use_for_review ? '<i class="fas fa-bullhorn text-green-500" title="口コミ用"></i>' : ''}
+                        ${escapeHtml(q.question_text)}
+                      </p>
                       <p class="text-gray-800">
                         ${q.question_type === 'rating' 
                           ? `<span class="text-yellow-400">${'★'.repeat(answers[q.id])}${'☆'.repeat(5 - answers[q.id])}</span>`
@@ -889,11 +970,307 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
         <p class="text-gray-500 text-center py-16">まだ回答がありません</p>
       `}
     </div>
+    
+    <!-- 一括公開モーダル -->
+    <div id="publish-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4 overflow-auto">
+      <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+        <div class="p-6 bg-gradient-to-r from-green-500 to-emerald-500 text-white">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <i class="fas fa-bullhorn text-lg"></i>
+              </div>
+              <div>
+                <h3 class="text-xl font-bold">口コミとして公開</h3>
+                <p class="text-white/70 text-sm">選択した回答を口コミページに公開します</p>
+              </div>
+            </div>
+            <button onclick="closePublishModal()" class="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+          <div id="publish-list" class="space-y-4">
+            <!-- 選択された回答がここに表示される -->
+          </div>
+        </div>
+        
+        <div class="p-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
+          <p class="text-sm text-gray-500">
+            <i class="fas fa-info-circle mr-1"></i>
+            公開後も口コミ管理画面で編集できます
+          </p>
+          <div class="flex gap-3">
+            <button onclick="closePublishModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 transition">
+              キャンセル
+            </button>
+            <button onclick="publishSelectedReviews()" class="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition flex items-center gap-2">
+              <i class="fas fa-check"></i>公開する
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 個別公開モーダル -->
+    <div id="single-publish-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4 overflow-auto">
+      <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl">
+        <div class="p-6 bg-gradient-to-r from-green-500 to-emerald-500 text-white">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <i class="fas fa-edit text-lg"></i>
+              </div>
+              <div>
+                <h3 class="text-xl font-bold">口コミを編集して公開</h3>
+                <p class="text-white/70 text-sm">内容を確認・編集してから公開</p>
+              </div>
+            </div>
+            <button onclick="closeSinglePublishModal()" class="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+        
+        <form id="single-publish-form" class="p-6 space-y-4">
+          <input type="hidden" name="response_id" id="edit-response-id">
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">表示名</label>
+            <input type="text" name="reviewer_name" id="edit-reviewer-name"
+                   class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none">
+            <p class="text-xs text-gray-400 mt-1">匿名希望の場合は「匿名」と表示されます</p>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">評価</label>
+            <div class="flex gap-2" id="edit-rating-stars">
+              ${[1,2,3,4,5].map(n => `
+                <button type="button" onclick="setEditRating(${n})" class="text-3xl text-gray-300 hover:text-yellow-400 transition edit-star" data-rating="${n}">
+                  <i class="fas fa-star"></i>
+                </button>
+              `).join('')}
+            </div>
+            <input type="hidden" name="rating" id="edit-rating" value="5">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">講座名</label>
+            <input type="text" name="course_name" id="edit-course-name"
+                   class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                   placeholder="講座名（任意）">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">口コミ内容 <span class="text-red-500">*</span></label>
+            <textarea name="comment" id="edit-comment" rows="5" required
+                      class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-none"
+                      placeholder="口コミ内容を入力してください"></textarea>
+          </div>
+        </form>
+        
+        <div class="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+          <button onclick="closeSinglePublishModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 transition">
+            キャンセル
+          </button>
+          <button onclick="submitSinglePublish()" class="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition flex items-center gap-2">
+            <i class="fas fa-check"></i>公開する
+          </button>
+        </div>
+      </div>
+    </div>
 
     <script>
+      // 口コミ用の質問ID
+      const reviewQuestionIds = [${reviewQuestions.map(q => q.id).join(',')}];
+      
       function exportResponses() {
         window.location.href = '/admin/api/surveys/export';
       }
+      
+      function openPublishModal() {
+        const checkboxes = document.querySelectorAll('.publish-checkbox:checked');
+        if (checkboxes.length === 0) {
+          alert('公開する回答を選択してください');
+          return;
+        }
+        
+        const list = document.getElementById('publish-list');
+        list.innerHTML = '';
+        
+        checkboxes.forEach(cb => {
+          const answers = JSON.parse(cb.dataset.answers || '{}');
+          const consent = cb.dataset.consent;
+          const name = consent === 'yes' ? (cb.dataset.name || '匿名') : '匿名';
+          const rating = parseInt(cb.dataset.rating) || 0;
+          const course = cb.dataset.course;
+          
+          // 口コミ用の回答を取得
+          let comment = '';
+          reviewQuestionIds.forEach(qId => {
+            if (answers[qId]) {
+              comment += (comment ? '\\n\\n' : '') + answers[qId];
+            }
+          });
+          
+          list.innerHTML += \`
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-200" data-id="\${cb.dataset.id}">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-3">
+                  <span class="font-medium text-gray-800">\${name}</span>
+                  <div class="flex text-yellow-400">
+                    \${'<i class="fas fa-star"></i>'.repeat(rating)}
+                    \${'<i class="far fa-star text-gray-300"></i>'.repeat(5 - rating)}
+                  </div>
+                </div>
+                \${course ? \`<span class="text-sm text-purple-600"><i class="fas fa-book mr-1"></i>\${course}</span>\` : ''}
+              </div>
+              <p class="text-gray-700 whitespace-pre-wrap">\${comment || '（コメントなし）'}</p>
+              <input type="hidden" class="publish-data" 
+                     data-id="\${cb.dataset.id}"
+                     data-name="\${name}"
+                     data-rating="\${rating}"
+                     data-course="\${course}"
+                     data-comment="\${comment}">
+            </div>
+          \`;
+        });
+        
+        document.getElementById('publish-modal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+      }
+      
+      function closePublishModal() {
+        document.getElementById('publish-modal').classList.add('hidden');
+        document.body.style.overflow = '';
+      }
+      
+      async function publishSelectedReviews() {
+        const items = document.querySelectorAll('#publish-list .publish-data');
+        const reviews = [];
+        
+        items.forEach(item => {
+          reviews.push({
+            response_id: parseInt(item.dataset.id),
+            reviewer_name: item.dataset.name,
+            rating: parseInt(item.dataset.rating),
+            course_name: item.dataset.course,
+            comment: item.dataset.comment
+          });
+        });
+        
+        if (reviews.length === 0) return;
+        
+        try {
+          const res = await fetch('/admin/api/surveys/publish-reviews', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reviews })
+          });
+          
+          const result = await res.json();
+          if (result.success) {
+            alert(\`\${result.count}件の口コミを公開しました\`);
+            location.reload();
+          } else {
+            alert('エラー: ' + (result.error || '公開に失敗しました'));
+          }
+        } catch (e) {
+          alert('通信エラーが発生しました');
+        }
+      }
+      
+      // 個別公開
+      function openSinglePublishModal(responseId) {
+        const checkbox = document.querySelector(\`.publish-checkbox[data-id="\${responseId}"]\`);
+        if (!checkbox) return;
+        
+        const answers = JSON.parse(checkbox.dataset.answers || '{}');
+        const consent = checkbox.dataset.consent;
+        const name = consent === 'yes' ? (checkbox.dataset.name || '') : '匿名';
+        const rating = parseInt(checkbox.dataset.rating) || 5;
+        const course = checkbox.dataset.course;
+        
+        // 口コミ用の回答を取得
+        let comment = '';
+        reviewQuestionIds.forEach(qId => {
+          if (answers[qId]) {
+            comment += (comment ? '\\n\\n' : '') + answers[qId];
+          }
+        });
+        
+        document.getElementById('edit-response-id').value = responseId;
+        document.getElementById('edit-reviewer-name').value = name;
+        document.getElementById('edit-rating').value = rating;
+        document.getElementById('edit-course-name').value = course;
+        document.getElementById('edit-comment').value = comment;
+        
+        setEditRating(rating);
+        
+        document.getElementById('single-publish-modal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+      }
+      
+      function closeSinglePublishModal() {
+        document.getElementById('single-publish-modal').classList.add('hidden');
+        document.body.style.overflow = '';
+      }
+      
+      function setEditRating(rating) {
+        document.getElementById('edit-rating').value = rating;
+        document.querySelectorAll('.edit-star').forEach(star => {
+          const starRating = parseInt(star.dataset.rating);
+          star.classList.toggle('text-yellow-400', starRating <= rating);
+          star.classList.toggle('text-gray-300', starRating > rating);
+        });
+      }
+      
+      async function submitSinglePublish() {
+        const form = document.getElementById('single-publish-form');
+        const formData = new FormData(form);
+        
+        const comment = formData.get('comment');
+        if (!comment || !comment.trim()) {
+          alert('口コミ内容を入力してください');
+          return;
+        }
+        
+        const review = {
+          response_id: parseInt(formData.get('response_id')),
+          reviewer_name: formData.get('reviewer_name') || '匿名',
+          rating: parseInt(formData.get('rating')) || 5,
+          course_name: formData.get('course_name') || '',
+          comment: comment.trim()
+        };
+        
+        try {
+          const res = await fetch('/admin/api/surveys/publish-reviews', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reviews: [review] })
+          });
+          
+          const result = await res.json();
+          if (result.success) {
+            alert('口コミを公開しました');
+            location.reload();
+          } else {
+            alert('エラー: ' + (result.error || '公開に失敗しました'));
+          }
+        } catch (e) {
+          alert('通信エラーが発生しました');
+        }
+      }
+      
+      // ESCキーでモーダルを閉じる
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          closePublishModal();
+          closeSinglePublishModal();
+        }
+      });
     </script>
   `
 

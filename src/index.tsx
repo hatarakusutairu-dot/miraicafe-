@@ -4953,18 +4953,20 @@ app.post('/admin/api/surveys/questions', async (c) => {
       options: string[] | null
       sort_order: number
       is_required: number
+      use_for_review?: number
     }>()
     
     await c.env.DB.prepare(`
-      INSERT INTO survey_questions (question_text, question_type, question_category, options, sort_order, is_required, is_active)
-      VALUES (?, ?, ?, ?, ?, ?, 1)
+      INSERT INTO survey_questions (question_text, question_type, question_category, options, sort_order, is_required, is_active, use_for_review)
+      VALUES (?, ?, ?, ?, ?, ?, 1, ?)
     `).bind(
       body.question_text,
       body.question_type,
       body.question_category,
       body.options ? JSON.stringify(body.options) : null,
       body.sort_order,
-      body.is_required
+      body.is_required,
+      body.use_for_review || 0
     ).run()
     
     return c.json({ success: true })
@@ -4985,6 +4987,7 @@ app.put('/admin/api/surveys/questions/:id', async (c) => {
       options: string[] | null
       sort_order: number
       is_required: number
+      use_for_review?: number
     }>()
     
     await c.env.DB.prepare(`
@@ -4995,6 +4998,7 @@ app.put('/admin/api/surveys/questions/:id', async (c) => {
         options = ?,
         sort_order = ?,
         is_required = ?,
+        use_for_review = ?,
         updated_at = datetime('now')
       WHERE id = ?
     `).bind(
@@ -5004,6 +5008,7 @@ app.put('/admin/api/surveys/questions/:id', async (c) => {
       body.options ? JSON.stringify(body.options) : null,
       body.sort_order,
       body.is_required,
+      body.use_for_review || 0,
       id
     ).run()
     
@@ -5035,6 +5040,64 @@ app.post('/admin/api/surveys/questions/:id/toggle', async (c) => {
     return c.json({ success: true })
   } catch (error) {
     return c.json({ error: '更新に失敗しました' }, 500)
+  }
+})
+
+// アンケート回答を口コミとして公開するAPI
+app.post('/admin/api/surveys/publish-reviews', async (c) => {
+  try {
+    const body = await c.req.json<{
+      reviews: Array<{
+        response_id: number
+        reviewer_name: string
+        rating: number
+        course_name: string
+        comment: string
+      }>
+    }>()
+    
+    if (!body.reviews || body.reviews.length === 0) {
+      return c.json({ error: '公開するデータがありません' }, 400)
+    }
+    
+    let successCount = 0
+    
+    for (const review of body.reviews) {
+      // 回答の公開同意を確認
+      const response = await c.env.DB.prepare(`
+        SELECT * FROM survey_responses WHERE id = ? AND (publish_consent = 'yes' OR publish_consent = 'anonymous')
+      `).bind(review.response_id).first()
+      
+      if (!response) continue
+      
+      // コメントがない場合はスキップ
+      if (!review.comment || !review.comment.trim()) continue
+      
+      // 口コミを作成
+      const result = await c.env.DB.prepare(`
+        INSERT INTO reviews (course_id, reviewer_name, reviewer_email, rating, comment, status, created_at)
+        VALUES (?, ?, ?, ?, ?, 'approved', datetime('now'))
+      `).bind(
+        review.course_name || 'general',
+        review.reviewer_name || '匿名',
+        null, // メールアドレスは公開しない
+        review.rating || 5,
+        review.comment.trim()
+      ).run()
+      
+      // survey_responsesを更新（公開済みフラグとreview_id）
+      const reviewId = result.meta?.last_row_id
+      await c.env.DB.prepare(`
+        UPDATE survey_responses SET published_as_review = 1, review_id = ? WHERE id = ?
+      `).bind(reviewId, review.response_id).run()
+      
+      successCount++
+    }
+    
+    return c.json({ success: true, count: successCount })
+  } catch (error) {
+    console.error('Publish reviews error:', error)
+    return c.json({ error: '口コミの公開に失敗しました' }, 500)
   }
 })
 
