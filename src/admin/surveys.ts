@@ -77,6 +77,9 @@ export function renderSurveyDashboard(stats: SurveyStats, questions: SurveyQuest
           <p class="text-gray-500 mt-1">受講後アンケートの回答を分析</p>
         </div>
         <div class="flex gap-3">
+          <button onclick="openPreviewModal()" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-lg transition flex items-center gap-2 shadow-sm">
+            <i class="fas fa-eye"></i>プレビュー
+          </button>
           <a href="/admin/surveys/settings" class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition flex items-center gap-2">
             <i class="fas fa-cog"></i>設定
           </a>
@@ -318,9 +321,228 @@ export function renderSurveyDashboard(stats: SurveyStats, questions: SurveyQuest
         <p class="text-gray-500 text-center py-8">まだ回答がありません</p>
       `}
     </div>
+
+    <!-- プレビューモーダル -->
+    <div id="preview-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4 overflow-auto">
+      <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+        <div class="p-6 bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <i class="fas fa-eye text-lg"></i>
+              </div>
+              <div>
+                <h3 class="text-xl font-bold">アンケートプレビュー</h3>
+                <p class="text-white/70 text-sm">実際の表示イメージ</p>
+              </div>
+            </div>
+            <button onclick="closePreviewModal()" class="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]" style="background: linear-gradient(135deg, #faf5f0 0%, #f5efe8 50%, #f0e8e0 100%);">
+          <!-- ヘッダー -->
+          <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-700 mb-2">受講後アンケート</h1>
+            <p class="text-gray-500">AI学習の体験について教えてください</p>
+          </div>
+          
+          <!-- 質問プレビュー -->
+          <div class="space-y-4">
+            ${renderPreviewQuestions(questions, categoryLabels)}
+            
+            <!-- 回答者情報 -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <i class="fas fa-user text-purple-500 text-sm"></i>
+                </div>
+                <span class="font-medium text-gray-700">回答者情報</span>
+                <span class="text-xs text-gray-400">（任意）</span>
+              </div>
+              <div class="space-y-3">
+                <input type="text" disabled class="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-gray-400" placeholder="✏️ お名前">
+                <input type="email" disabled class="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-gray-400" placeholder="📧 メールアドレス">
+              </div>
+            </div>
+            
+            <!-- 公開同意 -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
+                  <i class="fas fa-bullhorn text-pink-500 text-sm"></i>
+                </div>
+                <span class="font-medium text-gray-700">ご回答の公開について</span>
+              </div>
+              <div class="space-y-2">
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                  <i class="fas fa-check-circle text-green-400"></i>
+                  <span class="text-gray-600">お名前付きで公開OK</span>
+                </div>
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                  <i class="fas fa-user-secret text-purple-400"></i>
+                  <span class="text-gray-600">匿名なら公開OK</span>
+                </div>
+                <div class="flex items-center gap-3 p-3 bg-purple-50 rounded-xl border-2 border-purple-300">
+                  <i class="fas fa-lock text-gray-400"></i>
+                  <span class="text-gray-600">公開不可</span>
+                  <i class="fas fa-check ml-auto text-purple-500"></i>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 送信ボタン -->
+            <div class="pt-4">
+              <button disabled class="w-full py-4 bg-gradient-to-r from-purple-400 to-pink-400 text-white font-bold rounded-full shadow-lg opacity-80 cursor-not-allowed">
+                送信 <i class="fas fa-paper-plane ml-2"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="p-4 bg-white border-t border-gray-100 flex justify-between items-center">
+          <a href="/survey" target="_blank" class="text-purple-600 hover:text-purple-700 flex items-center gap-2">
+            <i class="fas fa-external-link-alt"></i>
+            実際のページを開く
+          </a>
+          <button onclick="closePreviewModal()" class="px-6 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 transition">
+            閉じる
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function openPreviewModal() {
+        document.getElementById('preview-modal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+      }
+      
+      function closePreviewModal() {
+        document.getElementById('preview-modal').classList.add('hidden');
+        document.body.style.overflow = '';
+      }
+      
+      // ESCキーでモーダルを閉じる
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          closePreviewModal();
+        }
+      });
+      
+      // モーダル外クリックで閉じる
+      document.getElementById('preview-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+          closePreviewModal();
+        }
+      });
+    </script>
   `
 
   return renderAdminLayout('アンケート分析', content, 'surveys')
+}
+
+// プレビュー用の質問レンダリング
+function renderPreviewQuestions(questions: SurveyQuestion[], categoryLabels: Record<string, string>): string {
+  const grouped: Record<string, SurveyQuestion[]> = {}
+  
+  questions.filter(q => q.is_active).forEach(q => {
+    const cat = q.question_category || 'general'
+    if (!grouped[cat]) grouped[cat] = []
+    grouped[cat].push(q)
+  })
+  
+  const categoryOrder = ['satisfaction', 'content', 'instructor', 'environment', 'general']
+  const categoryIcons: Record<string, string> = {
+    satisfaction: 'fa-star',
+    content: 'fa-book-open',
+    instructor: 'fa-chalkboard-teacher',
+    environment: 'fa-laptop',
+    general: 'fa-comment-dots'
+  }
+  
+  return categoryOrder
+    .filter(cat => grouped[cat] && grouped[cat].length > 0)
+    .map(cat => {
+      const label = categoryLabels[cat] || 'その他'
+      const icon = categoryIcons[cat] || 'fa-question'
+      const qs = grouped[cat]
+      
+      return `
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+              <i class="fas ${icon} text-purple-500 text-sm"></i>
+            </div>
+            <span class="font-medium text-gray-700">${label}</span>
+          </div>
+          <div class="space-y-4">
+            ${qs.map(q => renderPreviewQuestion(q)).join('')}
+          </div>
+        </div>
+      `
+    }).join('')
+}
+
+// 個別質問のプレビューレンダリング
+function renderPreviewQuestion(q: SurveyQuestion): string {
+  const isRequired = q.is_required === 1
+  
+  if (q.question_type === 'rating') {
+    return `
+      <div class="text-center py-2">
+        <p class="text-gray-700 mb-3">
+          ${escapeHtml(q.question_text)}
+          ${isRequired ? '<span class="text-pink-400"> *</span>' : ''}
+        </p>
+        <div class="flex justify-center gap-2">
+          ${[1,2,3,4,5].map(n => `
+            <span class="text-2xl ${n <= 3 ? 'text-gray-300' : 'text-yellow-400'}">
+              <i class="fas fa-star"></i>
+            </span>
+          `).join('')}
+        </div>
+      </div>
+    `
+  }
+  
+  if (q.question_type === 'choice' || q.question_type === 'multi_choice') {
+    const options = q.options ? JSON.parse(q.options) : []
+    return `
+      <div>
+        <p class="text-gray-700 mb-3">
+          ${escapeHtml(q.question_text)}
+          ${isRequired ? '<span class="text-pink-400"> *</span>' : ''}
+        </p>
+        <div class="space-y-2">
+          ${options.map((opt: string, i: number) => `
+            <div class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-200">
+              <i class="${q.question_type === 'multi_choice' ? 'far fa-square' : 'far fa-circle'} text-gray-400"></i>
+              <span class="text-gray-600">${escapeHtml(opt)}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `
+  }
+  
+  if (q.question_type === 'text') {
+    return `
+      <div>
+        <p class="text-gray-700 mb-3">
+          ${escapeHtml(q.question_text)}
+          ${isRequired ? '<span class="text-pink-400"> *</span>' : '<span class="text-gray-400">（任意）</span>'}
+        </p>
+        <textarea disabled rows="2" 
+                  class="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-gray-400 resize-none"
+                  placeholder="ご自由にお書きください..."></textarea>
+      </div>
+    `
+  }
+  
+  return ''
 }
 
 // 質問編集ページ
