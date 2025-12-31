@@ -909,12 +909,24 @@ app.post('/api/reservations', async (c) => {
 app.post('/api/create-checkout-session', async (c) => {
   try {
     const body = await c.req.json()
-    const { courseId, courseTitle, price, customerEmail, customerName, scheduleDate, scheduleTime, successUrl, cancelUrl, bookingId } = body
+    let { courseId, courseTitle, price, customerEmail, customerName, scheduleDate, scheduleTime, successUrl, cancelUrl, bookingId, reservationId } = body
+
+    // courseIdから講座情報を取得（courseTitle/priceが未指定の場合）
+    if (courseId && (!courseTitle || !price)) {
+      const course = await getCourseById(c.env.DB, courseId)
+      if (course) {
+        courseTitle = courseTitle || course.title
+        price = price || course.price
+      }
+    }
 
     // Validate required fields
-    if (!courseId || !courseTitle || !price || !customerEmail || !successUrl || !cancelUrl) {
+    if (!courseId || !courseTitle || !price || !successUrl || !cancelUrl) {
       return c.json({ error: '必須項目が不足しています' }, 400)
     }
+    
+    // bookingIdがなければreservationIdを使用
+    bookingId = bookingId || reservationId
 
     // Check if Stripe is configured
     if (!c.env.STRIPE_SECRET_KEY) {

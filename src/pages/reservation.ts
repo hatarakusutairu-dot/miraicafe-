@@ -260,6 +260,21 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
         currentMonth = new Date();
         currentMonth.setDate(1);
       }
+      
+      // URLパラメータをチェックして決済完了後の処理
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('success') === 'true') {
+        // 決済成功 - 成功モーダルを表示
+        setTimeout(() => {
+          document.getElementById('success-modal').classList.remove('hidden');
+        }, 500);
+        // URLからパラメータを削除
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (urlParams.get('canceled') === 'true') {
+        // 決済キャンセル
+        alert('決済がキャンセルされました。再度お試しください。');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
 
       const courseSelect = document.getElementById('course-select');
       const calendarGrid = document.getElementById('calendar-grid');
@@ -359,16 +374,45 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
         if (!name || !email) { alert('お名前とメールアドレスは必須です'); return; }
         document.getElementById('payment-modal').classList.remove('hidden');
         try {
+          // 予約を作成
           const resResponse = await fetch('/api/reservations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ courseId: selectedCourseId, scheduleId: selectedScheduleId, name, email, phone }) });
           const reservation = await resResponse.json();
-          await fetch('/api/create-checkout-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ courseId: selectedCourseId, reservationId: reservation.reservation.id, successUrl: window.location.origin + '/reservation', cancelUrl: window.location.origin + '/reservation' }) });
-          setTimeout(() => { 
+          
+          if (!reservation.success) {
+            throw new Error(reservation.error || '予約の作成に失敗しました');
+          }
+          
+          // Stripe Checkout Sessionを作成
+          const checkoutResponse = await fetch('/api/create-checkout-session', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ 
+              courseId: selectedCourseId, 
+              reservationId: reservation.reservation.id,
+              customerEmail: email,
+              customerName: name,
+              successUrl: window.location.origin + '/reservation?success=true&session_id={CHECKOUT_SESSION_ID}', 
+              cancelUrl: window.location.origin + '/reservation?canceled=true' 
+            }) 
+          });
+          const checkoutData = await checkoutResponse.json();
+          
+          if (checkoutData.url) {
+            // Stripe決済画面にリダイレクト
+            window.location.href = checkoutData.url;
+          } else if (checkoutData.demo) {
+            // デモモード（Stripeキー未設定時）
             document.getElementById('payment-modal').classList.add('hidden'); 
             document.getElementById('success-modal').classList.remove('hidden');
-            // Googleカレンダー追加用URLを生成
             updateGoogleCalendarLink();
-          }, 2000);
-        } catch (error) { document.getElementById('payment-modal').classList.add('hidden'); alert('エラーが発生しました'); }
+          } else {
+            throw new Error('決済セッションの作成に失敗しました');
+          }
+        } catch (error) { 
+          console.error('Checkout error:', error);
+          document.getElementById('payment-modal').classList.add('hidden'); 
+          alert('エラーが発生しました: ' + (error.message || '予約処理中にエラーが発生しました')); 
+        }
       });
 
       function renderCalendar() {
