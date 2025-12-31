@@ -265,8 +265,16 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('success') === 'true') {
         // 決済成功 - 成功モーダルを表示
+        // URLパラメータから予約情報を復元
+        const returnCourseId = urlParams.get('course_id');
+        const returnScheduleId = urlParams.get('schedule_id');
+        if (returnCourseId) selectedCourseId = returnCourseId;
+        if (returnScheduleId) selectedScheduleId = returnScheduleId;
+        
         setTimeout(() => {
           document.getElementById('success-modal').classList.remove('hidden');
+          // Googleカレンダーリンクを更新
+          updateGoogleCalendarLink();
         }, 500);
         // URLからパラメータを削除
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -391,7 +399,7 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
               reservationId: reservation.reservation.id,
               customerEmail: email,
               customerName: name,
-              successUrl: window.location.origin + '/reservation?success=true&session_id={CHECKOUT_SESSION_ID}', 
+              successUrl: window.location.origin + '/reservation?success=true&course_id=' + encodeURIComponent(selectedCourseId) + '&schedule_id=' + encodeURIComponent(selectedScheduleId), 
               cancelUrl: window.location.origin + '/reservation?canceled=true' 
             }) 
           });
@@ -492,15 +500,34 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
       function updateGoogleCalendarLink() {
         const course = courses.find(c => c.id === selectedCourseId);
         const schedule = schedules.find(s => s.id === selectedScheduleId);
-        if (!course || !schedule) return;
+        const linkEl = document.getElementById('google-calendar-link');
+        
+        console.log('updateGoogleCalendarLink called:', { selectedCourseId, selectedScheduleId, course: !!course, schedule: !!schedule });
+        
+        if (!course || !schedule) {
+          // 講座情報が見つからない場合でも基本的なリンクを設定
+          if (linkEl) linkEl.href = 'https://calendar.google.com/calendar/render';
+          return;
+        }
         
         const startDateTime = schedule.date + 'T' + schedule.startTime + ':00+09:00';
         const endDateTime = schedule.date + 'T' + schedule.endTime + ':00+09:00';
         const title = '【mirAIcafe】' + course.title;
-        const description = 'mirAIcafe AI講座の予約\\n\\n講座名: ' + course.title + '\\n日時: ' + schedule.date + ' ' + schedule.startTime + '〜' + schedule.endTime;
         
-        const calendarUrl = generateGoogleCalendarUrl(title, description, startDateTime, endDateTime, 'オンライン');
-        document.getElementById('google-calendar-link').href = calendarUrl;
+        // オンラインURLを含める（講座から取得）
+        const onlineUrl = course.online_url || course.onlineUrl || '';
+        let description = '📚 mirAIcafe AI講座\\n\\n';
+        description += '講座名: ' + course.title + '\\n';
+        description += '日時: ' + schedule.date + ' ' + schedule.startTime + '〜' + schedule.endTime + '\\n';
+        if (onlineUrl) {
+          description += '\\n🔗 参加URL: ' + onlineUrl + '\\n';
+        }
+        description += '\\n主催: mirAIcafe\\nhttps://miraicafe.work';
+        
+        const location = onlineUrl || 'オンライン';
+        const calendarUrl = generateGoogleCalendarUrl(title, description, startDateTime, endDateTime, location);
+        if (linkEl) linkEl.href = calendarUrl;
+        console.log('Calendar URL set:', calendarUrl);
       }
 
       if (new URLSearchParams(window.location.search).get('session_id')) {

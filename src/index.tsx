@@ -1896,7 +1896,7 @@ async function getAllCourses(db: D1Database): Promise<any[]> {
              instructor, instructor_title, instructor_bio, instructor_image,
              target_audience, curriculum, faq, gallery, features, includes,
              max_capacity, cancellation_policy, status,
-             meta_description, keywords, seo_score
+             meta_description, keywords, seo_score, online_url, meeting_type
       FROM courses
       ORDER BY created_at DESC
     `).all()
@@ -1945,7 +1945,9 @@ async function getAllCourses(db: D1Database): Promise<any[]> {
         cancellationPolicy: course.cancellation_policy,
         status: course.status,
         meta_description: course.meta_description || '',
-        keywords: course.keywords || ''
+        keywords: course.keywords || '',
+        online_url: course.online_url || '',
+        meeting_type: course.meeting_type || 'online'
       }
     })
     
