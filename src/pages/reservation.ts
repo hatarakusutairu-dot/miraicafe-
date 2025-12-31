@@ -250,7 +250,16 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
       const courses = ${JSON.stringify(courses)};
       let selectedCourseId = '${selectedCourse?.id || ''}';
       let selectedScheduleId = null;
-      let currentMonth = new Date(2025, 0, 1);
+      
+      // カレンダーの初期月を最初のスケジュールの日付に合わせる
+      let currentMonth;
+      if (schedules.length > 0) {
+        const firstScheduleDate = new Date(schedules[0].date);
+        currentMonth = new Date(firstScheduleDate.getFullYear(), firstScheduleDate.getMonth(), 1);
+      } else {
+        currentMonth = new Date();
+        currentMonth.setDate(1);
+      }
 
       const courseSelect = document.getElementById('course-select');
       const calendarGrid = document.getElementById('calendar-grid');
