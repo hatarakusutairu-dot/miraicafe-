@@ -208,17 +208,59 @@ app.get('/courses', async (c) => {
 app.get('/courses/:id', async (c) => {
   const id = c.req.param('id')
   const allCourses = await getAllCoursesForFront(c.env.DB)
-  const course = allCourses.find((c: any) => c.id === id)
+  const course = allCourses.find((co: any) => co.id === id)
   if (!course) return c.notFound()
-  return c.html(renderCourseDetailPage(course, schedules, allCourses))
+  
+  // DBからスケジュールを取得
+  let courseSchedules: any[] = []
+  try {
+    const result = await c.env.DB.prepare(`
+      SELECT * FROM schedules WHERE course_id = ? ORDER BY date ASC, start_time ASC
+    `).bind(id).all()
+    courseSchedules = (result.results || []).map((s: any) => ({
+      id: s.id,
+      courseId: s.course_id,
+      date: s.date,
+      startTime: s.start_time,
+      endTime: s.end_time,
+      capacity: s.capacity,
+      enrolled: s.enrolled || 0,
+      location: s.location || 'オンライン'
+    }))
+  } catch (e) {
+    console.error('Schedule fetch error:', e)
+  }
+  
+  return c.html(renderCourseDetailPage(course, courseSchedules, allCourses))
 })
 
-// Reservation（DBと静的データをマージ）
+// Reservation（DBからデータを取得）
 app.get('/reservation', async (c) => {
   const courseId = c.req.query('course')
   const allCourses = await getAllCoursesForFront(c.env.DB)
-  const course = courseId ? allCourses.find((c: any) => c.id === courseId) : null
-  return c.html(renderReservationPage(allCourses, schedules, course))
+  const course = courseId ? allCourses.find((co: any) => co.id === courseId) : null
+  
+  // DBからスケジュールを取得
+  let allSchedules: any[] = []
+  try {
+    const result = await c.env.DB.prepare(`
+      SELECT * FROM schedules ORDER BY date ASC, start_time ASC
+    `).all()
+    allSchedules = (result.results || []).map((s: any) => ({
+      id: s.id,
+      courseId: s.course_id,
+      date: s.date,
+      startTime: s.start_time,
+      endTime: s.end_time,
+      capacity: s.capacity,
+      enrolled: s.enrolled || 0,
+      location: s.location || 'オンライン'
+    }))
+  } catch (e) {
+    console.error('Schedule fetch error:', e)
+  }
+  
+  return c.html(renderReservationPage(allCourses, allSchedules, course))
 })
 
 // Blog（DBと静的データをマージ）
@@ -773,13 +815,33 @@ JSON形式で応答してください:`
   }
 })
 
-// Get schedules
-app.get('/api/schedules', (c) => {
+// Get schedules (from DB)
+app.get('/api/schedules', async (c) => {
   const courseId = c.req.query('course')
-  const filtered = courseId 
-    ? schedules.filter(s => s.courseId === courseId)
-    : schedules
-  return c.json(filtered)
+  try {
+    let query = 'SELECT * FROM schedules ORDER BY date ASC, start_time ASC'
+    let result
+    if (courseId) {
+      result = await c.env.DB.prepare('SELECT * FROM schedules WHERE course_id = ? ORDER BY date ASC, start_time ASC').bind(courseId).all()
+    } else {
+      result = await c.env.DB.prepare(query).all()
+    }
+    // Map DB fields to expected format
+    const dbSchedules = (result.results || []).map((s: any) => ({
+      id: s.id,
+      courseId: s.course_id,
+      date: s.date,
+      startTime: s.start_time,
+      endTime: s.end_time,
+      capacity: s.capacity,
+      enrolled: s.enrolled || 0,
+      location: s.location || 'オンライン'
+    }))
+    return c.json(dbSchedules)
+  } catch (error) {
+    console.error('Schedules fetch error:', error)
+    return c.json([])
+  }
 })
 
 // Create reservation
@@ -792,9 +854,18 @@ app.post('/api/reservations', async (c) => {
     return c.json({ error: 'Missing required fields' }, 400)
   }
   
-  // 講座情報を取得
-  const course = courses.find(c => c.id === courseId)
-  const schedule = schedules.find(s => s.id === scheduleId)
+  // 講座情報をDBから取得
+  const courseResult = await c.env.DB.prepare('SELECT * FROM courses WHERE id = ?').bind(courseId).first()
+  const scheduleResult = await c.env.DB.prepare('SELECT * FROM schedules WHERE id = ?').bind(scheduleId).first()
+  
+  const course = courseResult as any
+  const schedule = scheduleResult ? {
+    id: (scheduleResult as any).id,
+    date: (scheduleResult as any).date,
+    startTime: (scheduleResult as any).start_time,
+    endTime: (scheduleResult as any).end_time,
+    location: (scheduleResult as any).location
+  } : null
   
   const reservation = {
     id: `res_${Date.now()}`,
@@ -1818,34 +1889,52 @@ async function getAllCourses(db: D1Database): Promise<any[]> {
       ORDER BY created_at DESC
     `).all()
     
-    const d1Courses = (dbCourses.results || []).map((course: any) => ({
-      id: course.id,
-      title: course.title,
-      catchphrase: course.catchphrase,
-      description: course.description,
-      price: course.price,
-      duration: course.duration,
-      level: course.level,
-      category: course.category,
-      image: course.image,
-      instructor: course.instructor,
-      instructorInfo: course.instructor_title || course.instructor_bio || course.instructor_image ? {
-        title: course.instructor_title,
-        bio: course.instructor_bio,
-        image: course.instructor_image
-      } : undefined,
-      targetAudience: course.target_audience ? JSON.parse(course.target_audience) : [],
-      curriculum: course.curriculum ? JSON.parse(course.curriculum) : [],
-      faq: course.faq ? JSON.parse(course.faq) : [],
-      gallery: course.gallery ? JSON.parse(course.gallery) : [],
-      features: course.features ? JSON.parse(course.features) : [],
-      includes: course.includes ? JSON.parse(course.includes) : [],
-      maxCapacity: course.max_capacity,
-      cancellationPolicy: course.cancellation_policy,
-      status: course.status,
-      meta_description: course.meta_description || '',
-      keywords: course.keywords || ''
-    }))
+    const d1Courses = (dbCourses.results || []).map((course: any) => {
+      // curriculumデータを変換（description -> contents配列）
+      let parsedCurriculum: any[] = []
+      if (course.curriculum) {
+        try {
+          const rawCurriculum = JSON.parse(course.curriculum)
+          parsedCurriculum = rawCurriculum.map((item: any) => ({
+            title: item.title || '',
+            duration: item.duration || '',
+            contents: item.contents || (item.description ? [item.description] : [])
+          }))
+        } catch (e) {
+          console.error('Error parsing curriculum:', e)
+        }
+      }
+      
+      return {
+        id: course.id,
+        title: course.title,
+        catchphrase: course.catchphrase,
+        description: course.description,
+        longDescription: course.description, // フロント用にdescriptionをlongDescriptionとしても使用
+        price: course.price,
+        duration: course.duration,
+        level: course.level,
+        category: course.category,
+        image: course.image,
+        instructor: course.instructor,
+        instructorInfo: course.instructor_title || course.instructor_bio || course.instructor_image ? {
+          title: course.instructor_title,
+          bio: course.instructor_bio,
+          image: course.instructor_image
+        } : undefined,
+        targetAudience: course.target_audience ? JSON.parse(course.target_audience) : [],
+        curriculum: parsedCurriculum,
+        faq: course.faq ? JSON.parse(course.faq) : [],
+        gallery: course.gallery ? JSON.parse(course.gallery) : [],
+        features: course.features ? JSON.parse(course.features) : [],
+        includes: course.includes && course.includes !== 'null' ? JSON.parse(course.includes) : [],
+        maxCapacity: course.max_capacity,
+        cancellationPolicy: course.cancellation_policy,
+        status: course.status,
+        meta_description: course.meta_description || '',
+        keywords: course.keywords || ''
+      }
+    })
     
     // 静的データとD1データをマージ（D1のIDが優先）
     const d1Ids = new Set(d1Courses.map((c: any) => c.id))
@@ -1871,16 +1960,50 @@ async function getCourseById(db: D1Database, id: string): Promise<any | null> {
              instructor, instructor_title, instructor_bio, instructor_image,
              target_audience, curriculum, faq, gallery, features, includes,
              max_capacity, cancellation_policy, status,
-             meta_description, keywords, seo_score
+             meta_description, keywords, seo_score, online_url, meeting_type
       FROM courses WHERE id = ?
     `).bind(id).first()
     
     if (course) {
+      // スケジュールも取得
+      let courseSchedules: any[] = []
+      try {
+        const scheduleResult = await db.prepare(`
+          SELECT * FROM schedules WHERE course_id = ? ORDER BY date ASC, start_time ASC
+        `).bind(id).all()
+        courseSchedules = (scheduleResult.results || []).map((s: any) => ({
+          id: s.id,
+          date: s.date,
+          startTime: s.start_time,
+          endTime: s.end_time,
+          capacity: s.capacity,
+          location: s.location || 'オンライン'
+        }))
+      } catch (e) {
+        console.error('Schedule fetch error:', e)
+      }
+      
+      // curriculumデータを変換（description -> contents配列）
+      let parsedCurriculum: any[] = []
+      if ((course as any).curriculum) {
+        try {
+          const rawCurriculum = JSON.parse((course as any).curriculum)
+          parsedCurriculum = rawCurriculum.map((item: any) => ({
+            title: item.title || '',
+            duration: item.duration || '',
+            contents: item.contents || (item.description ? [item.description] : [])
+          }))
+        } catch (e) {
+          console.error('Error parsing curriculum:', e)
+        }
+      }
+      
       return {
         id: (course as any).id,
         title: (course as any).title,
         catchphrase: (course as any).catchphrase,
         description: (course as any).description,
+        longDescription: (course as any).description, // フロント用にdescriptionをlongDescriptionとしても使用
         price: (course as any).price,
         duration: (course as any).duration,
         level: (course as any).level,
@@ -1893,16 +2016,19 @@ async function getCourseById(db: D1Database, id: string): Promise<any | null> {
           image: (course as any).instructor_image
         } : undefined,
         targetAudience: (course as any).target_audience ? JSON.parse((course as any).target_audience) : [],
-        curriculum: (course as any).curriculum ? JSON.parse((course as any).curriculum) : [],
+        curriculum: parsedCurriculum,
         faq: (course as any).faq ? JSON.parse((course as any).faq) : [],
         gallery: (course as any).gallery ? JSON.parse((course as any).gallery) : [],
         features: (course as any).features ? JSON.parse((course as any).features) : [],
-        includes: (course as any).includes ? JSON.parse((course as any).includes) : [],
+        includes: (course as any).includes && (course as any).includes !== 'null' ? JSON.parse((course as any).includes) : [],
         maxCapacity: (course as any).max_capacity,
         cancellationPolicy: (course as any).cancellation_policy,
         status: (course as any).status,
         meta_description: (course as any).meta_description || '',
-        keywords: (course as any).keywords || ''
+        keywords: (course as any).keywords || '',
+        online_url: (course as any).online_url || '',
+        meeting_type: (course as any).meeting_type || 'online',
+        schedules: courseSchedules
       }
     }
     

@@ -433,13 +433,52 @@ export const renderCourseForm = (course?: Course, error?: string) => {
         <p class="text-sm text-gray-500 mb-4">講座の開催日時を設定できます。複数の日程を追加可能です。</p>
         
         <div id="schedule-container" class="space-y-3">
-          <!-- 日程項目はJavaScriptで動的に追加 -->
+          ${(course?.schedules && course.schedules.length > 0) ? course.schedules.map((sch: any, index: number) => `
+            <div class="schedule-item p-4 border border-gray-200 rounded-lg bg-gray-50">
+              <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <div>
+                  <label class="text-xs text-gray-500 block mb-1">日付</label>
+                  <input type="date" name="schedule_date[]" value="${sch.date || ''}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+                <div>
+                  <label class="text-xs text-gray-500 block mb-1">開始時間</label>
+                  <input type="time" name="schedule_start[]" value="${sch.startTime || ''}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+                <div>
+                  <label class="text-xs text-gray-500 block mb-1">終了時間</label>
+                  <input type="time" name="schedule_end[]" value="${sch.endTime || ''}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+                <div>
+                  <label class="text-xs text-gray-500 block mb-1">定員</label>
+                  <input type="number" name="schedule_capacity[]" min="1" max="100" value="${sch.capacity || 10}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+                <div>
+                  <label class="text-xs text-gray-500 block mb-1">場所</label>
+                  <input type="text" name="schedule_location[]" value="${escapeAttr(sch.location || 'オンライン')}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+              </div>
+              <div class="flex justify-between items-center mt-3">
+                <a href="#" onclick="addToCalendar('${sch.date}', '${sch.startTime}', '${sch.endTime}', '${escapeAttr(course?.title || '')}'); return false;" 
+                   class="text-green-600 hover:text-green-800 text-sm flex items-center">
+                  <i class="fab fa-google mr-1"></i>Googleカレンダーに追加
+                </a>
+                <button type="button" onclick="removeSchedule(this)" class="text-red-500 hover:text-red-700 text-sm">
+                  <i class="fas fa-trash mr-1"></i>削除
+                </button>
+              </div>
+            </div>
+          `).join('') : '<!-- 日程項目はJavaScriptで動的に追加 -->'}
         </div>
         <button type="button" onclick="addSchedule()" class="mt-4 text-blue-600 hover:text-blue-800 text-sm flex items-center">
           <i class="fas fa-plus mr-1"></i>日程を追加
         </button>
         <p class="text-xs text-gray-400 mt-2">
-          <i class="fas fa-info-circle mr-1"></i>日程は講座保存後に管理できます。編集画面から日程を追加・削除できます。
+          <i class="fas fa-info-circle mr-1"></i>日程は講座保存後に管理できます。
         </p>
       </div>
 
@@ -614,6 +653,28 @@ export const renderCourseForm = (course?: Course, error?: string) => {
 
       function removeSchedule(btn) {
         btn.closest('.schedule-item').remove();
+      }
+      
+      // Googleカレンダーに追加
+      function addToCalendar(date, startTime, endTime, title) {
+        if (!date || !startTime || !endTime) {
+          alert('日程情報が不足しています');
+          return;
+        }
+        
+        const startDateTime = date.replace(/-/g, '') + 'T' + startTime.replace(':', '') + '00';
+        const endDateTime = date.replace(/-/g, '') + 'T' + endTime.replace(':', '') + '00';
+        
+        const params = new URLSearchParams({
+          action: 'TEMPLATE',
+          text: '【mirAIcafe】' + title,
+          dates: startDateTime + '/' + endDateTime,
+          details: '講座: ' + title + '\\n\\n主催: mirAIcafe\\nhttps://miraicafe.work',
+          location: 'オンライン',
+          ctz: 'Asia/Tokyo'
+        });
+        
+        window.open('https://calendar.google.com/calendar/render?' + params.toString(), '_blank');
       }
       
       // 画像アップロードコンポーネントを初期化
