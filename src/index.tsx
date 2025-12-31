@@ -867,14 +867,46 @@ app.post('/api/reservations', async (c) => {
     location: (scheduleResult as any).location
   } : null
   
+  if (!course) {
+    return c.json({ error: '講座が見つかりません' }, 404)
+  }
+  
+  // bookingsテーブルに保存
+  let bookingId: number | null = null
+  try {
+    const result = await c.env.DB.prepare(`
+      INSERT INTO bookings (
+        course_id, course_name, customer_name, customer_email, customer_phone,
+        preferred_date, preferred_time, status, payment_status, amount
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      courseId,
+      course.title,
+      name,
+      email,
+      phone || null,
+      schedule?.date || null,
+      schedule ? `${schedule.startTime} - ${schedule.endTime}` : null,
+      course.price === 0 ? 'confirmed' : 'pending',
+      course.price === 0 ? 'paid' : 'unpaid',
+      course.price || 0
+    ).run()
+    
+    bookingId = result.meta?.last_row_id as number
+    console.log('Booking saved to DB with ID:', bookingId)
+  } catch (dbError) {
+    console.error('Failed to save booking to DB:', dbError)
+    // DBエラーでも続行（メール通知は送る）
+  }
+  
   const reservation = {
-    id: `res_${Date.now()}`,
+    id: bookingId || `res_${Date.now()}`,
     courseId,
     scheduleId,
     name,
     email,
     phone,
-    status: 'pending_payment',
+    status: course.price === 0 ? 'confirmed' : 'pending_payment',
     createdAt: new Date().toISOString()
   }
   
