@@ -1890,7 +1890,7 @@ async function getAllCourses(db: D1Database): Promise<any[]> {
     `).all()
     
     const d1Courses = (dbCourses.results || []).map((course: any) => {
-      // curriculumデータを変換（description -> contents配列）
+      // curriculumデータを変換（description を保持しつつ contents配列も追加）
       let parsedCurriculum: any[] = []
       if (course.curriculum) {
         try {
@@ -1898,7 +1898,8 @@ async function getAllCourses(db: D1Database): Promise<any[]> {
           parsedCurriculum = rawCurriculum.map((item: any) => ({
             title: item.title || '',
             duration: item.duration || '',
-            contents: item.contents || (item.description ? [item.description] : [])
+            description: item.description || '', // 管理画面フォーム用に保持
+            contents: item.contents || (item.description ? [item.description] : []) // フロント表示用
           }))
         } catch (e) {
           console.error('Error parsing curriculum:', e)
@@ -1983,7 +1984,7 @@ async function getCourseById(db: D1Database, id: string): Promise<any | null> {
         console.error('Schedule fetch error:', e)
       }
       
-      // curriculumデータを変換（description -> contents配列）
+      // curriculumデータを変換（description を保持しつつ contents配列も追加）
       let parsedCurriculum: any[] = []
       if ((course as any).curriculum) {
         try {
@@ -1991,7 +1992,8 @@ async function getCourseById(db: D1Database, id: string): Promise<any | null> {
           parsedCurriculum = rawCurriculum.map((item: any) => ({
             title: item.title || '',
             duration: item.duration || '',
-            contents: item.contents || (item.description ? [item.description] : [])
+            description: item.description || '', // 管理画面フォーム用に保持
+            contents: item.contents || (item.description ? [item.description] : []) // フロント表示用
           }))
         } catch (e) {
           console.error('Error parsing curriculum:', e)

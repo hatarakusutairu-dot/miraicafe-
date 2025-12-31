@@ -463,7 +463,7 @@ export const renderCourseForm = (course?: Course, error?: string) => {
                 </div>
               </div>
               <div class="flex justify-between items-center mt-3">
-                <a href="#" onclick="addToCalendar('${sch.date}', '${sch.startTime}', '${sch.endTime}', '${escapeAttr(course?.title || '')}'); return false;" 
+                <a href="#" onclick="addToCalendar('${sch.date}', '${sch.startTime}', '${sch.endTime}', '${escapeAttr(course?.title || '')}', '${escapeAttr(course?.online_url || '')}', '${escapeAttr(sch.location || 'オンライン')}'); return false;" 
                    class="text-green-600 hover:text-green-800 text-sm flex items-center">
                   <i class="fab fa-google mr-1"></i>Googleカレンダーに追加
                 </a>
@@ -656,7 +656,7 @@ export const renderCourseForm = (course?: Course, error?: string) => {
       }
       
       // Googleカレンダーに追加
-      function addToCalendar(date, startTime, endTime, title) {
+      function addToCalendar(date, startTime, endTime, title, onlineUrl, location) {
         if (!date || !startTime || !endTime) {
           alert('日程情報が不足しています');
           return;
@@ -665,12 +665,23 @@ export const renderCourseForm = (course?: Course, error?: string) => {
         const startDateTime = date.replace(/-/g, '') + 'T' + startTime.replace(':', '') + '00';
         const endDateTime = date.replace(/-/g, '') + 'T' + endTime.replace(':', '') + '00';
         
+        // 詳細（メモ）を構築
+        let details = '📚 講座: ' + title + '\\n\\n';
+        if (onlineUrl) {
+          details += '🔗 参加URL: ' + onlineUrl + '\\n\\n';
+        }
+        details += '📍 場所: ' + (location || 'オンライン') + '\\n';
+        details += '🕐 時間: ' + startTime + ' - ' + endTime + '\\n\\n';
+        details += '━━━━━━━━━━━━━━━━━━━━\\n';
+        details += '主催: mirAIcafe\\n';
+        details += 'https://miraicafe.work';
+        
         const params = new URLSearchParams({
           action: 'TEMPLATE',
           text: '【mirAIcafe】' + title,
           dates: startDateTime + '/' + endDateTime,
-          details: '講座: ' + title + '\\n\\n主催: mirAIcafe\\nhttps://miraicafe.work',
-          location: 'オンライン',
+          details: details,
+          location: onlineUrl || location || 'オンライン',
           ctz: 'Asia/Tokyo'
         });
         
