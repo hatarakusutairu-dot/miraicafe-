@@ -958,15 +958,14 @@ app.post('/api/create-checkout-session', async (c) => {
       bookingId
     })
 
-    // Save payment record to database
+    // Save payment record to database (booking_idは使用しない - FK制約回避)
     try {
       await c.env.DB.prepare(`
         INSERT INTO payments (
-          booking_id, stripe_checkout_session_id, amount, currency, status,
-          customer_email, customer_name, course_id, course_title, schedule_date
+          stripe_checkout_session_id, amount, currency, status,
+          customer_email, customer_name, course_id, course_title, schedule_date, metadata
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
-        bookingId || null,
         session.id,
         price,
         'jpy',
@@ -975,7 +974,8 @@ app.post('/api/create-checkout-session', async (c) => {
         customerName || null,
         courseId,
         courseTitle,
-        scheduleDate || null
+        scheduleDate || null,
+        JSON.stringify({ reservationId: bookingId }) // booking_idはmetadataに保存
       ).run()
     } catch (dbError) {
       console.error('Failed to save payment record:', dbError)

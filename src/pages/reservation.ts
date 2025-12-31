@@ -184,10 +184,10 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
               </div>
 
               <button id="checkout-btn" disabled class="btn-ai w-full text-white py-4 rounded-full font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
-                <i class="fas fa-credit-card mr-2"></i>決済に進む
+                <i id="checkout-btn-icon" class="fas fa-credit-card mr-2"></i><span id="checkout-btn-text">決済に進む</span>
               </button>
 
-              <p class="text-xs text-future-textLight text-center mt-4 flex items-center justify-center">
+              <p id="payment-notice" class="text-xs text-future-textLight text-center mt-4 flex items-center justify-center">
                 <i class="fas fa-lock mr-1 text-ai-blue"></i>Stripeによる安全な決済
               </p>
             </div>
@@ -371,6 +371,7 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
         const name = document.getElementById('customer-name').value;
         const email = document.getElementById('customer-email').value;
         const phone = document.getElementById('customer-phone').value;
+        const course = courses.find(c => c.id === selectedCourseId);
         
         // 全ての規約への同意チェック
         if (!areAllPoliciesAgreed()) {
@@ -381,6 +382,13 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
         
         if (!name || !email) { alert('お名前とメールアドレスは必須です'); return; }
         document.getElementById('payment-modal').classList.remove('hidden');
+        
+        // 無料講座の場合はモーダルテキストを変更
+        if (course && course.price === 0) {
+          document.querySelector('#payment-modal h3').textContent = '予約処理中';
+          document.querySelector('#payment-modal p').textContent = '予約を確定しています...';
+        }
+        
         try {
           // 予約を作成
           const resResponse = await fetch('/api/reservations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ courseId: selectedCourseId, scheduleId: selectedScheduleId, name, email, phone }) });
@@ -388,6 +396,14 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
           
           if (!reservation.success) {
             throw new Error(reservation.error || '予約の作成に失敗しました');
+          }
+          
+          // 無料講座の場合はStripe決済をスキップ
+          if (course && course.price === 0) {
+            document.getElementById('payment-modal').classList.add('hidden'); 
+            document.getElementById('success-modal').classList.remove('hidden');
+            updateGoogleCalendarLink();
+            return;
           }
           
           // Stripe Checkout Sessionを作成
@@ -477,7 +493,22 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
         summaryDate.textContent = schedule ? schedule.date : '未選択';
         summaryTime.textContent = schedule ? schedule.startTime + ' 〜 ' + schedule.endTime : '--:-- 〜 --:--';
         summaryPrice.textContent = course ? '¥' + course.price.toLocaleString() : '¥0';
-        // 講座・日程・全ての規約への同意が揃った場合のみ決済ボタンを有効化
+        
+        // 無料講座の場合はボタンテキストを変更
+        const btnIcon = document.getElementById('checkout-btn-icon');
+        const btnText = document.getElementById('checkout-btn-text');
+        const paymentNotice = document.getElementById('payment-notice');
+        if (course && course.price === 0) {
+          btnIcon.className = 'fas fa-calendar-check mr-2';
+          btnText.textContent = '予約する（無料）';
+          paymentNotice.innerHTML = '<i class="fas fa-gift mr-1 text-green-500"></i>この講座は無料です';
+        } else {
+          btnIcon.className = 'fas fa-credit-card mr-2';
+          btnText.textContent = '決済に進む';
+          paymentNotice.innerHTML = '<i class="fas fa-lock mr-1 text-ai-blue"></i>Stripeによる安全な決済';
+        }
+        
+        // 講座・日程・全ての規約への同意が揃った場合のみボタンを有効化
         checkoutBtn.disabled = !course || !schedule || !areAllPoliciesAgreed();
       }
 
