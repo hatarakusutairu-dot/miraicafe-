@@ -49,6 +49,7 @@ import {
 } from './services/seo'
 import { collectAINews } from './services/ai-news-collector'
 import { createStripeClient, createCheckoutSession, formatAmount, getPaymentStatusLabel } from './stripe'
+import { generateAllCalendarLinks, generateEventDescription, type CalendarEvent } from './services/calendar'
 
 // Data
 import { courses, blogPosts, schedules, portfolios } from './data'
@@ -1019,6 +1020,46 @@ app.get('/api/payments/:sessionId', async (c) => {
   }
 })
 
+// Generate calendar links for booking
+app.post('/api/calendar/generate', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { courseTitle, scheduleDate, startTime, endTime, onlineUrl, instructorName } = body
+
+    if (!courseTitle || !scheduleDate || !startTime || !endTime) {
+      return c.json({ error: '必須項目が不足しています' }, 400)
+    }
+
+    const description = generateEventDescription({
+      courseName: courseTitle,
+      instructorName: instructorName || undefined,
+      onlineUrl: onlineUrl || undefined,
+      notes: '講座開始の10分前にはアクセスをお願いします。'
+    })
+
+    const event: CalendarEvent = {
+      title: `【mirAIcafe】${courseTitle}`,
+      description,
+      startDate: scheduleDate,
+      startTime,
+      endTime,
+      location: onlineUrl || 'オンライン（URLは別途ご連絡）',
+      timezone: 'Asia/Tokyo'
+    }
+
+    const links = generateAllCalendarLinks(event)
+
+    return c.json({
+      success: true,
+      links,
+      event
+    })
+  } catch (error) {
+    console.error('Calendar link generation error:', error)
+    return c.json({ error: 'カレンダーリンクの生成に失敗しました' }, 500)
+  }
+})
+
 // Contact form submission - Save to D1 database
 app.post('/api/contacts', async (c) => {
   try {
@@ -1942,8 +1983,8 @@ app.post('/admin/courses/create', async (c) => {
       INSERT INTO courses (id, title, catchphrase, description, price, duration, level, category, image,
                           instructor, instructor_title, instructor_bio, instructor_image,
                           target_audience, curriculum, faq, gallery, features, max_capacity, cancellation_policy,
-                          meta_description, keywords, seo_score)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          meta_description, keywords, seo_score, online_url, meeting_type)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       body.title,
@@ -1967,7 +2008,9 @@ app.post('/admin/courses/create', async (c) => {
       body.cancellationPolicy || '',
       body.meta_description || '',
       body.keywords || '',
-      seoScore
+      seoScore,
+      body.online_url || '',
+      body.meeting_type || 'online'
     ).run()
     
     // スケジュールの保存（フォームのname属性は schedule_date[] なので両方のキーをチェック）
@@ -2054,7 +2097,8 @@ app.post('/admin/courses/update/:id', async (c) => {
         SET title = ?, catchphrase = ?, description = ?, price = ?, duration = ?, level = ?, category = ?, image = ?,
             instructor = ?, instructor_title = ?, instructor_bio = ?, instructor_image = ?,
             target_audience = ?, curriculum = ?, faq = ?, gallery = ?, features = ?,
-            max_capacity = ?, cancellation_policy = ?, meta_description = ?, keywords = ?, seo_score = ?, updated_at = CURRENT_TIMESTAMP
+            max_capacity = ?, cancellation_policy = ?, meta_description = ?, keywords = ?, seo_score = ?,
+            online_url = ?, meeting_type = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).bind(
         body.title,
@@ -2079,6 +2123,8 @@ app.post('/admin/courses/update/:id', async (c) => {
         body.meta_description || '',
         body.keywords || '',
         seoScore,
+        body.online_url || '',
+        body.meeting_type || 'online',
         id
       ).run()
     } else {
@@ -2087,8 +2133,8 @@ app.post('/admin/courses/update/:id', async (c) => {
         INSERT INTO courses (id, title, catchphrase, description, price, duration, level, category, image,
                             instructor, instructor_title, instructor_bio, instructor_image,
                             target_audience, curriculum, faq, gallery, features, max_capacity, cancellation_policy,
-                            meta_description, keywords, seo_score)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            meta_description, keywords, seo_score, online_url, meeting_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         id,
         body.title,
@@ -2112,7 +2158,9 @@ app.post('/admin/courses/update/:id', async (c) => {
         body.cancellationPolicy || '',
         body.meta_description || '',
         body.keywords || '',
-        seoScore
+        seoScore,
+        body.online_url || '',
+        body.meeting_type || 'online'
       ).run()
     }
     

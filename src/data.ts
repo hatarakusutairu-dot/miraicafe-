@@ -50,6 +50,12 @@ export interface Course {
   maxCapacity?: number  // 定員
   includes?: string[]  // 含まれるもの
   cancellationPolicy?: string  // キャンセルポリシー
+  // オンライン設定
+  online_url?: string  // Zoom/Google Meet URL
+  meeting_type?: 'online' | 'offline' | 'hybrid'  // 開催形式
+  // SEO
+  meta_description?: string
+  keywords?: string
 }
 
 // 講座カテゴリ

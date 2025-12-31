@@ -290,6 +290,50 @@ export const renderCourseForm = (course?: Course, error?: string) => {
         </div>
       </div>
 
+      <!-- 開催形式・オンラインURL -->
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+          <i class="fas fa-video text-blue-500 mr-2"></i>開催形式・オンライン設定
+        </h2>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">開催形式</label>
+            <div class="flex gap-4">
+              <label class="flex items-center cursor-pointer">
+                <input type="radio" name="meeting_type" value="online" ${(!course?.meeting_type || course?.meeting_type === 'online') ? 'checked' : ''}
+                  class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                <span class="ml-2 text-sm text-gray-700"><i class="fas fa-laptop mr-1"></i>オンライン</span>
+              </label>
+              <label class="flex items-center cursor-pointer">
+                <input type="radio" name="meeting_type" value="offline" ${course?.meeting_type === 'offline' ? 'checked' : ''}
+                  class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                <span class="ml-2 text-sm text-gray-700"><i class="fas fa-building mr-1"></i>対面</span>
+              </label>
+              <label class="flex items-center cursor-pointer">
+                <input type="radio" name="meeting_type" value="hybrid" ${course?.meeting_type === 'hybrid' ? 'checked' : ''}
+                  class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                <span class="ml-2 text-sm text-gray-700"><i class="fas fa-arrows-alt-h mr-1"></i>ハイブリッド</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="online-url-section">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              オンラインURL（Zoom/Google Meet等）
+              <span class="text-xs text-gray-500 ml-1">予約完了後に受講者に共有されます</span>
+            </label>
+            <input type="url" name="online_url" value="${escapeAttr(course?.online_url || '')}"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="例: https://zoom.us/j/123456789 または https://meet.google.com/xxx-xxxx-xxx">
+            <p class="mt-1 text-xs text-gray-500">
+              <i class="fas fa-info-circle mr-1"></i>
+              Zoomの定期ミーティングURLやGoogle Meetのリンクを設定できます
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- こんな方におすすめ -->
       <div class="bg-white rounded-xl shadow-sm p-6">
         <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
