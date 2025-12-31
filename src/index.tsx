@@ -33,6 +33,7 @@ import { renderAIPortfolioGeneratorPage } from './admin/ai-portfolio-generator'
 import { renderCommentsList, type Comment } from './admin/comments'
 import { renderSurveyDashboard, renderSurveyQuestions, renderSurveyResponses, renderSurveySettings } from './admin/surveys'
 import { renderSurveyPage } from './pages/survey'
+import { renderPaymentsList, type Payment } from './admin/payments'
 
 // Services
 import { 
@@ -47,6 +48,7 @@ import {
   type PageContent 
 } from './services/seo'
 import { collectAINews } from './services/ai-news-collector'
+import { createStripeClient, createCheckoutSession, formatAmount, getPaymentStatusLabel } from './stripe'
 
 // Data
 import { courses, blogPosts, schedules, portfolios } from './data'
@@ -58,6 +60,8 @@ type Bindings = {
   RESEND_API_KEY?: string
   GEMINI_API_KEY?: string
   UNSPLASH_ACCESS_KEY?: string
+  STRIPE_SECRET_KEY?: string
+  STRIPE_WEBHOOK_SECRET?: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -831,25 +835,188 @@ app.post('/api/reservations', async (c) => {
 
 // Stripe Checkout Session
 app.post('/api/create-checkout-session', async (c) => {
-  const body = await c.req.json()
-  const { courseId, reservationId, successUrl, cancelUrl } = body
-  
-  const course = courses.find(c => c.id === courseId)
-  if (!course) {
-    return c.json({ error: 'Course not found' }, 404)
+  try {
+    const body = await c.req.json()
+    const { courseId, courseTitle, price, customerEmail, customerName, scheduleDate, scheduleTime, successUrl, cancelUrl, bookingId } = body
+
+    // Validate required fields
+    if (!courseId || !courseTitle || !price || !customerEmail || !successUrl || !cancelUrl) {
+      return c.json({ error: '必須項目が不足しています' }, 400)
+    }
+
+    // Check if Stripe is configured
+    if (!c.env.STRIPE_SECRET_KEY) {
+      // Demo mode - return mock session
+      console.log('Stripe not configured, using demo mode')
+      const demoSession = {
+        id: `cs_demo_${Date.now()}`,
+        url: `${successUrl}?session_id=demo_session_${Date.now()}&booking_id=${bookingId || ''}`,
+        amount: price,
+        currency: 'jpy',
+        course: courseTitle,
+        demo: true
+      }
+      return c.json(demoSession)
+    }
+
+    // Create real Stripe session
+    const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY)
+    const session = await createCheckoutSession(stripe, {
+      courseId,
+      courseTitle,
+      price,
+      customerEmail,
+      customerName: customerName || '',
+      scheduleDate,
+      scheduleTime,
+      successUrl: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl,
+      bookingId
+    })
+
+    // Save payment record to database
+    try {
+      await c.env.DB.prepare(`
+        INSERT INTO payments (
+          booking_id, stripe_checkout_session_id, amount, currency, status,
+          customer_email, customer_name, course_id, course_title, schedule_date
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        bookingId || null,
+        session.id,
+        price,
+        'jpy',
+        'pending',
+        customerEmail,
+        customerName || null,
+        courseId,
+        courseTitle,
+        scheduleDate || null
+      ).run()
+    } catch (dbError) {
+      console.error('Failed to save payment record:', dbError)
+      // Continue anyway - payment can still proceed
+    }
+
+    return c.json({
+      id: session.id,
+      url: session.url,
+      amount: price,
+      currency: 'jpy',
+      course: courseTitle
+    })
+  } catch (error) {
+    console.error('Checkout session creation error:', error)
+    return c.json({ error: '決済セッションの作成に失敗しました' }, 500)
   }
-  
-  // In production, this would create a real Stripe checkout session
-  // For demo, we return a mock session
-  const checkoutSession = {
-    id: `cs_demo_${Date.now()}`,
-    url: `${successUrl}?session_id=demo_session&reservation_id=${reservationId}`,
-    amount: course.price,
-    currency: 'jpy',
-    course: course.title
+})
+
+// Stripe Webhook
+app.post('/api/stripe/webhook', async (c) => {
+  try {
+    if (!c.env.STRIPE_SECRET_KEY || !c.env.STRIPE_WEBHOOK_SECRET) {
+      return c.json({ error: 'Stripe not configured' }, 400)
+    }
+
+    const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY)
+    const payload = await c.req.text()
+    const signature = c.req.header('stripe-signature')
+
+    if (!signature) {
+      return c.json({ error: 'Missing signature' }, 400)
+    }
+
+    let event
+    try {
+      event = stripe.webhooks.constructEvent(payload, signature, c.env.STRIPE_WEBHOOK_SECRET)
+    } catch (err) {
+      console.error('Webhook signature verification failed:', err)
+      return c.json({ error: 'Invalid signature' }, 400)
+    }
+
+    // Handle the event
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as any
+        
+        // Update payment record
+        await c.env.DB.prepare(`
+          UPDATE payments SET
+            stripe_payment_intent_id = ?,
+            status = 'succeeded',
+            payment_method = 'card',
+            updated_at = CURRENT_TIMESTAMP
+          WHERE stripe_checkout_session_id = ?
+        `).bind(
+          session.payment_intent,
+          session.id
+        ).run()
+
+        // Update booking status if linked
+        if (session.metadata?.booking_id) {
+          await c.env.DB.prepare(`
+            UPDATE bookings SET status = 'confirmed', updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `).bind(session.metadata.booking_id).run()
+        }
+
+        console.log('Payment succeeded for session:', session.id)
+        break
+      }
+
+      case 'checkout.session.expired': {
+        const session = event.data.object as any
+        await c.env.DB.prepare(`
+          UPDATE payments SET status = 'canceled', updated_at = CURRENT_TIMESTAMP
+          WHERE stripe_checkout_session_id = ?
+        `).bind(session.id).run()
+        break
+      }
+
+      case 'payment_intent.payment_failed': {
+        const paymentIntent = event.data.object as any
+        await c.env.DB.prepare(`
+          UPDATE payments SET status = 'failed', updated_at = CURRENT_TIMESTAMP
+          WHERE stripe_payment_intent_id = ?
+        `).bind(paymentIntent.id).run()
+        break
+      }
+
+      case 'charge.refunded': {
+        const charge = event.data.object as any
+        await c.env.DB.prepare(`
+          UPDATE payments SET status = 'refunded', updated_at = CURRENT_TIMESTAMP
+          WHERE stripe_payment_intent_id = ?
+        `).bind(charge.payment_intent).run()
+        break
+      }
+    }
+
+    return c.json({ received: true })
+  } catch (error) {
+    console.error('Webhook error:', error)
+    return c.json({ error: 'Webhook processing failed' }, 500)
   }
-  
-  return c.json(checkoutSession)
+})
+
+// Get payment status
+app.get('/api/payments/:sessionId', async (c) => {
+  try {
+    const sessionId = c.req.param('sessionId')
+    
+    const result = await c.env.DB.prepare(`
+      SELECT * FROM payments WHERE stripe_checkout_session_id = ?
+    `).bind(sessionId).first()
+
+    if (!result) {
+      return c.json({ error: 'Payment not found' }, 404)
+    }
+
+    return c.json(result)
+  } catch (error) {
+    console.error('Get payment error:', error)
+    return c.json({ error: 'Failed to get payment' }, 500)
+  }
 })
 
 // Contact form submission - Save to D1 database
@@ -2365,6 +2532,78 @@ app.get('/admin/bookings/export', async (c) => {
   } catch (error) {
     console.error('Export error:', error)
     return c.redirect('/admin/bookings')
+  }
+})
+
+// ===== 決済管理 =====
+app.get('/admin/payments', async (c) => {
+  try {
+    // 決済一覧を取得
+    const payments = await c.env.DB.prepare(`
+      SELECT * FROM payments ORDER BY created_at DESC
+    `).all()
+    
+    // 統計を計算
+    const paymentsData = payments.results as Payment[]
+    const stats = {
+      total: paymentsData.length,
+      succeeded: paymentsData.filter(p => p.status === 'succeeded').length,
+      pending: paymentsData.filter(p => p.status === 'pending').length,
+      failed: paymentsData.filter(p => p.status === 'failed' || p.status === 'canceled').length,
+      totalAmount: paymentsData
+        .filter(p => p.status === 'succeeded')
+        .reduce((sum, p) => sum + (p.amount || 0), 0)
+    }
+    
+    return c.html(renderPaymentsList(paymentsData, stats))
+  } catch (error) {
+    console.error('Payments error:', error)
+    return c.html(renderPaymentsList([], { total: 0, succeeded: 0, pending: 0, failed: 0, totalAmount: 0 }))
+  }
+})
+
+// 決済エクスポート（CSV）
+app.get('/admin/payments/export', async (c) => {
+  try {
+    const payments = await c.env.DB.prepare(`
+      SELECT * FROM payments ORDER BY created_at DESC
+    `).all()
+    
+    // CSVヘッダー
+    const headers = ['ID', '日時', '顧客名', 'メール', '講座', '金額', '通貨', 'ステータス', '決済方法', 'Stripe ID']
+    
+    // CSVデータ
+    const rows = (payments.results as Payment[]).map(p => [
+      p.id,
+      p.created_at,
+      p.customer_name || '',
+      p.customer_email || '',
+      p.course_title || '',
+      p.amount,
+      p.currency,
+      p.status,
+      p.payment_method || '',
+      p.stripe_payment_intent_id || ''
+    ])
+    
+    // CSV文字列生成
+    const csv = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n')
+    
+    // BOMを付けてUTF-8で出力
+    const bom = '\uFEFF'
+    
+    return new Response(bom + csv, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="payments_${new Date().toISOString().split('T')[0]}.csv"`
+      }
+    })
+  } catch (error) {
+    console.error('Payment export error:', error)
+    return c.redirect('/admin/payments')
   }
 })
 

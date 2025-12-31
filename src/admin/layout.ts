@@ -11,6 +11,7 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
     { id: 'courses', icon: 'fas fa-book-open', label: '講座管理', href: '/admin/courses' },
     { id: 'portfolios', icon: 'fas fa-briefcase', label: 'ポートフォリオ', href: '/admin/portfolios' },
     { id: 'bookings', icon: 'fas fa-calendar-check', label: '予約管理', href: '/admin/bookings' },
+    { id: 'payments', icon: 'fas fa-credit-card', label: '決済履歴', href: '/admin/payments' },
     { id: 'reviews', icon: 'fas fa-star', label: '口コミ管理', href: '/admin/reviews' },
     { id: 'surveys', icon: 'fas fa-clipboard-list', label: 'アンケート', href: '/admin/surveys' },
     { id: 'contacts', icon: 'fas fa-envelope', label: 'お問い合わせ', href: '/admin/contacts' },
