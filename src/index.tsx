@@ -1519,6 +1519,21 @@ app.post('/admin/logout', (c) => {
 // ダッシュボード
 app.get('/admin', async (c) => {
   try {
+    // 講座数をDBから取得
+    const coursesCountResult = await c.env.DB.prepare(`
+      SELECT COUNT(*) as total FROM courses
+    `).first()
+    
+    // ブログ記事数をDBから取得
+    const blogCountResult = await c.env.DB.prepare(`
+      SELECT COUNT(*) as total FROM blog_posts
+    `).first()
+    
+    // ポートフォリオ数をDBから取得
+    const portfolioCountResult = await c.env.DB.prepare(`
+      SELECT COUNT(*) as total FROM portfolios
+    `).first()
+    
     // 統計データを取得
     const reviewsResult = await c.env.DB.prepare(`
       SELECT 
@@ -1592,8 +1607,9 @@ app.get('/admin', async (c) => {
     }
     
     const stats = {
-      courses: courses.length,
-      blogs: blogPosts.length,
+      courses: (coursesCountResult as any)?.total || 0,
+      blogs: (blogCountResult as any)?.total || 0,
+      portfolios: (portfolioCountResult as any)?.total || 0,
       reviews: {
         total: (reviewsResult as any)?.total || 0,
         pending: (reviewsResult as any)?.pending || 0,
@@ -1621,8 +1637,9 @@ app.get('/admin', async (c) => {
     console.error('Dashboard error:', error)
     // データベースエラー時はデフォルト値で表示
     const stats = {
-      courses: courses.length,
-      blogs: blogPosts.length,
+      courses: 0,
+      blogs: 0,
+      portfolios: 0,
       reviews: { total: 0, pending: 0, avgRating: 0 },
       contacts: { total: 0, new: 0 },
       bookings: { total: 0, pending: 0, confirmed: 0 }

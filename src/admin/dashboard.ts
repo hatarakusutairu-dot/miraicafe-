@@ -3,6 +3,7 @@ import { renderAdminLayout } from './layout'
 interface DashboardStats {
   courses: number
   blogs: number
+  portfolios?: number
   reviews: { total: number; pending: number; avgRating: number }
   contacts: { total: number; new: number }
   bookings: { total: number; pending: number; confirmed: number }
@@ -100,6 +101,21 @@ export const renderDashboard = (stats: DashboardStats, recent: RecentActivity, s
           </div>
         </div>
         <a href="/admin/contacts" class="text-sm text-purple-500 hover:text-purple-700 mt-4 inline-block">
+          詳細を見る <i class="fas fa-arrow-right ml-1"></i>
+        </a>
+      </div>
+
+      <div class="card-stat bg-white rounded-xl shadow-sm p-6 border-l-4 border-pink-500">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-500">ポートフォリオ</p>
+            <p class="text-3xl font-bold text-gray-800">${stats.portfolios || 0}</p>
+          </div>
+          <div class="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
+            <i class="fas fa-images text-pink-500 text-xl"></i>
+          </div>
+        </div>
+        <a href="/admin/portfolios" class="text-sm text-pink-500 hover:text-pink-700 mt-4 inline-block">
           詳細を見る <i class="fas fa-arrow-right ml-1"></i>
         </a>
       </div>
