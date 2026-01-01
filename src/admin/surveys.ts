@@ -447,7 +447,7 @@ export function renderSurveyDashboard(stats: SurveyStats, questions: SurveyQuest
   return renderAdminLayout('アンケート分析', content, 'surveys')
 }
 
-// プレビュー用の質問レンダリング
+// プレビュー用の質問レンダリング（実際のアンケートページと同じ構成）
 function renderPreviewQuestions(questions: SurveyQuestion[], categoryLabels: Record<string, string>): string {
   const grouped: Record<string, SurveyQuestion[]> = {}
   
@@ -457,19 +457,117 @@ function renderPreviewQuestions(questions: SurveyQuestion[], categoryLabels: Rec
     grouped[cat].push(q)
   })
   
-  const categoryOrder = ['satisfaction', 'content', 'instructor', 'environment', 'general']
+  // 実際のアンケートページと同じカテゴリ順序
+  const categoryOrder = [
+    'profile', 'satisfaction', 'difficulty', 'instructor', 'exercise',
+    'feedback_positive', 'feedback_improve', 'online_feedback',
+    'confidence', 'action', 'concerns', 
+    'recommend', 'future_topics', 'other', 'review_permission',
+    'content', 'environment', 'general'
+  ]
+  
+  // 全カテゴリのラベルとアイコン
+  const allCategoryLabels: Record<string, string> = {
+    profile: 'あなたについて',
+    satisfaction: '総合評価',
+    difficulty: '講座の難易度',
+    content: '講座内容について',
+    instructor: '講師について',
+    exercise: '演習・ワークについて',
+    feedback_positive: '良かった点',
+    feedback_improve: '改善点',
+    online_feedback: 'オンライン受講について',
+    confidence: '学びの効果',
+    action: '実践について',
+    concerns: '不安・疑問点',
+    recommend: 'おすすめ度',
+    future_topics: '今後の講座について',
+    review_permission: '公開許可',
+    environment: '受講環境について',
+    other: 'その他',
+    general: 'その他'
+  }
+  
   const categoryIcons: Record<string, string> = {
+    profile: 'fa-user',
     satisfaction: 'fa-star',
+    difficulty: 'fa-signal',
     content: 'fa-book-open',
     instructor: 'fa-chalkboard-teacher',
+    exercise: 'fa-tasks',
+    feedback_positive: 'fa-thumbs-up',
+    feedback_improve: 'fa-lightbulb',
+    online_feedback: 'fa-laptop',
+    confidence: 'fa-graduation-cap',
+    action: 'fa-rocket',
+    concerns: 'fa-question-circle',
+    recommend: 'fa-heart',
+    future_topics: 'fa-calendar-plus',
+    review_permission: 'fa-share-alt',
     environment: 'fa-laptop',
+    other: 'fa-comment-dots',
     general: 'fa-comment-dots'
   }
   
-  return categoryOrder
-    .filter(cat => grouped[cat] && grouped[cat].length > 0)
+  // プロフィールセクション（年齢、職業、業種）は横並びで表示
+  const profileQuestions = grouped['profile'] || []
+  
+  // 評価系は1つのカードにまとめる
+  const ratingCategories = ['satisfaction', 'instructor', 'exercise']
+  const ratingQuestions: SurveyQuestion[] = []
+  ratingCategories.forEach(cat => {
+    if (grouped[cat]) ratingQuestions.push(...grouped[cat])
+  })
+  
+  let html = ''
+  
+  // プロフィールセクション
+  if (profileQuestions.length > 0) {
+    html += `
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+            <i class="fas fa-user text-purple-500 text-sm"></i>
+          </div>
+          <span class="font-medium text-gray-700">あなたについて</span>
+          <span class="text-xs text-gray-400">（任意）</span>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          ${profileQuestions.map(q => `
+            <div>
+              <p class="text-sm text-gray-600 mb-2">${escapeHtml(q.question_text)}</p>
+              <div class="px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-gray-400 text-sm">
+                選択 <i class="fas fa-chevron-down ml-2 text-xs"></i>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `
+  }
+  
+  // 評価セクション
+  if (ratingQuestions.length > 0) {
+    html += `
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+            <i class="fas fa-star text-purple-500 text-sm"></i>
+          </div>
+          <span class="font-medium text-gray-700">講座の評価</span>
+        </div>
+        <div class="space-y-4">
+          ${ratingQuestions.map(q => renderPreviewQuestion(q)).join('')}
+        </div>
+      </div>
+    `
+  }
+  
+  // その他のカテゴリ
+  html += categoryOrder
+    .filter(cat => grouped[cat] && grouped[cat].length > 0 && cat !== 'profile' && !ratingCategories.includes(cat))
     .map(cat => {
-      const label = categoryLabels[cat] || 'その他'
+      const label = allCategoryLabels[cat] || 'その他'
       const icon = categoryIcons[cat] || 'fa-question'
       const qs = grouped[cat]
       
@@ -487,12 +585,15 @@ function renderPreviewQuestions(questions: SurveyQuestion[], categoryLabels: Rec
         </div>
       `
     }).join('')
+  
+  return html
 }
 
 // 個別質問のプレビューレンダリング
 function renderPreviewQuestion(q: SurveyQuestion): string {
   const isRequired = q.is_required === 1
   
+  // 5段階評価
   if (q.question_type === 'rating') {
     return `
       <div class="text-center py-2">
@@ -511,7 +612,25 @@ function renderPreviewQuestion(q: SurveyQuestion): string {
     `
   }
   
-  if (q.question_type === 'choice' || q.question_type === 'multi_choice') {
+  // ドロップダウン（プルダウン）
+  if (q.question_type === 'dropdown') {
+    const options = q.options ? JSON.parse(q.options) : []
+    return `
+      <div>
+        <p class="text-gray-700 mb-2">
+          ${escapeHtml(q.question_text)}
+          ${isRequired ? '<span class="text-pink-400"> *</span>' : '<span class="text-gray-400 text-sm">（任意）</span>'}
+        </p>
+        <div class="px-4 py-3 bg-gradient-to-r from-white to-purple-50 rounded-2xl border-2 border-purple-100 text-gray-400 text-sm flex items-center justify-between shadow-sm">
+          <span>選択してください</span>
+          <i class="fas fa-chevron-down text-purple-300"></i>
+        </div>
+      </div>
+    `
+  }
+  
+  // 単一選択（ラジオボタン）
+  if (q.question_type === 'choice' || q.question_type === 'single_choice') {
     const options = q.options ? JSON.parse(q.options) : []
     return `
       <div>
@@ -521,8 +640,8 @@ function renderPreviewQuestion(q: SurveyQuestion): string {
         </p>
         <div class="space-y-2">
           ${options.map((opt: string, i: number) => `
-            <div class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-200">
-              <i class="${q.question_type === 'multi_choice' ? 'far fa-square' : 'far fa-circle'} text-gray-400"></i>
+            <div class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 hover:border-purple-200 transition-all">
+              <i class="far fa-circle text-gray-400"></i>
               <span class="text-gray-600">${escapeHtml(opt)}</span>
             </div>
           `).join('')}
@@ -531,12 +650,34 @@ function renderPreviewQuestion(q: SurveyQuestion): string {
     `
   }
   
+  // 複数選択（チェックボックス）
+  if (q.question_type === 'multi_choice' || q.question_type === 'multiple_choice') {
+    const options = q.options ? JSON.parse(q.options) : []
+    return `
+      <div>
+        <p class="text-gray-700 mb-3">
+          ${escapeHtml(q.question_text)}
+          ${isRequired ? '<span class="text-pink-400"> *</span>' : ''}
+        </p>
+        <div class="space-y-2">
+          ${options.map((opt: string, i: number) => `
+            <div class="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 hover:border-purple-200 transition-all">
+              <i class="far fa-square text-gray-400"></i>
+              <span class="text-gray-600">${escapeHtml(opt)}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `
+  }
+  
+  // 自由記述
   if (q.question_type === 'text') {
     return `
       <div>
         <p class="text-gray-700 mb-3">
           ${escapeHtml(q.question_text)}
-          ${isRequired ? '<span class="text-pink-400"> *</span>' : '<span class="text-gray-400">（任意）</span>'}
+          ${isRequired ? '<span class="text-pink-400"> *</span>' : '<span class="text-gray-400 text-sm">（任意）</span>'}
         </p>
         <textarea disabled rows="2" 
                   class="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-gray-400 resize-none"
