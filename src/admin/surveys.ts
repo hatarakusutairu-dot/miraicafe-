@@ -601,6 +601,7 @@ export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
       .question-card {
         transition: all 0.2s ease;
         border-left: 4px solid transparent;
+        cursor: grab;
       }
       .question-card:hover {
         border-left-color: #a78bfa;
@@ -609,6 +610,28 @@ export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
       .question-card.editing {
         border-left-color: #8b5cf6;
         background: #f5f3ff;
+      }
+      .question-card.dragging {
+        opacity: 0.5;
+        cursor: grabbing;
+        border-left-color: #8b5cf6;
+        background: #ede9fe;
+      }
+      .question-card.drag-over {
+        border-top: 3px solid #8b5cf6;
+        margin-top: -3px;
+      }
+      .drag-handle {
+        cursor: grab;
+        padding: 8px;
+        color: #9ca3af;
+        transition: color 0.2s;
+      }
+      .drag-handle:hover {
+        color: #6b7280;
+      }
+      .drag-handle:active {
+        cursor: grabbing;
       }
       .inline-edit {
         background: transparent;
@@ -737,16 +760,28 @@ export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
                 <i class="fas fa-plus mr-1"></i>追加
               </button>
             </div>
-            <div class="category-content" id="content-${cat}">
+            <div class="category-content" id="content-${cat}" data-category="${cat}">
               ${catQuestions.map(q => `
-                <div class="question-card p-4 border-b border-gray-50 hover:bg-gray-50" data-id="${q.id}">
-                  <div class="flex items-start gap-4">
-                    <!-- 順序 -->
+                <div class="question-card p-4 border-b border-gray-50 hover:bg-gray-50" 
+                     data-id="${q.id}" 
+                     data-sort="${q.sort_order}"
+                     draggable="true"
+                     ondragstart="handleDragStart(event, ${q.id})"
+                     ondragend="handleDragEnd(event)"
+                     ondragover="handleDragOver(event)"
+                     ondragleave="handleDragLeave(event)"
+                     ondrop="handleDrop(event, ${q.id})">
+                  <div class="flex items-start gap-3">
+                    <!-- ドラッグハンドル -->
+                    <div class="drag-handle flex flex-col items-center justify-center" title="ドラッグして並び替え">
+                      <i class="fas fa-grip-vertical text-lg"></i>
+                    </div>
+                    
+                    <!-- 順序表示 -->
                     <div class="flex flex-col items-center gap-1">
-                      <input type="number" value="${q.sort_order}" min="0" 
-                             class="w-12 text-center text-sm border border-gray-200 rounded-lg py-1 focus:border-purple-400 focus:outline-none"
-                             onchange="updateSortOrder(${q.id}, this.value)"
-                             title="表示順">
+                      <span class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500 text-sm font-medium sort-order-display">
+                        ${q.sort_order}
+                      </span>
                     </div>
                     
                     <!-- メイン情報 -->
@@ -958,6 +993,130 @@ export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
       function addQuestionToCategory(cat) {
         showAddQuestionModal();
         document.getElementById('question-category').value = cat;
+      }
+      
+      // ドラッグ&ドロップ処理
+      let draggedId = null;
+      let draggedElement = null;
+      
+      function handleDragStart(e, id) {
+        draggedId = id;
+        draggedElement = e.target.closest('.question-card');
+        draggedElement.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', id);
+      }
+      
+      function handleDragEnd(e) {
+        if (draggedElement) {
+          draggedElement.classList.remove('dragging');
+        }
+        document.querySelectorAll('.question-card').forEach(card => {
+          card.classList.remove('drag-over');
+        });
+        draggedId = null;
+        draggedElement = null;
+      }
+      
+      function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const card = e.target.closest('.question-card');
+        if (card && card !== draggedElement) {
+          // 他のカードのdrag-overを削除
+          document.querySelectorAll('.question-card').forEach(c => {
+            if (c !== card) c.classList.remove('drag-over');
+          });
+          card.classList.add('drag-over');
+        }
+      }
+      
+      function handleDragLeave(e) {
+        const card = e.target.closest('.question-card');
+        if (card && !card.contains(e.relatedTarget)) {
+          card.classList.remove('drag-over');
+        }
+      }
+      
+      async function handleDrop(e, targetId) {
+        e.preventDefault();
+        const card = e.target.closest('.question-card');
+        if (card) card.classList.remove('drag-over');
+        
+        if (draggedId === null || draggedId === targetId) return;
+        
+        // 同じカテゴリ内でのみ移動可能
+        const draggedCard = document.querySelector('[data-id="' + draggedId + '"]');
+        const targetCard = document.querySelector('[data-id="' + targetId + '"]');
+        
+        if (!draggedCard || !targetCard) return;
+        
+        const draggedCategory = draggedCard.closest('.category-content');
+        const targetCategory = targetCard.closest('.category-content');
+        
+        if (draggedCategory !== targetCategory) {
+          alert('異なるカテゴリ間の移動はできません。カテゴリを変更するには編集ボタンを使用してください。');
+          return;
+        }
+        
+        // 現在のカテゴリ内の全質問を取得
+        const categoryContent = targetCategory;
+        const cards = Array.from(categoryContent.querySelectorAll('.question-card'));
+        const draggedIndex = cards.indexOf(draggedCard);
+        const targetIndex = cards.indexOf(targetCard);
+        
+        // DOM上で並び替え
+        if (draggedIndex < targetIndex) {
+          targetCard.parentNode.insertBefore(draggedCard, targetCard.nextSibling);
+        } else {
+          targetCard.parentNode.insertBefore(draggedCard, targetCard);
+        }
+        
+        // 新しい順序でsort_orderを更新
+        const updatedCards = Array.from(categoryContent.querySelectorAll('.question-card'));
+        const updates = [];
+        
+        updatedCards.forEach((card, index) => {
+          const id = parseInt(card.dataset.id);
+          const newOrder = index + 1;
+          const orderDisplay = card.querySelector('.sort-order-display');
+          if (orderDisplay) orderDisplay.textContent = newOrder;
+          updates.push({ id, sort_order: newOrder });
+        });
+        
+        // サーバーに一括更新
+        try {
+          for (const update of updates) {
+            const res = await fetch('/admin/api/surveys/questions/' + update.id);
+            const q = await res.json();
+            q.sort_order = update.sort_order;
+            q.options = q.options ? JSON.parse(q.options) : null;
+            
+            await fetch('/admin/api/surveys/questions/' + update.id, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(q)
+            });
+          }
+          
+          // 成功メッセージ（小さなトースト）
+          showToast('並び順を更新しました');
+        } catch (e) {
+          alert('順序の更新に失敗しました');
+          location.reload();
+        }
+      }
+      
+      function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          toast.style.transition = 'opacity 0.3s';
+          setTimeout(() => toast.remove(), 300);
+        }, 2000);
       }
 
       function showAddQuestionModal() {
