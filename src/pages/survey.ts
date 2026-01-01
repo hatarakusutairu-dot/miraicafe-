@@ -1164,7 +1164,7 @@ function renderQuestionsByCategory(
   // プロフィールセクション（横並びドロップダウン）
   if (profileQuestions.length > 0) {
     html += `
-      <div class="survey-card rounded-3xl p-4 sm:p-6">
+      <div class="survey-card rounded-3xl p-4 sm:p-6" style="overflow: visible; position: relative; z-index: 50;">
         <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-5">
           <div class="category-icon">
             <i class="fas fa-user text-base sm:text-lg" style="color: #c9a8e0;"></i>
@@ -1172,7 +1172,7 @@ function renderQuestionsByCategory(
           <span class="text-base sm:text-lg font-medium title-3d" style="color: #5a5a6e;">あなたについて</span>
           <span class="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-500">任意</span>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4" style="overflow: visible;">
           ${profileQuestions.map((q, idx) => renderCompactDropdown(q)).join('')}
         </div>
       </div>
@@ -1182,7 +1182,7 @@ function renderQuestionsByCategory(
   // 評価セクション（まとめて表示）
   if (ratingQuestions.length > 0) {
     html += `
-      <div class="survey-card rounded-3xl p-4 sm:p-6">
+      <div class="survey-card rounded-3xl p-4 sm:p-6" style="position: relative; z-index: 10;">
         <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-5">
           <div class="category-icon">
             <i class="fas fa-star text-base sm:text-lg" style="color: #c9a8e0;"></i>

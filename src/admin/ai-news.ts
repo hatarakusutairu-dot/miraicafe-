@@ -64,19 +64,19 @@ export const renderAINewsList = (news: AINews[], counts: { all: number; pending:
       <!-- 統計カード -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="bg-white rounded-lg p-4 shadow border-l-4 border-gray-400">
-          <div class="text-2xl font-bold text-gray-800">${counts.all}</div>
+          <div id="count-all" class="text-2xl font-bold text-gray-800">${counts.all}</div>
           <div class="text-sm text-gray-500">全て</div>
         </div>
         <div class="bg-white rounded-lg p-4 shadow border-l-4 border-yellow-400">
-          <div class="text-2xl font-bold text-yellow-600">${counts.pending}</div>
+          <div id="count-pending" class="text-2xl font-bold text-yellow-600">${counts.pending}</div>
           <div class="text-sm text-gray-500">新規（未承認）</div>
         </div>
         <div class="bg-white rounded-lg p-4 shadow border-l-4 border-green-400">
-          <div class="text-2xl font-bold text-green-600">${counts.approved}</div>
+          <div id="count-approved" class="text-2xl font-bold text-green-600">${counts.approved}</div>
           <div class="text-sm text-gray-500">承認済み</div>
         </div>
         <div class="bg-white rounded-lg p-4 shadow border-l-4 border-red-400">
-          <div class="text-2xl font-bold text-red-600">${counts.rejected}</div>
+          <div id="count-rejected" class="text-2xl font-bold text-red-600">${counts.rejected}</div>
           <div class="text-sm text-gray-500">却下</div>
         </div>
       </div>
@@ -111,16 +111,16 @@ export const renderAINewsList = (news: AINews[], counts: { all: number; pending:
         <!-- ステータスフィルター -->
         <div class="border-b flex overflow-x-auto">
           <button onclick="filterNews('all')" data-status="all" class="tab-filter px-6 py-3 text-sm font-medium border-b-2 border-blue-500 text-blue-600 hover:text-blue-600 hover:border-blue-300 transition whitespace-nowrap">
-            全て (${counts.all})
+            全て (<span id="tab-count-all">${counts.all}</span>)
           </button>
           <button onclick="filterNews('pending')" data-status="pending" class="tab-filter px-6 py-3 text-sm font-medium border-b-2 border-transparent hover:text-yellow-600 hover:border-yellow-300 transition whitespace-nowrap">
-            <i class="fas fa-clock mr-1"></i>新規 (${counts.pending})
+            <i class="fas fa-clock mr-1"></i>新規 (<span id="tab-count-pending">${counts.pending}</span>)
           </button>
           <button onclick="filterNews('approved')" data-status="approved" class="tab-filter px-6 py-3 text-sm font-medium border-b-2 border-transparent hover:text-green-600 hover:border-green-300 transition whitespace-nowrap">
-            <i class="fas fa-check mr-1"></i>承認済み (${counts.approved})
+            <i class="fas fa-check mr-1"></i>承認済み (<span id="tab-count-approved">${counts.approved}</span>)
           </button>
           <button onclick="filterNews('rejected')" data-status="rejected" class="tab-filter px-6 py-3 text-sm font-medium border-b-2 border-transparent hover:text-red-600 hover:border-red-300 transition whitespace-nowrap">
-            <i class="fas fa-times mr-1"></i>却下 (${counts.rejected})
+            <i class="fas fa-times mr-1"></i>却下 (<span id="tab-count-rejected">${counts.rejected}</span>)
           </button>
         </div>
 
@@ -228,8 +228,31 @@ export const renderAINewsList = (news: AINews[], counts: { all: number; pending:
         renderNewsList();
       }
 
+      // カウントを更新する関数
+      function updateCounts() {
+        const allCount = allNews.length;
+        const pendingCount = allNews.filter(n => n.status === 'pending').length;
+        const approvedCount = allNews.filter(n => n.status === 'approved').length;
+        const rejectedCount = allNews.filter(n => n.status === 'rejected').length;
+        
+        // 統計カード更新
+        document.getElementById('count-all').textContent = allCount;
+        document.getElementById('count-pending').textContent = pendingCount;
+        document.getElementById('count-approved').textContent = approvedCount;
+        document.getElementById('count-rejected').textContent = rejectedCount;
+        
+        // フィルタータブ更新
+        document.getElementById('tab-count-all').textContent = allCount;
+        document.getElementById('tab-count-pending').textContent = pendingCount;
+        document.getElementById('tab-count-approved').textContent = approvedCount;
+        document.getElementById('tab-count-rejected').textContent = rejectedCount;
+      }
+      
       // ニュース一覧を描画
       function renderNewsList() {
+        // カウントを更新
+        updateCounts();
+        
         let filtered = allNews;
         
         // ステータスフィルター
