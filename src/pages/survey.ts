@@ -194,6 +194,10 @@ export const renderSurveyPage = (
     /* カスタムドロップダウン - かわいい丸みのあるデザイン */
     .custom-dropdown {
       position: relative;
+      z-index: 10;
+    }
+    .custom-dropdown.active {
+      z-index: 1000;
     }
     .dropdown-trigger {
       background: linear-gradient(145deg, #ffffff 0%, #f8f6fa 100%);
@@ -245,7 +249,7 @@ export const renderSurveyPage = (
       box-shadow: 
         0 8px 24px rgba(180, 160, 200, 0.25),
         0 16px 48px rgba(180, 160, 200, 0.15);
-      z-index: 100;
+      z-index: 9999;
       opacity: 0;
       visibility: hidden;
       transform: translateY(-10px) scale(0.95);
@@ -918,19 +922,23 @@ export const renderSurveyPage = (
     window.toggleDropdown = function(id) {
       const menu = document.getElementById('dropdown-menu-' + id);
       const trigger = menu.previousElementSibling;
+      const dropdown = document.querySelector('[data-dropdown-id="' + id + '"]');
       
       // 他のドロップダウンを閉じる
       document.querySelectorAll('.dropdown-menu.show').forEach(m => {
         if (m.id !== 'dropdown-menu-' + id) {
           m.classList.remove('show');
           m.previousElementSibling.classList.remove('active');
+          m.closest('.custom-dropdown').classList.remove('active');
         }
       });
       
       // トグル
+      const isOpening = !menu.classList.contains('show');
       menu.classList.toggle('show');
       trigger.classList.toggle('active');
-      activeDropdown = menu.classList.contains('show') ? id : null;
+      dropdown.classList.toggle('active', isOpening);
+      activeDropdown = isOpening ? id : null;
     }
     
     window.selectOption = function(id, value) {
@@ -955,6 +963,7 @@ export const renderSurveyPage = (
       // メニューを閉じる
       menu.classList.remove('show');
       trigger.classList.remove('active');
+      dropdown.classList.remove('active');
       activeDropdown = null;
       
       // 進捗更新をトリガー
@@ -967,6 +976,7 @@ export const renderSurveyPage = (
         document.querySelectorAll('.dropdown-menu.show').forEach(m => {
           m.classList.remove('show');
           m.previousElementSibling.classList.remove('active');
+          m.closest('.custom-dropdown').classList.remove('active');
         });
         activeDropdown = null;
       }
