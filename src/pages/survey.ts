@@ -1,7 +1,7 @@
 // 質問の型定義
 interface SurveyQuestion {
   id: number
-  question_type: 'rating' | 'text' | 'choice' | 'single_choice' | 'multi_choice' | 'multiple_choice'
+  question_type: 'rating' | 'text' | 'choice' | 'single_choice' | 'multi_choice' | 'multiple_choice' | 'dropdown'
   question_text: string
   question_category: string
   options: string | null
@@ -189,6 +189,33 @@ export const renderSurveyPage = (
         0 4px 12px rgba(184, 165, 211, 0.2),
         inset 0 1px 2px rgba(255, 255, 255, 0.9);
       outline: none;
+    }
+    
+    /* ドロップダウン - エレガントなデザイン */
+    .dropdown-select {
+      background: linear-gradient(145deg, #ffffff 0%, #faf8fc 100%);
+      border: 2px solid #e8e0f0;
+      transition: all 0.3s ease;
+      box-shadow: 
+        inset 0 2px 6px rgba(180, 160, 200, 0.1),
+        0 2px 4px rgba(180, 160, 200, 0.05);
+    }
+    .dropdown-select:focus {
+      border-color: #c9a8e0;
+      background: #ffffff;
+      box-shadow: 
+        0 0 0 4px rgba(184, 165, 211, 0.15),
+        0 4px 12px rgba(184, 165, 211, 0.2);
+    }
+    .dropdown-select:hover {
+      border-color: #d4c4e8;
+    }
+    .dropdown-select option {
+      padding: 12px;
+      background: #ffffff;
+    }
+    .custom-dropdown {
+      position: relative;
     }
     
     /* 送信ボタン - 3D立体感 */
@@ -968,16 +995,65 @@ function renderQuestionsByCategory(
     grouped[cat].push(q)
   })
   
-  const categoryOrder = [
-    'profile', 'satisfaction', 'difficulty', 'instructor', 'exercise',
+  // プロフィール（年齢、職業、業種）は1つのカードにまとめる
+  const profileQuestions = grouped['profile'] || []
+  
+  // 評価系は1つのカードにまとめる（satisfaction, instructor, exercise）
+  const ratingCategories = ['satisfaction', 'instructor', 'exercise']
+  const ratingQuestions: SurveyQuestion[] = []
+  ratingCategories.forEach(cat => {
+    if (grouped[cat]) ratingQuestions.push(...grouped[cat])
+  })
+  
+  // 残りのカテゴリ順序
+  const otherCategoryOrder = [
+    'difficulty', 'confidence', 'recommend',
     'feedback_positive', 'feedback_improve', 'online_feedback',
-    'confidence', 'action', 'concerns', 
-    'recommend', 'future_topics', 'other', 'review_permission',
+    'action', 'concerns', 
+    'future_topics', 'other', 'review_permission',
     'content', 'environment', 'general'
   ]
   
-  return categoryOrder
-    .filter(cat => grouped[cat] && grouped[cat].length > 0)
+  let html = ''
+  
+  // プロフィールセクション（横並びドロップダウン）
+  if (profileQuestions.length > 0) {
+    html += `
+      <div class="survey-card rounded-3xl p-4 sm:p-6">
+        <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-5">
+          <div class="category-icon">
+            <i class="fas fa-user text-base sm:text-lg" style="color: #c9a8e0;"></i>
+          </div>
+          <span class="text-base sm:text-lg font-medium title-3d" style="color: #5a5a6e;">あなたについて</span>
+          <span class="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-500">任意</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          ${profileQuestions.map((q, idx) => renderCompactDropdown(q)).join('')}
+        </div>
+      </div>
+    `
+  }
+  
+  // 評価セクション（まとめて表示）
+  if (ratingQuestions.length > 0) {
+    html += `
+      <div class="survey-card rounded-3xl p-4 sm:p-6">
+        <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-5">
+          <div class="category-icon">
+            <i class="fas fa-star text-base sm:text-lg" style="color: #c9a8e0;"></i>
+          </div>
+          <span class="text-base sm:text-lg font-medium title-3d" style="color: #5a5a6e;">講座の評価</span>
+        </div>
+        <div class="space-y-4 sm:space-y-5">
+          ${ratingQuestions.map((q, idx) => renderQuestion(q, idx)).join('')}
+        </div>
+      </div>
+    `
+  }
+  
+  // その他のカテゴリ
+  html += otherCategoryOrder
+    .filter(cat => grouped[cat] && grouped[cat].length > 0 && !ratingCategories.includes(cat))
     .map(cat => {
       const info = categoryLabels[cat] || categoryLabels.general
       const qs = grouped[cat]
@@ -996,6 +1072,32 @@ function renderQuestionsByCategory(
         </div>
       `
     }).join('')
+  
+  return html
+}
+
+// コンパクトなドロップダウン（プロフィール用）
+function renderCompactDropdown(q: SurveyQuestion): string {
+  const options = q.options ? JSON.parse(q.options) : []
+  const isRequired = q.is_required === 1
+  
+  return `
+    <div class="question-item" data-question-id="${q.id}" data-type="dropdown" data-required="${isRequired}" data-category="${q.question_category}">
+      <label class="block text-sm sm:text-base mb-2" style="color: #5a5a6e;">
+        ${escapeHtml(q.question_text)}
+        ${isRequired ? '<span style="color: #e8b4d8;"> *</span>' : ''}
+      </label>
+      <div class="custom-dropdown relative">
+        <select name="q_${q.id}" class="dropdown-select w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border-2 border-gray-100 bg-white appearance-none cursor-pointer text-sm sm:text-base transition-all focus:border-purple-300 focus:outline-none" style="color: #5a5a6e;">
+          <option value="">選択</option>
+          ${options.map((opt: string) => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
+        </select>
+        <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+          <i class="fas fa-chevron-down text-purple-300 text-xs"></i>
+        </div>
+      </div>
+    </div>
+  `
 }
 
 function renderQuestion(q: SurveyQuestion, idx: number): string {
@@ -1015,6 +1117,27 @@ function renderQuestion(q: SurveyQuestion, idx: number): string {
               <i class="fas fa-star"></i>
             </label>
           `).join('')}
+        </div>
+      </div>
+    `
+  }
+  
+  if (q.question_type === 'dropdown') {
+    const options = q.options ? JSON.parse(q.options) : []
+    return `
+      <div class="question-item" data-question-id="${q.id}" data-type="dropdown" data-required="${isRequired}" data-category="${q.question_category}">
+        <label class="block text-base sm:text-lg mb-3 sm:mb-4" style="color: #5a5a6e;">
+          ${escapeHtml(q.question_text)}
+          ${isRequired ? '<span style="color: #e8b4d8;"> *</span>' : ''}
+        </label>
+        <div class="custom-dropdown relative">
+          <select name="q_${q.id}" class="dropdown-select w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl border-2 border-gray-100 bg-white appearance-none cursor-pointer text-base sm:text-lg transition-all focus:border-purple-300 focus:outline-none" style="color: #5a5a6e;">
+            <option value="">選択してください</option>
+            ${options.map((opt: string) => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
+          </select>
+          <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+            <i class="fas fa-chevron-down text-purple-300"></i>
+          </div>
         </div>
       </div>
     `

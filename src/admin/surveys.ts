@@ -551,23 +551,131 @@ function renderPreviewQuestion(q: SurveyQuestion): string {
 // 質問編集ページ
 export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
   const categoryLabels: Record<string, string> = {
+    profile: 'プロフィール',
     satisfaction: '総合評価',
+    difficulty: '難易度',
     content: '講座内容',
     instructor: '講師',
+    exercise: '演習・ワーク',
+    feedback_positive: '良かった点',
+    feedback_improve: '改善点',
+    online_feedback: 'オンライン受講',
+    confidence: '学びの効果',
+    action: '実践',
+    concerns: '不安・疑問',
+    recommend: 'おすすめ度',
+    future_topics: '今後の講座',
+    review_permission: '公開許可',
     environment: '受講環境',
+    other: 'その他',
     general: 'その他'
   }
 
   const typeLabels: Record<string, string> = {
-    rating: '5段階評価',
-    text: '自由記述',
-    choice: '単一選択',
-    multi_choice: '複数選択'
+    rating: '⭐ 5段階評価',
+    text: '📝 自由記述',
+    single_choice: '🔘 単一選択',
+    choice: '🔘 単一選択',
+    multiple_choice: '☑️ 複数選択',
+    multi_choice: '☑️ 複数選択',
+    dropdown: '▼ ドロップダウン'
   }
+  
+  // カテゴリでグループ化
+  const groupedByCategory: Record<string, SurveyQuestion[]> = {}
+  questions.forEach(q => {
+    const cat = q.question_category || 'general'
+    if (!groupedByCategory[cat]) groupedByCategory[cat] = []
+    groupedByCategory[cat].push(q)
+  })
+  
+  const categoryOrder = [
+    'profile', 'satisfaction', 'difficulty', 'instructor', 'exercise',
+    'feedback_positive', 'feedback_improve', 'online_feedback',
+    'confidence', 'action', 'concerns', 
+    'recommend', 'future_topics', 'review_permission', 'other', 'general'
+  ]
 
   const content = `
+    <style>
+      .question-card {
+        transition: all 0.2s ease;
+        border-left: 4px solid transparent;
+      }
+      .question-card:hover {
+        border-left-color: #a78bfa;
+        transform: translateX(2px);
+      }
+      .question-card.editing {
+        border-left-color: #8b5cf6;
+        background: #f5f3ff;
+      }
+      .inline-edit {
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        padding: 4px 8px;
+        transition: all 0.2s;
+      }
+      .inline-edit:hover {
+        background: #f3f4f6;
+        border-color: #e5e7eb;
+      }
+      .inline-edit:focus {
+        background: white;
+        border-color: #a78bfa;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
+      }
+      .category-section {
+        border-radius: 16px;
+        background: white;
+        margin-bottom: 16px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+      .category-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        padding: 12px 20px;
+        border-bottom: 1px solid #e2e8f0;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: between;
+      }
+      .category-header:hover {
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      }
+      .category-content {
+        padding: 0;
+      }
+      .option-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 10px;
+        background: #f3f4f6;
+        border-radius: 20px;
+        font-size: 12px;
+        color: #4b5563;
+        margin: 2px;
+      }
+      .option-tag-edit {
+        cursor: pointer;
+      }
+      .option-tag-edit:hover {
+        background: #e5e7eb;
+      }
+      .quick-action-btn {
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      .question-card:hover .quick-action-btn {
+        opacity: 1;
+      }
+    </style>
+
     <div class="mb-6">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between flex-wrap gap-4">
         <div>
           <a href="/admin/surveys" class="text-gray-500 hover:text-gray-700 text-sm mb-2 inline-flex items-center gap-1">
             <i class="fas fa-arrow-left"></i>分析に戻る
@@ -576,141 +684,213 @@ export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
             <i class="fas fa-edit text-purple-500"></i>
             質問の編集
           </h1>
+          <p class="text-sm text-gray-500 mt-1">質問をクリックして直接編集できます</p>
         </div>
-        <button onclick="showAddQuestionModal()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition flex items-center gap-2">
-          <i class="fas fa-plus"></i>質問を追加
-        </button>
+        <div class="flex gap-2">
+          <button onclick="expandAllCategories()" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition text-sm">
+            <i class="fas fa-expand-alt mr-1"></i>すべて展開
+          </button>
+          <button onclick="collapseAllCategories()" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition text-sm">
+            <i class="fas fa-compress-alt mr-1"></i>すべて折りたたむ
+          </button>
+          <button onclick="showAddQuestionModal()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition flex items-center gap-2">
+            <i class="fas fa-plus"></i>質問を追加
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- クイック統計 -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white rounded-xl p-4 border border-gray-100">
+        <div class="text-2xl font-bold text-purple-600">${questions.length}</div>
+        <div class="text-sm text-gray-500">質問数</div>
+      </div>
+      <div class="bg-white rounded-xl p-4 border border-gray-100">
+        <div class="text-2xl font-bold text-green-600">${questions.filter(q => q.is_active).length}</div>
+        <div class="text-sm text-gray-500">有効</div>
+      </div>
+      <div class="bg-white rounded-xl p-4 border border-gray-100">
+        <div class="text-2xl font-bold text-amber-600">${questions.filter(q => q.is_required).length}</div>
+        <div class="text-sm text-gray-500">必須</div>
+      </div>
+      <div class="bg-white rounded-xl p-4 border border-gray-100">
+        <div class="text-2xl font-bold text-blue-600">${questions.filter(q => q.use_for_review).length}</div>
+        <div class="text-sm text-gray-500">口コミ用</div>
       </div>
     </div>
 
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <table class="w-full">
-        <thead class="bg-gray-50">
-          <tr>
-            <th class="text-left py-4 px-6 text-sm font-medium text-gray-500 w-16">順序</th>
-            <th class="text-left py-4 px-6 text-sm font-medium text-gray-500">質問</th>
-            <th class="text-center py-4 px-6 text-sm font-medium text-gray-500 w-28">種類</th>
-            <th class="text-center py-4 px-6 text-sm font-medium text-gray-500 w-28">カテゴリ</th>
-            <th class="text-center py-4 px-6 text-sm font-medium text-gray-500 w-20">必須</th>
-            <th class="text-center py-4 px-6 text-sm font-medium text-gray-500 w-20">状態</th>
-            <th class="text-center py-4 px-6 text-sm font-medium text-gray-500 w-32">操作</th>
-          </tr>
-        </thead>
-        <tbody id="questions-list">
-          ${questions.map(q => `
-            <tr class="border-t border-gray-100 hover:bg-gray-50" data-id="${q.id}">
-              <td class="py-4 px-6">
-                <span class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-gray-600 font-medium">
-                  ${q.sort_order}
-                </span>
-              </td>
-              <td class="py-4 px-6">
-                <div class="flex items-center gap-2">
-                  ${q.use_for_review ? '<span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700"><i class="fas fa-bullhorn mr-1"></i>口コミ用</span>' : ''}
-                  <p class="text-gray-800 font-medium">${escapeHtml(q.question_text)}</p>
+    <!-- カテゴリ別質問一覧 -->
+    <div id="questions-container">
+      ${categoryOrder.filter(cat => groupedByCategory[cat]?.length > 0).map(cat => {
+        const catQuestions = groupedByCategory[cat] || []
+        return `
+          <div class="category-section" data-category="${cat}">
+            <div class="category-header" onclick="toggleCategory('${cat}')">
+              <div class="flex items-center gap-3 flex-1">
+                <i class="fas fa-chevron-down text-gray-400 transition-transform" id="chevron-${cat}"></i>
+                <span class="font-medium text-gray-700">${categoryLabels[cat] || cat}</span>
+                <span class="text-xs px-2 py-0.5 bg-gray-200 text-gray-600 rounded-full">${catQuestions.length}件</span>
+              </div>
+              <button onclick="event.stopPropagation(); addQuestionToCategory('${cat}')" 
+                      class="text-sm text-purple-600 hover:text-purple-800 px-2 py-1 rounded hover:bg-purple-50">
+                <i class="fas fa-plus mr-1"></i>追加
+              </button>
+            </div>
+            <div class="category-content" id="content-${cat}">
+              ${catQuestions.map(q => `
+                <div class="question-card p-4 border-b border-gray-50 hover:bg-gray-50" data-id="${q.id}">
+                  <div class="flex items-start gap-4">
+                    <!-- 順序 -->
+                    <div class="flex flex-col items-center gap-1">
+                      <input type="number" value="${q.sort_order}" min="0" 
+                             class="w-12 text-center text-sm border border-gray-200 rounded-lg py-1 focus:border-purple-400 focus:outline-none"
+                             onchange="updateSortOrder(${q.id}, this.value)"
+                             title="表示順">
+                    </div>
+                    
+                    <!-- メイン情報 -->
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2 mb-2">
+                        ${q.is_required ? '<span class="text-xs px-2 py-0.5 bg-red-100 text-red-600 rounded-full">必須</span>' : '<span class="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">任意</span>'}
+                        ${q.use_for_review ? '<span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full"><i class="fas fa-bullhorn mr-1"></i>口コミ用</span>' : ''}
+                        <span class="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">${typeLabels[q.question_type] || q.question_type}</span>
+                        ${!q.is_active ? '<span class="text-xs px-2 py-0.5 bg-gray-300 text-gray-600 rounded-full">無効</span>' : ''}
+                      </div>
+                      
+                      <!-- 質問文（クリックで編集） -->
+                      <div class="mb-2">
+                        <input type="text" value="${escapeHtml(q.question_text)}" 
+                               class="inline-edit w-full text-gray-800 font-medium"
+                               onchange="updateQuestionText(${q.id}, this.value)"
+                               placeholder="質問文を入力...">
+                      </div>
+                      
+                      <!-- 選択肢（あれば） -->
+                      ${q.options ? `
+                        <div class="flex flex-wrap gap-1 mb-2">
+                          ${JSON.parse(q.options).map((opt: string, i: number) => `
+                            <span class="option-tag option-tag-edit" onclick="editOptions(${q.id})" title="クリックで選択肢を編集">
+                              ${escapeHtml(opt)}
+                            </span>
+                          `).join('')}
+                          <button onclick="editOptions(${q.id})" class="option-tag text-purple-600 hover:bg-purple-100">
+                            <i class="fas fa-edit"></i>
+                          </button>
+                        </div>
+                      ` : ''}
+                    </div>
+                    
+                    <!-- アクション -->
+                    <div class="flex items-center gap-1">
+                      <button onclick="toggleRequired(${q.id}, ${q.is_required})" 
+                              class="quick-action-btn p-2 rounded-lg transition ${q.is_required ? 'text-red-500 hover:bg-red-50' : 'text-gray-400 hover:bg-gray-100'}"
+                              title="${q.is_required ? '必須を解除' : '必須にする'}">
+                        <i class="fas fa-asterisk"></i>
+                      </button>
+                      <button onclick="toggleQuestionActive(${q.id}, ${q.is_active})" 
+                              class="quick-action-btn p-2 rounded-lg transition ${q.is_active ? 'text-green-500 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-100'}"
+                              title="${q.is_active ? '無効にする' : '有効にする'}">
+                        <i class="fas fa-${q.is_active ? 'eye' : 'eye-slash'}"></i>
+                      </button>
+                      <button onclick="editQuestion(${q.id})" 
+                              class="quick-action-btn p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition"
+                              title="詳細編集">
+                        <i class="fas fa-cog"></i>
+                      </button>
+                      <button onclick="deleteQuestion(${q.id})" 
+                              class="quick-action-btn p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+                              title="削除">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                ${q.options ? `<p class="text-sm text-gray-500 mt-1">選択肢: ${JSON.parse(q.options).join(', ')}</p>` : ''}
-              </td>
-              <td class="py-4 px-6 text-center">
-                <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                  ${typeLabels[q.question_type] || q.question_type}
-                </span>
-              </td>
-              <td class="py-4 px-6 text-center">
-                <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
-                  ${categoryLabels[q.question_category] || q.question_category}
-                </span>
-              </td>
-              <td class="py-4 px-6 text-center">
-                ${q.is_required ? '<i class="fas fa-check text-green-500"></i>' : '<i class="fas fa-minus text-gray-300"></i>'}
-              </td>
-              <td class="py-4 px-6 text-center">
-                <button onclick="toggleQuestionActive(${q.id}, ${q.is_active})" 
-                        class="px-3 py-1 rounded-full text-xs font-medium transition ${q.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}">
-                  ${q.is_active ? '有効' : '無効'}
-                </button>
-              </td>
-              <td class="py-4 px-6 text-center">
-                <div class="flex items-center justify-center gap-2">
-                  <button onclick="editQuestion(${q.id})" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="編集">
-                    <i class="fas fa-edit"></i>
-                  </button>
-                  <button onclick="deleteQuestion(${q.id})" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition" title="削除">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
+              `).join('')}
+            </div>
+          </div>
+        `
+      }).join('')}
     </div>
 
     <!-- 質問追加/編集モーダル -->
     <div id="question-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl">
-        <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-6">質問を追加</h3>
+      <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
+        <div class="flex items-center justify-between mb-6">
+          <h3 id="modal-title" class="text-xl font-bold text-gray-800">質問を追加</h3>
+          <button onclick="closeQuestionModal()" class="p-2 hover:bg-gray-100 rounded-lg transition">
+            <i class="fas fa-times text-gray-500"></i>
+          </button>
+        </div>
         <form id="question-form" class="space-y-4">
           <input type="hidden" name="id" id="question-id">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">質問文 <span class="text-red-500">*</span></label>
             <textarea name="question_text" id="question-text" rows="2" required
-                      class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"></textarea>
+                      class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                      placeholder="例: 講座全体の満足度を教えてください"></textarea>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">種類 <span class="text-red-500">*</span></label>
               <select name="question_type" id="question-type" required onchange="toggleOptionsField()"
                       class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                <option value="rating">5段階評価</option>
-                <option value="text">自由記述</option>
-                <option value="choice">単一選択</option>
-                <option value="multi_choice">複数選択</option>
+                <option value="rating">⭐ 5段階評価</option>
+                <option value="text">📝 自由記述</option>
+                <option value="single_choice">🔘 単一選択</option>
+                <option value="multiple_choice">☑️ 複数選択</option>
+                <option value="dropdown">▼ ドロップダウン</option>
               </select>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">カテゴリ</label>
               <select name="question_category" id="question-category"
                       class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
-                <option value="satisfaction">総合評価</option>
-                <option value="content">講座内容</option>
-                <option value="instructor">講師</option>
-                <option value="environment">受講環境</option>
-                <option value="general">その他</option>
+                <option value="profile">👤 プロフィール</option>
+                <option value="satisfaction">⭐ 総合評価</option>
+                <option value="difficulty">📊 難易度</option>
+                <option value="instructor">👨‍🏫 講師</option>
+                <option value="exercise">💪 演習・ワーク</option>
+                <option value="feedback_positive">👍 良かった点</option>
+                <option value="feedback_improve">💡 改善点</option>
+                <option value="online_feedback">💻 オンライン受講</option>
+                <option value="confidence">📈 学びの効果</option>
+                <option value="action">🚀 実践</option>
+                <option value="concerns">❓ 不安・疑問</option>
+                <option value="recommend">❤️ おすすめ度</option>
+                <option value="future_topics">📅 今後の講座</option>
+                <option value="review_permission">📢 公開許可</option>
+                <option value="other">💬 その他</option>
               </select>
             </div>
           </div>
           <div id="options-field" class="hidden">
-            <label class="block text-sm font-medium text-gray-700 mb-2">選択肢（カンマ区切り）</label>
-            <input type="text" name="options" id="question-options"
+            <label class="block text-sm font-medium text-gray-700 mb-2">選択肢</label>
+            <textarea name="options" id="question-options" rows="4"
                    class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                   placeholder="選択肢1, 選択肢2, 選択肢3">
+                   placeholder="選択肢1&#10;選択肢2&#10;選択肢3"></textarea>
+            <p class="text-xs text-gray-500 mt-1">改行または「/」で区切って入力してください</p>
           </div>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-3 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">表示順</label>
               <input type="number" name="sort_order" id="question-sort" value="0" min="0"
                      class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
             </div>
-            <div class="flex items-end pb-3">
+            <div class="flex items-end pb-2">
               <label class="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" name="is_required" id="question-required" checked
+                <input type="checkbox" name="is_required" id="question-required"
                        class="w-5 h-5 text-purple-600 rounded focus:ring-purple-500">
-                <span class="text-gray-700">必須項目</span>
+                <span class="text-gray-700 text-sm">必須</span>
               </label>
             </div>
-          </div>
-          
-          <!-- 口コミ用設定 -->
-          <div id="review-field" class="bg-green-50 rounded-xl p-4 border border-green-200">
-            <label class="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" name="use_for_review" id="question-use-review"
-                     class="w-5 h-5 text-green-600 rounded focus:ring-green-500">
-              <div>
-                <span class="text-gray-700 font-medium">口コミ用として使用</span>
-                <p class="text-xs text-gray-500 mt-0.5">この質問の回答を口コミとして公開できます（自由記述のみ）</p>
-              </div>
-            </label>
+            <div class="flex items-end pb-2">
+              <label class="flex items-center gap-2 cursor-pointer" id="review-label">
+                <input type="checkbox" name="use_for_review" id="question-use-review"
+                       class="w-5 h-5 text-green-600 rounded focus:ring-green-500">
+                <span class="text-gray-700 text-sm">口コミ用</span>
+              </label>
+            </div>
           </div>
           
           <div class="flex justify-end gap-3 pt-4 border-t">
@@ -724,8 +904,62 @@ export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
         </form>
       </div>
     </div>
+    
+    <!-- 選択肢編集モーダル -->
+    <div id="options-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-800">選択肢を編集</h3>
+          <button onclick="closeOptionsModal()" class="p-2 hover:bg-gray-100 rounded-lg transition">
+            <i class="fas fa-times text-gray-500"></i>
+          </button>
+        </div>
+        <input type="hidden" id="edit-options-id">
+        <textarea id="edit-options-text" rows="6" 
+                  class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none mb-4"
+                  placeholder="選択肢1&#10;選択肢2&#10;選択肢3"></textarea>
+        <p class="text-xs text-gray-500 mb-4">1行に1つの選択肢を入力してください</p>
+        <div class="flex justify-end gap-3">
+          <button onclick="closeOptionsModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">
+            キャンセル
+          </button>
+          <button onclick="saveOptions()" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition">
+            保存
+          </button>
+        </div>
+      </div>
+    </div>
 
     <script>
+      // カテゴリの展開/折りたたみ
+      function toggleCategory(cat) {
+        const content = document.getElementById('content-' + cat);
+        const chevron = document.getElementById('chevron-' + cat);
+        if (content.style.display === 'none') {
+          content.style.display = 'block';
+          chevron.style.transform = 'rotate(0deg)';
+        } else {
+          content.style.display = 'none';
+          chevron.style.transform = 'rotate(-90deg)';
+        }
+      }
+      
+      function expandAllCategories() {
+        document.querySelectorAll('.category-content').forEach(el => el.style.display = 'block');
+        document.querySelectorAll('[id^="chevron-"]').forEach(el => el.style.transform = 'rotate(0deg)');
+      }
+      
+      function collapseAllCategories() {
+        document.querySelectorAll('.category-content').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('[id^="chevron-"]').forEach(el => el.style.transform = 'rotate(-90deg)');
+      }
+      
+      // カテゴリ指定で質問追加
+      function addQuestionToCategory(cat) {
+        showAddQuestionModal();
+        document.getElementById('question-category').value = cat;
+      }
+
       function showAddQuestionModal() {
         document.getElementById('modal-title').textContent = '質問を追加';
         document.getElementById('question-form').reset();
@@ -741,12 +975,117 @@ export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
       function toggleOptionsField() {
         const type = document.getElementById('question-type').value;
         const optionsField = document.getElementById('options-field');
-        const reviewField = document.getElementById('review-field');
-        optionsField.classList.toggle('hidden', type !== 'choice' && type !== 'multi_choice');
+        const reviewLabel = document.getElementById('review-label');
+        const needsOptions = ['choice', 'single_choice', 'multiple_choice', 'multi_choice', 'dropdown'].includes(type);
+        optionsField.classList.toggle('hidden', !needsOptions);
         // 口コミ用は自由記述のみ
-        reviewField.classList.toggle('hidden', type !== 'text');
-        if (type !== 'text') {
-          document.getElementById('question-use-review').checked = false;
+        if (reviewLabel) {
+          reviewLabel.style.opacity = type === 'text' ? '1' : '0.5';
+          if (type !== 'text') {
+            document.getElementById('question-use-review').checked = false;
+          }
+        }
+      }
+      
+      // インライン編集: 質問文
+      async function updateQuestionText(id, text) {
+        if (!text.trim()) {
+          alert('質問文は必須です');
+          location.reload();
+          return;
+        }
+        try {
+          const res = await fetch('/admin/api/surveys/questions/' + id);
+          const q = await res.json();
+          q.question_text = text;
+          q.options = q.options ? JSON.parse(q.options) : null;
+          
+          await fetch('/admin/api/surveys/questions/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(q)
+          });
+        } catch (e) {
+          alert('更新に失敗しました');
+          location.reload();
+        }
+      }
+      
+      // インライン編集: 表示順
+      async function updateSortOrder(id, order) {
+        try {
+          const res = await fetch('/admin/api/surveys/questions/' + id);
+          const q = await res.json();
+          q.sort_order = parseInt(order) || 0;
+          q.options = q.options ? JSON.parse(q.options) : null;
+          
+          await fetch('/admin/api/surveys/questions/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(q)
+          });
+          
+          // 順序変更後はリロードしてソート順を反映
+          location.reload();
+        } catch (e) {
+          alert('更新に失敗しました');
+        }
+      }
+      
+      // 必須フラグのトグル
+      async function toggleRequired(id, currentState) {
+        try {
+          const res = await fetch('/admin/api/surveys/questions/' + id);
+          const q = await res.json();
+          q.is_required = currentState ? 0 : 1;
+          q.options = q.options ? JSON.parse(q.options) : null;
+          
+          await fetch('/admin/api/surveys/questions/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(q)
+          });
+          location.reload();
+        } catch (e) {
+          alert('更新に失敗しました');
+        }
+      }
+      
+      // 選択肢編集モーダル
+      async function editOptions(id) {
+        try {
+          const res = await fetch('/admin/api/surveys/questions/' + id);
+          const q = await res.json();
+          document.getElementById('edit-options-id').value = id;
+          document.getElementById('edit-options-text').value = q.options ? JSON.parse(q.options).join('\\n') : '';
+          document.getElementById('options-modal').classList.remove('hidden');
+        } catch (e) {
+          alert('取得に失敗しました');
+        }
+      }
+      
+      function closeOptionsModal() {
+        document.getElementById('options-modal').classList.add('hidden');
+      }
+      
+      async function saveOptions() {
+        const id = document.getElementById('edit-options-id').value;
+        const text = document.getElementById('edit-options-text').value;
+        const options = text.split('\\n').map(s => s.trim()).filter(s => s);
+        
+        try {
+          const res = await fetch('/admin/api/surveys/questions/' + id);
+          const q = await res.json();
+          q.options = options.length > 0 ? options : null;
+          
+          await fetch('/admin/api/surveys/questions/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(q)
+          });
+          location.reload();
+        } catch (e) {
+          alert('更新に失敗しました');
         }
       }
 
@@ -760,7 +1099,8 @@ export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
           document.getElementById('question-text').value = q.question_text;
           document.getElementById('question-type').value = q.question_type;
           document.getElementById('question-category').value = q.question_category;
-          document.getElementById('question-options').value = q.options ? JSON.parse(q.options).join(', ') : '';
+          // 選択肢を改行区切りで表示
+          document.getElementById('question-options').value = q.options ? JSON.parse(q.options).join('\\n') : '';
           document.getElementById('question-sort').value = q.sort_order;
           document.getElementById('question-required').checked = q.is_required === 1;
           document.getElementById('question-use-review').checked = q.use_for_review === 1;
@@ -803,11 +1143,15 @@ export function renderSurveyQuestions(questions: SurveyQuestion[]): string {
         
         const formData = new FormData(this);
         const id = formData.get('id');
+        const optionsRaw = formData.get('options') || '';
+        // 改行または「/」で区切る
+        const optionsParsed = optionsRaw.split(/[\\n\\/]/).map(s => s.trim()).filter(s => s);
+        
         const data = {
           question_text: formData.get('question_text'),
           question_type: formData.get('question_type'),
           question_category: formData.get('question_category'),
-          options: formData.get('options') ? formData.get('options').split(',').map(s => s.trim()).filter(s => s) : null,
+          options: optionsParsed.length > 0 ? optionsParsed : null,
           sort_order: parseInt(formData.get('sort_order')) || 0,
           is_required: formData.get('is_required') ? 1 : 0,
           use_for_review: formData.get('use_for_review') ? 1 : 0
