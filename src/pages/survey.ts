@@ -191,51 +191,103 @@ export const renderSurveyPage = (
       outline: none;
     }
     
-    /* ドロップダウン - 他の選択肢と統一したデザイン */
+    /* カスタムドロップダウン - かわいい丸みのあるデザイン */
     .custom-dropdown {
       position: relative;
-      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-    .custom-dropdown:hover {
-      transform: translateY(-4px);
-    }
-    .dropdown-select {
+    .dropdown-trigger {
       background: linear-gradient(145deg, #ffffff 0%, #f8f6fa 100%);
       border: 2px solid #e8e0f0;
-      border-radius: 16px;
+      border-radius: 20px;
+      padding: 12px 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
       box-shadow: 
         0 2px 4px rgba(180, 160, 200, 0.1),
         0 4px 8px rgba(180, 160, 200, 0.08),
         inset 0 1px 0 rgba(255, 255, 255, 0.9);
     }
-    .custom-dropdown:hover .dropdown-select {
+    .custom-dropdown:hover .dropdown-trigger {
+      transform: translateY(-4px);
       box-shadow: 
         0 6px 12px rgba(180, 160, 200, 0.2),
         0 12px 24px rgba(180, 160, 200, 0.15),
         inset 0 1px 0 rgba(255, 255, 255, 0.9);
       border-color: #d4c4e8;
     }
-    .dropdown-select:focus {
+    .dropdown-trigger.active {
       border-color: #c9a8e0;
       background: linear-gradient(145deg, #f0e6fa 0%, #fce4ec 100%);
       box-shadow: 
         0 4px 12px rgba(184, 165, 211, 0.35),
         0 8px 20px rgba(184, 165, 211, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.9),
-        inset 0 -2px 4px rgba(184, 165, 211, 0.1);
-      outline: none;
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
     }
-    .dropdown-select option {
-      padding: 12px;
-      background: #ffffff;
-      border-radius: 8px;
+    .dropdown-trigger .fa-chevron-down {
+      transition: transform 0.3s ease;
+      color: #c9a8e0;
     }
-    .custom-dropdown .fa-chevron-down {
-      transition: transform 0.25s ease;
-    }
-    .dropdown-select:focus + div .fa-chevron-down {
+    .dropdown-trigger.active .fa-chevron-down {
       transform: rotate(180deg);
+    }
+    .dropdown-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      right: 0;
+      background: linear-gradient(145deg, #ffffff 0%, #faf8fc 100%);
+      border: 2px solid #e8e0f0;
+      border-radius: 20px;
+      padding: 8px;
+      box-shadow: 
+        0 8px 24px rgba(180, 160, 200, 0.25),
+        0 16px 48px rgba(180, 160, 200, 0.15);
+      z-index: 100;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px) scale(0.95);
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .dropdown-menu.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+    }
+    .dropdown-option {
+      padding: 12px 16px;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: #5a5a6e;
+      font-size: 0.95rem;
+    }
+    .dropdown-option:hover {
+      background: linear-gradient(145deg, #f5f0fa 0%, #fce8f0 100%);
+      transform: translateX(4px);
+    }
+    .dropdown-option.selected {
+      background: linear-gradient(145deg, #e8d8f5 0%, #f8e0eb 100%);
+      color: #7c5a9e;
+      font-weight: 500;
+    }
+    .dropdown-option.selected::before {
+      content: '✓ ';
+      color: #c9a8e0;
+    }
+    .dropdown-placeholder {
+      color: #a0a0b0;
+    }
+    
+    /* 非表示のselect（フォーム送信用） */
+    .dropdown-select-hidden {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      width: 0;
+      height: 0;
     }
     
     /* 送信ボタン - 3D立体感 */
@@ -860,6 +912,66 @@ export const renderSurveyPage = (
     window.addEventListener('resize', initFloatingItems);
     draw();
     
+    // カスタムドロップダウン処理
+    let activeDropdown = null;
+    
+    window.toggleDropdown = function(id) {
+      const menu = document.getElementById('dropdown-menu-' + id);
+      const trigger = menu.previousElementSibling;
+      
+      // 他のドロップダウンを閉じる
+      document.querySelectorAll('.dropdown-menu.show').forEach(m => {
+        if (m.id !== 'dropdown-menu-' + id) {
+          m.classList.remove('show');
+          m.previousElementSibling.classList.remove('active');
+        }
+      });
+      
+      // トグル
+      menu.classList.toggle('show');
+      trigger.classList.toggle('active');
+      activeDropdown = menu.classList.contains('show') ? id : null;
+    }
+    
+    window.selectOption = function(id, value) {
+      const dropdown = document.querySelector('[data-dropdown-id="' + id + '"]');
+      const select = dropdown.querySelector('select');
+      const valueSpan = dropdown.querySelector('.dropdown-value');
+      const menu = document.getElementById('dropdown-menu-' + id);
+      const trigger = menu.previousElementSibling;
+      
+      // hidden selectの値を更新
+      select.value = value;
+      
+      // 表示を更新
+      valueSpan.textContent = value;
+      valueSpan.classList.remove('dropdown-placeholder');
+      
+      // 選択状態を更新
+      menu.querySelectorAll('.dropdown-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.textContent.trim() === value);
+      });
+      
+      // メニューを閉じる
+      menu.classList.remove('show');
+      trigger.classList.remove('active');
+      activeDropdown = null;
+      
+      // 進捗更新をトリガー
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    
+    // 外側クリックで閉じる
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.custom-dropdown')) {
+        document.querySelectorAll('.dropdown-menu.show').forEach(m => {
+          m.classList.remove('show');
+          m.previousElementSibling.classList.remove('active');
+        });
+        activeDropdown = null;
+      }
+    });
+    
     // フォーム処理
     const form = document.getElementById('survey-form');
     const coffeeFill = document.getElementById('coffee-fill');
@@ -877,6 +989,9 @@ export const renderSurveyPage = (
           if (document.querySelector('input[name="q_' + qId + '"]:checked')) answered++;
         } else if (type === 'choice') {
           if (document.querySelector('input[name="q_' + qId + '"]:checked')) answered++;
+        } else if (type === 'dropdown') {
+          const select = document.querySelector('select[name="q_' + qId + '"]');
+          if (select && select.value) answered++;
         } else if (type === 'text') {
           const textarea = document.querySelector('textarea[name="q_' + qId + '"]');
           if (textarea && textarea.value.trim()) answered++;
@@ -1096,7 +1211,7 @@ function renderQuestionsByCategory(
   return html
 }
 
-// コンパクトなドロップダウン（プロフィール用）
+// コンパクトなドロップダウン（プロフィール用）- カスタムUI
 function renderCompactDropdown(q: SurveyQuestion): string {
   const options = q.options ? JSON.parse(q.options) : []
   const isRequired = q.is_required === 1
@@ -1107,13 +1222,21 @@ function renderCompactDropdown(q: SurveyQuestion): string {
         ${escapeHtml(q.question_text)}
         ${isRequired ? '<span style="color: #e8b4d8;"> *</span>' : ''}
       </label>
-      <div class="custom-dropdown">
-        <select name="q_${q.id}" class="dropdown-select w-full px-4 sm:px-5 py-3 sm:py-4 appearance-none cursor-pointer text-sm sm:text-base" style="color: #5a5a6e;">
+      <div class="custom-dropdown" data-dropdown-id="${q.id}">
+        <select name="q_${q.id}" class="dropdown-select-hidden">
           <option value="">選択してください</option>
           ${options.map((opt: string) => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
         </select>
-        <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-          <i class="fas fa-chevron-down text-purple-300"></i>
+        <div class="dropdown-trigger" onclick="toggleDropdown(${q.id})">
+          <span class="dropdown-value dropdown-placeholder" data-default="選択">選択</span>
+          <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="dropdown-menu" id="dropdown-menu-${q.id}">
+          ${options.map((opt: string) => `
+            <div class="dropdown-option" onclick="selectOption(${q.id}, '${escapeHtml(opt).replace(/'/g, "\\'")}')">
+              ${escapeHtml(opt)}
+            </div>
+          `).join('')}
         </div>
       </div>
     </div>
@@ -1150,13 +1273,21 @@ function renderQuestion(q: SurveyQuestion, idx: number): string {
           ${escapeHtml(q.question_text)}
           ${isRequired ? '<span style="color: #e8b4d8;"> *</span>' : ''}
         </label>
-        <div class="custom-dropdown">
-          <select name="q_${q.id}" class="dropdown-select w-full px-4 sm:px-5 py-3 sm:py-4 appearance-none cursor-pointer text-base sm:text-lg" style="color: #5a5a6e;">
+        <div class="custom-dropdown" data-dropdown-id="${q.id}">
+          <select name="q_${q.id}" class="dropdown-select-hidden">
             <option value="">選択してください</option>
             ${options.map((opt: string) => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
           </select>
-          <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-            <i class="fas fa-chevron-down text-purple-300"></i>
+          <div class="dropdown-trigger" onclick="toggleDropdown(${q.id})">
+            <span class="dropdown-value dropdown-placeholder" data-default="選択してください">選択してください</span>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="dropdown-menu" id="dropdown-menu-${q.id}">
+            ${options.map((opt: string) => `
+              <div class="dropdown-option" onclick="selectOption(${q.id}, '${escapeHtml(opt).replace(/'/g, "\\'")}')">
+                ${escapeHtml(opt)}
+              </div>
+            `).join('')}
           </div>
         </div>
       </div>
