@@ -1,7 +1,7 @@
 // 質問の型定義
 interface SurveyQuestion {
   id: number
-  question_type: 'rating' | 'text' | 'choice' | 'multi_choice'
+  question_type: 'rating' | 'text' | 'choice' | 'single_choice' | 'multi_choice' | 'multiple_choice'
   question_text: string
   question_category: string
   options: string | null
@@ -24,10 +24,23 @@ export const renderSurveyPage = (
   const logoUrl = settings?.logo_url || ''
   
   const categoryLabels: Record<string, { label: string; icon: string }> = {
+    profile: { label: 'あなたについて', icon: 'fa-user' },
     satisfaction: { label: '総合評価', icon: 'fa-star' },
+    difficulty: { label: '講座の難易度', icon: 'fa-signal' },
     content: { label: '講座内容について', icon: 'fa-book-open' },
     instructor: { label: '講師について', icon: 'fa-chalkboard-teacher' },
+    exercise: { label: '演習・ワークについて', icon: 'fa-tasks' },
+    feedback_positive: { label: '良かった点', icon: 'fa-thumbs-up' },
+    feedback_improve: { label: '改善点', icon: 'fa-lightbulb' },
+    online_feedback: { label: 'オンライン受講について', icon: 'fa-laptop' },
+    confidence: { label: '学びの効果', icon: 'fa-graduation-cap' },
+    action: { label: '実践について', icon: 'fa-rocket' },
+    concerns: { label: '不安・疑問点', icon: 'fa-question-circle' },
+    recommend: { label: 'おすすめ度', icon: 'fa-heart' },
+    future_topics: { label: '今後の講座について', icon: 'fa-calendar-plus' },
+    review_permission: { label: '公開許可', icon: 'fa-share-alt' },
     environment: { label: '受講環境について', icon: 'fa-laptop' },
+    other: { label: 'その他', icon: 'fa-comment-dots' },
     general: { label: 'その他', icon: 'fa-comment-dots' }
   }
 
@@ -955,7 +968,13 @@ function renderQuestionsByCategory(
     grouped[cat].push(q)
   })
   
-  const categoryOrder = ['satisfaction', 'content', 'instructor', 'environment', 'general']
+  const categoryOrder = [
+    'profile', 'satisfaction', 'difficulty', 'instructor', 'exercise',
+    'feedback_positive', 'feedback_improve', 'online_feedback',
+    'confidence', 'action', 'concerns', 
+    'recommend', 'future_topics', 'other', 'review_permission',
+    'content', 'environment', 'general'
+  ]
   
   return categoryOrder
     .filter(cat => grouped[cat] && grouped[cat].length > 0)
@@ -1001,7 +1020,7 @@ function renderQuestion(q: SurveyQuestion, idx: number): string {
     `
   }
   
-  if (q.question_type === 'choice') {
+  if (q.question_type === 'choice' || q.question_type === 'single_choice') {
     const options = q.options ? JSON.parse(q.options) : []
     return `
       <div class="question-item" data-question-id="${q.id}" data-type="choice" data-required="${isRequired}" data-category="${q.question_category}">
@@ -1013,6 +1032,28 @@ function renderQuestion(q: SurveyQuestion, idx: number): string {
           ${options.map((opt: string, i: number) => `
             <label class="choice-option flex items-center cursor-pointer">
               <input type="radio" name="q_${q.id}" value="${escapeHtml(opt)}" class="hidden">
+              <span class="choice-label flex-1 px-4 sm:px-5 py-3 sm:py-4 rounded-xl border-2 border-gray-100 transition text-base sm:text-lg" style="color: #5a5a6e;">
+                ${escapeHtml(opt)}
+              </span>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+    `
+  }
+  
+  if (q.question_type === 'multiple_choice') {
+    const options = q.options ? JSON.parse(q.options) : []
+    return `
+      <div class="question-item" data-question-id="${q.id}" data-type="multiple_choice" data-required="${isRequired}" data-category="${q.question_category}">
+        <label class="block text-base sm:text-lg mb-3 sm:mb-4" style="color: #5a5a6e;">
+          ${escapeHtml(q.question_text)}
+          ${isRequired ? '<span style="color: #e8b4d8;"> *</span>' : '<span style="color: #a0a0b0;">（複数選択可）</span>'}
+        </label>
+        <div class="space-y-2 sm:space-y-3">
+          ${options.map((opt: string, i: number) => `
+            <label class="choice-option flex items-center cursor-pointer">
+              <input type="checkbox" name="q_${q.id}" value="${escapeHtml(opt)}" class="hidden">
               <span class="choice-label flex-1 px-4 sm:px-5 py-3 sm:py-4 rounded-xl border-2 border-gray-100 transition text-base sm:text-lg" style="color: #5a5a6e;">
                 ${escapeHtml(opt)}
               </span>
