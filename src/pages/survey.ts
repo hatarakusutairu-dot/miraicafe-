@@ -191,31 +191,51 @@ export const renderSurveyPage = (
       outline: none;
     }
     
-    /* ドロップダウン - エレガントなデザイン */
+    /* ドロップダウン - 他の選択肢と統一したデザイン */
+    .custom-dropdown {
+      position: relative;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .custom-dropdown:hover {
+      transform: translateY(-4px);
+    }
     .dropdown-select {
-      background: linear-gradient(145deg, #ffffff 0%, #faf8fc 100%);
+      background: linear-gradient(145deg, #ffffff 0%, #f8f6fa 100%);
       border: 2px solid #e8e0f0;
-      transition: all 0.3s ease;
+      border-radius: 16px;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
       box-shadow: 
-        inset 0 2px 6px rgba(180, 160, 200, 0.1),
-        0 2px 4px rgba(180, 160, 200, 0.05);
+        0 2px 4px rgba(180, 160, 200, 0.1),
+        0 4px 8px rgba(180, 160, 200, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    .custom-dropdown:hover .dropdown-select {
+      box-shadow: 
+        0 6px 12px rgba(180, 160, 200, 0.2),
+        0 12px 24px rgba(180, 160, 200, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      border-color: #d4c4e8;
     }
     .dropdown-select:focus {
       border-color: #c9a8e0;
-      background: #ffffff;
+      background: linear-gradient(145deg, #f0e6fa 0%, #fce4ec 100%);
       box-shadow: 
-        0 0 0 4px rgba(184, 165, 211, 0.15),
-        0 4px 12px rgba(184, 165, 211, 0.2);
-    }
-    .dropdown-select:hover {
-      border-color: #d4c4e8;
+        0 4px 12px rgba(184, 165, 211, 0.35),
+        0 8px 20px rgba(184, 165, 211, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        inset 0 -2px 4px rgba(184, 165, 211, 0.1);
+      outline: none;
     }
     .dropdown-select option {
       padding: 12px;
       background: #ffffff;
+      border-radius: 8px;
     }
-    .custom-dropdown {
-      position: relative;
+    .custom-dropdown .fa-chevron-down {
+      transition: transform 0.25s ease;
+    }
+    .dropdown-select:focus + div .fa-chevron-down {
+      transform: rotate(180deg);
     }
     
     /* 送信ボタン - 3D立体感 */
@@ -1087,13 +1107,13 @@ function renderCompactDropdown(q: SurveyQuestion): string {
         ${escapeHtml(q.question_text)}
         ${isRequired ? '<span style="color: #e8b4d8;"> *</span>' : ''}
       </label>
-      <div class="custom-dropdown relative">
-        <select name="q_${q.id}" class="dropdown-select w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border-2 border-gray-100 bg-white appearance-none cursor-pointer text-sm sm:text-base transition-all focus:border-purple-300 focus:outline-none" style="color: #5a5a6e;">
-          <option value="">選択</option>
+      <div class="custom-dropdown">
+        <select name="q_${q.id}" class="dropdown-select w-full px-4 sm:px-5 py-3 sm:py-4 appearance-none cursor-pointer text-sm sm:text-base" style="color: #5a5a6e;">
+          <option value="">選択してください</option>
           ${options.map((opt: string) => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
         </select>
-        <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-          <i class="fas fa-chevron-down text-purple-300 text-xs"></i>
+        <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+          <i class="fas fa-chevron-down text-purple-300"></i>
         </div>
       </div>
     </div>
@@ -1130,8 +1150,8 @@ function renderQuestion(q: SurveyQuestion, idx: number): string {
           ${escapeHtml(q.question_text)}
           ${isRequired ? '<span style="color: #e8b4d8;"> *</span>' : ''}
         </label>
-        <div class="custom-dropdown relative">
-          <select name="q_${q.id}" class="dropdown-select w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl border-2 border-gray-100 bg-white appearance-none cursor-pointer text-base sm:text-lg transition-all focus:border-purple-300 focus:outline-none" style="color: #5a5a6e;">
+        <div class="custom-dropdown">
+          <select name="q_${q.id}" class="dropdown-select w-full px-4 sm:px-5 py-3 sm:py-4 appearance-none cursor-pointer text-base sm:text-lg" style="color: #5a5a6e;">
             <option value="">選択してください</option>
             ${options.map((opt: string) => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
           </select>
