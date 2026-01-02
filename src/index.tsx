@@ -1054,6 +1054,8 @@ app.post('/api/stripe/webhook', async (c) => {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as any
+        console.log('Webhook received: checkout.session.completed', session.id)
+        console.log('Session metadata:', session.metadata)
         
         // Update payment record
         await c.env.DB.prepare(`
@@ -1068,12 +1070,28 @@ app.post('/api/stripe/webhook', async (c) => {
           session.id
         ).run()
 
-        // Update booking status if linked
+        // Update booking status and payment_status if linked
         if (session.metadata?.booking_id) {
+          console.log('Updating booking:', session.metadata.booking_id)
           await c.env.DB.prepare(`
-            UPDATE bookings SET status = 'confirmed', updated_at = CURRENT_TIMESTAMP
+            UPDATE bookings SET 
+              status = 'confirmed', 
+              payment_status = 'paid',
+              updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
           `).bind(session.metadata.booking_id).run()
+        }
+        
+        // Also try to find booking by customer_email and update payment_status
+        if (session.customer_email) {
+          console.log('Also updating by email:', session.customer_email)
+          await c.env.DB.prepare(`
+            UPDATE bookings SET 
+              payment_status = 'paid',
+              updated_at = CURRENT_TIMESTAMP
+            WHERE email = ? AND payment_status = 'unpaid'
+            ORDER BY created_at DESC LIMIT 1
+          `).bind(session.customer_email).run()
         }
 
         console.log('Payment succeeded for session:', session.id)
