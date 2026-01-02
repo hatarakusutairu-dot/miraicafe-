@@ -1090,8 +1090,7 @@ app.post('/api/stripe/webhook', async (c) => {
             UPDATE bookings SET 
               payment_status = 'paid',
               updated_at = CURRENT_TIMESTAMP
-            WHERE email = ? AND payment_status = 'unpaid'
-            ORDER BY created_at DESC LIMIT 1
+            WHERE customer_email = ? AND payment_status = 'unpaid'
           `).bind(session.customer_email).run()
         }
 
