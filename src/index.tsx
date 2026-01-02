@@ -1443,25 +1443,43 @@ app.post('/api/reviews', async (c) => {
 
 // ===== Admin Routes =====
 
-// セッション管理用（簡易実装：本番ではKV等を使用）
-const adminSessions = new Map<string, { email: string; expiresAt: number }>()
+// セッション管理（署名付きCookie方式：Cloudflare Workers対応）
 const SESSION_DURATION = 24 * 60 * 60 * 1000 // 24時間
+const SESSION_SECRET = 'miraicafe-admin-secret-2026' // 本番では環境変数から取得推奨
 
-function generateSessionId(): string {
-  const array = new Uint8Array(32)
-  crypto.getRandomValues(array)
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
+// 署名付きトークンを生成
+function generateSessionToken(email: string): string {
+  const expiresAt = Date.now() + SESSION_DURATION
+  const data = JSON.stringify({ email, expiresAt })
+  const encoded = btoa(data)
+  // 簡易署名（本番ではHMAC-SHA256を使用推奨）
+  const signature = btoa(SESSION_SECRET + encoded).slice(0, 16)
+  return `${encoded}.${signature}`
 }
 
-function validateSession(sessionId: string | undefined): boolean {
-  if (!sessionId) return false
-  const session = adminSessions.get(sessionId)
-  if (!session) return false
-  if (Date.now() > session.expiresAt) {
-    adminSessions.delete(sessionId)
-    return false
+// トークンを検証
+function validateSessionToken(token: string | undefined): { valid: boolean; email?: string } {
+  if (!token) return { valid: false }
+  
+  try {
+    const [encoded, signature] = token.split('.')
+    if (!encoded || !signature) return { valid: false }
+    
+    // 署名検証
+    const expectedSignature = btoa(SESSION_SECRET + encoded).slice(0, 16)
+    if (signature !== expectedSignature) return { valid: false }
+    
+    // データ復元
+    const data = JSON.parse(atob(encoded))
+    if (!data.email || !data.expiresAt) return { valid: false }
+    
+    // 有効期限チェック
+    if (Date.now() > data.expiresAt) return { valid: false }
+    
+    return { valid: true, email: data.email }
+  } catch {
+    return { valid: false }
   }
-  return true
 }
 
 // 認証ミドルウェア
@@ -1473,9 +1491,14 @@ app.use('/admin/*', async (c, next) => {
     return next()
   }
   
-  const sessionId = getCookie(c, 'admin_session')
+  const sessionToken = getCookie(c, 'admin_session')
+  const { valid } = validateSessionToken(sessionToken)
   
-  if (!validateSession(sessionId)) {
+  if (!valid) {
+    // API リクエストの場合は JSON エラーを返す
+    if (path.includes('/admin/api/')) {
+      return c.json({ error: 'Unauthorized', message: 'ログインが必要です' }, 401)
+    }
     return c.redirect('/admin/login')
   }
   
@@ -1484,8 +1507,9 @@ app.use('/admin/*', async (c, next) => {
 
 // ログインページ
 app.get('/admin/login', (c) => {
-  const sessionId = getCookie(c, 'admin_session')
-  if (validateSession(sessionId)) {
+  const sessionToken = getCookie(c, 'admin_session')
+  const { valid } = validateSessionToken(sessionToken)
+  if (valid) {
     return c.redirect('/admin')
   }
   return c.html(renderLoginPage())
@@ -1502,15 +1526,12 @@ app.post('/admin/login', async (c) => {
   const adminPassword = (c.env as any)?.ADMIN_PASSWORD || 'admin123'
   
   if (email === adminEmail && password === adminPassword) {
-    const sessionId = generateSessionId()
-    adminSessions.set(sessionId, {
-      email,
-      expiresAt: Date.now() + SESSION_DURATION
-    })
+    // 署名付きトークンを生成
+    const sessionToken = generateSessionToken(email)
     
     // 本番環境ではSecure、開発環境では無効
     const isProduction = c.req.url.startsWith('https://')
-    setCookie(c, 'admin_session', sessionId, {
+    setCookie(c, 'admin_session', sessionToken, {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'Lax',
@@ -1526,11 +1547,7 @@ app.post('/admin/login', async (c) => {
 
 // ログアウト処理
 app.post('/admin/logout', (c) => {
-  const sessionId = getCookie(c, 'admin_session')
-  if (sessionId) {
-    adminSessions.delete(sessionId)
-    deleteCookie(c, 'admin_session', { path: '/admin' })
-  }
+  deleteCookie(c, 'admin_session', { path: '/admin' })
   return c.redirect('/admin/login')
 })
 

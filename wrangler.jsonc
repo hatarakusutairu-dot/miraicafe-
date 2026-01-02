@@ -8,15 +8,17 @@
     {
       "binding": "DB",
       "database_name": "miraicafe-db",
-      "database_id": "local-dev-db"
+      "database_id": "74294485-d002-4d22-b4ef-c86df3ba77b5"
     }
   ],
-  "r2_buckets": [
-    {
-      "binding": "R2_BUCKET",
-      "bucket_name": "miraicafe-images"
-    }
-  ]
+  // R2は後で設定（APIトークンにR2権限追加が必要）
+  // "r2_buckets": [
+  //   {
+  //     "binding": "R2_BUCKET",
+  //     "bucket_name": "miraicafe-images"
+  //   }
+  // ]
+  "vars": {}
   // NOTE: Cron Triggers for AI News collection
   // Cloudflare Pages doesn't support cron triggers directly.
   // For production, use one of these options:
