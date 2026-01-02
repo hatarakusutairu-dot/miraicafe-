@@ -71,7 +71,7 @@ export const renderCommentsList = (comments: Comment[], filter: string = 'all') 
                   <div>
                     <span class="font-semibold text-gray-800">${comment.author_name}</span>
                     <div class="flex items-center gap-2 text-xs text-gray-500">
-                      <span>${new Date(comment.created_at).toLocaleString('ja-JP')}</span>
+                      <span>${new Date(comment.created_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}</span>
                       <span>•</span>
                       <a href="/blog/${comment.post_id}" target="_blank" class="text-blue-500 hover:underline">
                         <i class="fas fa-external-link-alt mr-1"></i>${comment.post_id}
@@ -108,7 +108,7 @@ export const renderCommentsList = (comments: Comment[], filter: string = 'all') 
                     <span class="text-xs font-semibold text-emerald-600">
                       <i class="fas fa-reply mr-1"></i>返信済み
                     </span>
-                    ${comment.admin_reply_at ? `<span class="text-xs text-gray-400">${new Date(comment.admin_reply_at).toLocaleString('ja-JP')}</span>` : ''}
+                    ${comment.admin_reply_at ? `<span class="text-xs text-gray-400">${new Date(comment.admin_reply_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}</span>` : ''}
                   </div>
                   <p class="text-gray-700 text-sm whitespace-pre-wrap">${comment.admin_reply}</p>
                 </div>

@@ -378,7 +378,7 @@ export const renderAINewsList = (news: AINews[], counts: { all: number; pending:
         if (!dateStr) return '不明';
         try {
           const date = new Date(dateStr);
-          return date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' });
+          return date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'Asia/Tokyo' });
         } catch {
           return dateStr;
         }

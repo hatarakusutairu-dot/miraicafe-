@@ -71,7 +71,7 @@ export const renderPoliciesList = (policies: Policy[]) => {
                       ${policy.last_updated ? `
                         <span class="text-xs text-gray-400">
                           <i class="fas fa-clock mr-1"></i>
-                          最終更新: ${new Date(policy.last_updated).toLocaleDateString('ja-JP')}
+                          最終更新: ${new Date(policy.last_updated).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}
                         </span>
                       ` : ''}
                     </div>
@@ -197,7 +197,7 @@ export const renderPolicyEditForm = (policy: Policy | null, policyId: string) =>
         
         <div class="flex justify-between items-center pt-6 border-t border-gray-200">
           <div class="text-sm text-gray-500">
-            ${policy?.last_updated ? `最終更新: ${new Date(policy.last_updated).toLocaleString('ja-JP')}` : ''}
+            ${policy?.last_updated ? `最終更新: ${new Date(policy.last_updated).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}` : ''}
           </div>
           <div class="flex gap-3">
             <a href="/admin/policies" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium">

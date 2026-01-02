@@ -46,9 +46,11 @@ function formatDateTime(dateStr: string | null): string {
   if (!dateStr) return '-'
   try {
     const date = new Date(dateStr)
+    // 明示的にJST（日本標準時）で表示
     return date.toLocaleString('ja-JP', { 
       year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit'
+      hour: '2-digit', minute: '2-digit',
+      timeZone: 'Asia/Tokyo'
     })
   } catch {
     return dateStr
@@ -536,7 +538,8 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
             month: '2-digit',
             day: '2-digit',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
+            timeZone: 'Asia/Tokyo'
           });
         } catch (e) {
           return dateStr;
