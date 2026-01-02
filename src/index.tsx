@@ -1044,7 +1044,8 @@ app.post('/api/stripe/webhook', async (c) => {
 
     let event
     try {
-      event = stripe.webhooks.constructEvent(payload, signature, c.env.STRIPE_WEBHOOK_SECRET)
+      // Cloudflare Workers環境では非同期版を使用
+      event = await stripe.webhooks.constructEventAsync(payload, signature, c.env.STRIPE_WEBHOOK_SECRET)
     } catch (err) {
       console.error('Webhook signature verification failed:', err)
       return c.json({ error: 'Invalid signature' }, 400)
