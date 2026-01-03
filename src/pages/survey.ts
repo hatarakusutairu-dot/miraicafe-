@@ -1162,6 +1162,25 @@ function renderQuestionsByCategory(
   
   let html = ''
   
+  // 受講講座セクション（最初に表示）
+  const courseQuestions = grouped['course'] || []
+  if (courseQuestions.length > 0) {
+    const info = categoryLabels['course'] || { label: '受講講座', icon: 'fa-graduation-cap' }
+    html += `
+      <div class="survey-card rounded-3xl p-4 sm:p-6" style="overflow: visible; position: relative; z-index: 60;">
+        <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-5">
+          <div class="category-icon">
+            <i class="fas ${info.icon} text-base sm:text-lg" style="color: #c9a8e0;"></i>
+          </div>
+          <span class="text-base sm:text-lg font-medium title-3d" style="color: #5a5a6e;">${info.label}</span>
+        </div>
+        <div class="space-y-4 sm:space-y-6" style="overflow: visible;">
+          ${courseQuestions.map((q, idx) => renderQuestion(q, idx)).join('')}
+        </div>
+      </div>
+    `
+  }
+  
   // プロフィールセクション（横並びドロップダウン）
   if (profileQuestions.length > 0) {
     html += `
