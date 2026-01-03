@@ -34,6 +34,8 @@ import { renderCommentsList, type Comment } from './admin/comments'
 import { renderSurveyDashboard, renderSurveyQuestions, renderSurveyResponses, renderSurveySettings } from './admin/surveys'
 import { renderSurveyPage } from './pages/survey'
 import { renderPaymentsList, type Payment } from './admin/payments'
+import { renderPricingPatternsList, renderPricingPatternForm } from './admin/pricing-patterns'
+import { renderCourseSeriesList, renderCourseSeriesForm } from './admin/course-series'
 
 // Services
 import { 
@@ -2878,6 +2880,358 @@ app.get('/admin/payments/export', async (c) => {
   } catch (error) {
     console.error('Payment export error:', error)
     return c.redirect('/admin/payments')
+  }
+})
+
+// ===== 料金パターン管理 =====
+app.get('/admin/pricing-patterns', async (c) => {
+  try {
+    const patterns = await c.env.DB.prepare(`
+      SELECT * FROM pricing_patterns ORDER BY sort_order ASC
+    `).all()
+    
+    return c.html(renderPricingPatternsList(patterns.results as any[]))
+  } catch (error) {
+    console.error('Pricing patterns error:', error)
+    return c.html(renderPricingPatternsList([]))
+  }
+})
+
+app.get('/admin/pricing-patterns/new', async (c) => {
+  return c.html(renderPricingPatternForm())
+})
+
+app.get('/admin/pricing-patterns/:id/edit', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    const pattern = await c.env.DB.prepare(`
+      SELECT * FROM pricing_patterns WHERE id = ?
+    `).bind(id).first()
+    
+    if (!pattern) {
+      return c.redirect('/admin/pricing-patterns')
+    }
+    
+    return c.html(renderPricingPatternForm(pattern as any))
+  } catch (error) {
+    console.error('Pricing pattern edit error:', error)
+    return c.redirect('/admin/pricing-patterns')
+  }
+})
+
+// 料金パターンAPI
+app.post('/admin/api/pricing-patterns', async (c) => {
+  try {
+    const data = await c.req.json()
+    const id = `pattern-${Date.now()}`
+    
+    // デフォルト設定の場合、他のパターンのデフォルトを解除
+    if (data.is_default) {
+      await c.env.DB.prepare(`
+        UPDATE pricing_patterns SET is_default = 0
+      `).run()
+    }
+    
+    await c.env.DB.prepare(`
+      INSERT INTO pricing_patterns (id, name, description, course_discount_rate, early_bird_discount_rate, early_bird_days, has_monthly_option, tax_rate, is_default, sort_order)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM pricing_patterns))
+    `).bind(
+      id,
+      data.name,
+      data.description || '',
+      data.course_discount_rate,
+      data.early_bird_discount_rate,
+      data.early_bird_days,
+      data.has_monthly_option,
+      data.tax_rate,
+      data.is_default
+    ).run()
+    
+    return c.json({ success: true, id })
+  } catch (error) {
+    console.error('Create pricing pattern error:', error)
+    return c.json({ success: false, error: '作成に失敗しました' }, 500)
+  }
+})
+
+app.put('/admin/api/pricing-patterns/:id', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    const data = await c.req.json()
+    
+    // デフォルト設定の場合、他のパターンのデフォルトを解除
+    if (data.is_default) {
+      await c.env.DB.prepare(`
+        UPDATE pricing_patterns SET is_default = 0 WHERE id != ?
+      `).bind(id).run()
+    }
+    
+    await c.env.DB.prepare(`
+      UPDATE pricing_patterns SET
+        name = ?,
+        description = ?,
+        course_discount_rate = ?,
+        early_bird_discount_rate = ?,
+        early_bird_days = ?,
+        has_monthly_option = ?,
+        tax_rate = ?,
+        is_default = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(
+      data.name,
+      data.description || '',
+      data.course_discount_rate,
+      data.early_bird_discount_rate,
+      data.early_bird_days,
+      data.has_monthly_option,
+      data.tax_rate,
+      data.is_default,
+      id
+    ).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Update pricing pattern error:', error)
+    return c.json({ success: false, error: '更新に失敗しました' }, 500)
+  }
+})
+
+app.delete('/admin/api/pricing-patterns/:id', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    // 使用中のコースがあるかチェック
+    const usage = await c.env.DB.prepare(`
+      SELECT COUNT(*) as count FROM course_series WHERE pricing_pattern_id = ?
+    `).bind(id).first()
+    
+    if (usage && (usage as any).count > 0) {
+      return c.json({ success: false, error: 'このパターンを使用しているコースがあるため削除できません' }, 400)
+    }
+    
+    await c.env.DB.prepare(`
+      DELETE FROM pricing_patterns WHERE id = ?
+    `).bind(id).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Delete pricing pattern error:', error)
+    return c.json({ success: false, error: '削除に失敗しました' }, 500)
+  }
+})
+
+// ===== コース（シリーズ）管理 =====
+app.get('/admin/course-series', async (c) => {
+  try {
+    const series = await c.env.DB.prepare(`
+      SELECT * FROM course_series ORDER BY display_order ASC, created_at DESC
+    `).all()
+    
+    const patterns = await c.env.DB.prepare(`
+      SELECT * FROM pricing_patterns ORDER BY sort_order ASC
+    `).all()
+    
+    return c.html(renderCourseSeriesList(series.results as any[], patterns.results as any[]))
+  } catch (error) {
+    console.error('Course series error:', error)
+    return c.html(renderCourseSeriesList([], []))
+  }
+})
+
+app.get('/admin/course-series/new', async (c) => {
+  try {
+    const patterns = await c.env.DB.prepare(`
+      SELECT * FROM pricing_patterns ORDER BY sort_order ASC
+    `).all()
+    
+    const courses = await c.env.DB.prepare(`
+      SELECT id, title, series_id, session_number FROM courses WHERE status = 'published' ORDER BY title ASC
+    `).all()
+    
+    return c.html(renderCourseSeriesForm(patterns.results as any[], courses.results as any[]))
+  } catch (error) {
+    console.error('Course series new error:', error)
+    return c.redirect('/admin/course-series')
+  }
+})
+
+app.get('/admin/course-series/:id/edit', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    const series = await c.env.DB.prepare(`
+      SELECT * FROM course_series WHERE id = ?
+    `).bind(id).first()
+    
+    if (!series) {
+      return c.redirect('/admin/course-series')
+    }
+    
+    const patterns = await c.env.DB.prepare(`
+      SELECT * FROM pricing_patterns ORDER BY sort_order ASC
+    `).all()
+    
+    const courses = await c.env.DB.prepare(`
+      SELECT id, title, series_id, session_number FROM courses WHERE status = 'published' ORDER BY title ASC
+    `).all()
+    
+    const linkedCourses = await c.env.DB.prepare(`
+      SELECT id, title, session_number FROM courses WHERE series_id = ? ORDER BY session_number ASC
+    `).bind(id).all()
+    
+    return c.html(renderCourseSeriesForm(
+      patterns.results as any[],
+      courses.results as any[],
+      series as any,
+      linkedCourses.results as any[]
+    ))
+  } catch (error) {
+    console.error('Course series edit error:', error)
+    return c.redirect('/admin/course-series')
+  }
+})
+
+// コースAPI
+app.post('/admin/api/course-series', async (c) => {
+  try {
+    const data = await c.req.json()
+    const id = `series-${Date.now()}`
+    
+    await c.env.DB.prepare(`
+      INSERT INTO course_series (
+        id, title, subtitle, description, total_sessions, duration_minutes,
+        base_price_per_session, pricing_pattern_id,
+        calc_single_price_incl, calc_single_total_incl, calc_course_price_incl,
+        calc_early_price_incl, calc_monthly_price_incl, calc_savings_course, calc_savings_early,
+        early_bird_deadline, is_featured, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id,
+      data.title,
+      data.subtitle || '',
+      data.description || '',
+      data.total_sessions,
+      data.duration_minutes,
+      data.base_price_per_session,
+      data.pricing_pattern_id,
+      data.calc_single_price_incl,
+      data.calc_single_total_incl,
+      data.calc_course_price_incl,
+      data.calc_early_price_incl,
+      data.calc_monthly_price_incl,
+      data.calc_savings_course,
+      data.calc_savings_early,
+      data.early_bird_deadline,
+      data.is_featured,
+      data.status
+    ).run()
+    
+    // 講座の紐付け
+    if (data.linked_courses && data.linked_courses.length > 0) {
+      for (let i = 0; i < data.linked_courses.length; i++) {
+        await c.env.DB.prepare(`
+          UPDATE courses SET series_id = ?, session_number = ? WHERE id = ?
+        `).bind(id, i + 1, data.linked_courses[i]).run()
+      }
+    }
+    
+    return c.json({ success: true, id })
+  } catch (error) {
+    console.error('Create course series error:', error)
+    return c.json({ success: false, error: '作成に失敗しました' }, 500)
+  }
+})
+
+app.put('/admin/api/course-series/:id', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    const data = await c.req.json()
+    
+    await c.env.DB.prepare(`
+      UPDATE course_series SET
+        title = ?,
+        subtitle = ?,
+        description = ?,
+        total_sessions = ?,
+        duration_minutes = ?,
+        base_price_per_session = ?,
+        pricing_pattern_id = ?,
+        calc_single_price_incl = ?,
+        calc_single_total_incl = ?,
+        calc_course_price_incl = ?,
+        calc_early_price_incl = ?,
+        calc_monthly_price_incl = ?,
+        calc_savings_course = ?,
+        calc_savings_early = ?,
+        early_bird_deadline = ?,
+        is_featured = ?,
+        status = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(
+      data.title,
+      data.subtitle || '',
+      data.description || '',
+      data.total_sessions,
+      data.duration_minutes,
+      data.base_price_per_session,
+      data.pricing_pattern_id,
+      data.calc_single_price_incl,
+      data.calc_single_total_incl,
+      data.calc_course_price_incl,
+      data.calc_early_price_incl,
+      data.calc_monthly_price_incl,
+      data.calc_savings_course,
+      data.calc_savings_early,
+      data.early_bird_deadline,
+      data.is_featured,
+      data.status,
+      id
+    ).run()
+    
+    // 既存の紐付けを解除
+    await c.env.DB.prepare(`
+      UPDATE courses SET series_id = NULL, session_number = NULL WHERE series_id = ?
+    `).bind(id).run()
+    
+    // 新しい紐付け
+    if (data.linked_courses && data.linked_courses.length > 0) {
+      for (let i = 0; i < data.linked_courses.length; i++) {
+        await c.env.DB.prepare(`
+          UPDATE courses SET series_id = ?, session_number = ? WHERE id = ?
+        `).bind(id, i + 1, data.linked_courses[i]).run()
+      }
+    }
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Update course series error:', error)
+    return c.json({ success: false, error: '更新に失敗しました' }, 500)
+  }
+})
+
+app.delete('/admin/api/course-series/:id', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    // 紐付けを解除
+    await c.env.DB.prepare(`
+      UPDATE courses SET series_id = NULL, session_number = NULL WHERE series_id = ?
+    `).bind(id).run()
+    
+    // コースを削除
+    await c.env.DB.prepare(`
+      DELETE FROM course_series WHERE id = ?
+    `).bind(id).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Delete course series error:', error)
+    return c.json({ success: false, error: '削除に失敗しました' }, 500)
   }
 })
 
