@@ -513,17 +513,20 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
       }
 
       // Googleカレンダー追加用URL生成関数
-      function generateGoogleCalendarUrl(title, description, startDateTime, endDateTime, location) {
-        const formatDateTime = (dateTime) => {
-          return new Date(dateTime).toISOString().replace(/[-:]/g, '').replace(/\\.\\d{3}/, '');
+      function generateGoogleCalendarUrl(title, description, date, startTime, endTime, location) {
+        // 日付と時刻をローカル形式で直接フォーマット（タイムゾーン変換なし）
+        // Format: YYYYMMDDTHHMMSS
+        const formatLocalDateTime = (dateStr, timeStr) => {
+          return dateStr.replace(/-/g, '') + 'T' + timeStr.replace(':', '') + '00';
         };
+        
         const params = new URLSearchParams({
           action: 'TEMPLATE',
           text: title,
-          dates: formatDateTime(startDateTime) + '/' + formatDateTime(endDateTime),
+          dates: formatLocalDateTime(date, startTime) + '/' + formatLocalDateTime(date, endTime),
           details: description,
           location: location || 'オンライン',
-          trp: 'false'
+          ctz: 'Asia/Tokyo'
         });
         return 'https://calendar.google.com/calendar/render?' + params.toString();
       }
@@ -541,8 +544,6 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
           return;
         }
         
-        const startDateTime = schedule.date + 'T' + schedule.startTime + ':00+09:00';
-        const endDateTime = schedule.date + 'T' + schedule.endTime + ':00+09:00';
         const title = '【mirAIcafe】' + course.title;
         
         // オンラインURLを含める（講座から取得）
@@ -556,7 +557,7 @@ export const renderReservationPage = (courses: Course[], schedules: Schedule[], 
         description += '\\n主催: mirAIcafe\\nhttps://miraicafe.work';
         
         const location = onlineUrl || 'オンライン';
-        const calendarUrl = generateGoogleCalendarUrl(title, description, startDateTime, endDateTime, location);
+        const calendarUrl = generateGoogleCalendarUrl(title, description, schedule.date, schedule.startTime, schedule.endTime, location);
         if (linkEl) linkEl.href = calendarUrl;
         console.log('Calendar URL set:', calendarUrl);
       }
