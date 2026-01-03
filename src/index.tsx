@@ -3279,72 +3279,79 @@ app.get('/admin/api/ai/search-images', async (c) => {
   }
 })
 
-// 画像配信エンドポイント（R2から直接配信）
+// 画像配信エンドポイント
+// 本番環境: public/images/ から静的配信（Cloudflare Pagesが自動処理）
+// 開発環境: R2エミュレータから配信
 app.get('/images/:fileName', async (c) => {
   try {
     const fileName = c.req.param('fileName')
-    const key = `uploads/${fileName}`
     
-    const object = await c.env.R2_BUCKET.get(key)
-    
-    if (!object) {
-      return c.notFound()
+    // R2が利用可能な場合（開発環境）
+    if (c.env.R2_BUCKET) {
+      const key = `uploads/${fileName}`
+      const object = await c.env.R2_BUCKET.get(key)
+      
+      if (object) {
+        const headers = new Headers()
+        headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg')
+        headers.set('Cache-Control', 'public, max-age=31536000')
+        headers.set('ETag', object.etag)
+        return new Response(object.body, { headers })
+      }
     }
-
-    const headers = new Headers()
-    headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg')
-    headers.set('Cache-Control', 'public, max-age=31536000') // 1年キャッシュ
-    headers.set('ETag', object.etag)
-
-    return new Response(object.body, { headers })
+    
+    // R2がない場合は404（本番ではpublic/images/から静的配信される）
+    return c.notFound()
   } catch (error) {
     console.error('Image serve error:', error)
     return c.notFound()
   }
 })
 
-// 動画配信エンドポイント（R2から直接配信）
+// 動画配信エンドポイント
+// 本番環境: public/videos/ から静的配信（Cloudflare Pagesが自動処理）
+// 開発環境: R2エミュレータから配信
 app.get('/videos/:fileName', async (c) => {
   try {
     const fileName = c.req.param('fileName')
-    const key = `videos/${fileName}`
     
-    const object = await c.env.R2_BUCKET.get(key)
-    
-    if (!object) {
-      return c.notFound()
-    }
-
-    const headers = new Headers()
-    headers.set('Content-Type', object.httpMetadata?.contentType || 'video/mp4')
-    headers.set('Cache-Control', 'public, max-age=31536000') // 1年キャッシュ
-    headers.set('Accept-Ranges', 'bytes')
-    
-    // Range リクエスト対応（動画シーク用）
-    const range = c.req.header('Range')
-    if (range && object.size) {
-      const parts = range.replace(/bytes=/, '').split('-')
-      const start = parseInt(parts[0], 10)
-      const end = parts[1] ? parseInt(parts[1], 10) : object.size - 1
-      const chunkSize = end - start + 1
+    // R2が利用可能な場合（開発環境）
+    if (c.env.R2_BUCKET) {
+      const key = `videos/${fileName}`
+      const object = await c.env.R2_BUCKET.get(key)
       
-      headers.set('Content-Range', `bytes ${start}-${end}/${object.size}`)
-      headers.set('Content-Length', String(chunkSize))
-      
-      // R2のsliceを使って部分取得
-      const slicedObject = await c.env.R2_BUCKET.get(key, {
-        range: { offset: start, length: chunkSize }
-      })
-      
-      if (slicedObject) {
-        return new Response(slicedObject.body, { 
-          status: 206, 
-          headers 
-        })
+      if (object) {
+        const headers = new Headers()
+        headers.set('Content-Type', object.httpMetadata?.contentType || 'video/mp4')
+        headers.set('Cache-Control', 'public, max-age=31536000')
+        headers.set('Accept-Ranges', 'bytes')
+        
+        // Range リクエスト対応（動画シーク用）
+        const range = c.req.header('Range')
+        if (range && object.size) {
+          const parts = range.replace(/bytes=/, '').split('-')
+          const start = parseInt(parts[0], 10)
+          const end = parts[1] ? parseInt(parts[1], 10) : object.size - 1
+          const chunkSize = end - start + 1
+          
+          headers.set('Content-Range', `bytes ${start}-${end}/${object.size}`)
+          headers.set('Content-Length', String(chunkSize))
+          
+          const slicedObject = await c.env.R2_BUCKET.get(key, {
+            range: { offset: start, length: chunkSize }
+          })
+          
+          if (slicedObject) {
+            return new Response(slicedObject.body, { status: 206, headers })
+          }
+        }
+        
+        return new Response(object.body, { headers })
       }
     }
-
-    return new Response(object.body, { headers })
+    
+    // R2がない場合は404（本番ではpublic/videos/から静的配信される）
+    return c.notFound()
   } catch (error) {
     console.error('Video serve error:', error)
     return c.notFound()
