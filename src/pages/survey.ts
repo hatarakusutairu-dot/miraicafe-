@@ -24,6 +24,7 @@ export const renderSurveyPage = (
   const logoUrl = settings?.logo_url || ''
   
   const categoryLabels: Record<string, { label: string; icon: string }> = {
+    course: { label: '受講講座', icon: 'fa-graduation-cap' },
     profile: { label: 'あなたについて', icon: 'fa-user' },
     satisfaction: { label: '総合評価', icon: 'fa-star' },
     difficulty: { label: '講座の難易度', icon: 'fa-signal' },

@@ -50,10 +50,24 @@ function escapeHtml(text: string | null | undefined): string {
 // アンケート管理トップ（分析ダッシュボード）
 export function renderSurveyDashboard(stats: SurveyStats, questions: SurveyQuestion[]): string {
   const categoryLabels: Record<string, string> = {
+    course: '受講講座',
+    profile: 'プロフィール',
     satisfaction: '総合評価',
+    difficulty: '難易度',
     content: '講座内容',
     instructor: '講師',
+    exercise: '演習',
+    feedback_positive: '良かった点',
+    feedback_improve: '改善点',
+    online_feedback: 'オンライン',
+    confidence: '学びの効果',
+    action: '実践',
+    concerns: '不安・疑問',
+    recommend: 'おすすめ度',
+    future_topics: '今後の講座',
+    review_permission: '公開許可',
     environment: '受講環境',
+    other: 'その他',
     general: 'その他'
   }
 
@@ -79,7 +93,10 @@ export function renderSurveyDashboard(stats: SurveyStats, questions: SurveyQuest
           </h1>
           <p class="text-gray-500 mt-1">受講後アンケートの回答を分析</p>
         </div>
-        <div class="flex gap-3">
+        <div class="flex gap-3 flex-wrap">
+          <a href="/survey" target="_blank" class="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg transition flex items-center gap-2 shadow-sm">
+            <i class="fas fa-external-link-alt"></i>実際のページを開く
+          </a>
           <button onclick="openPreviewModal()" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-lg transition flex items-center gap-2 shadow-sm">
             <i class="fas fa-eye"></i>プレビュー
           </button>

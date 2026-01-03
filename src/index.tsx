@@ -5254,6 +5254,20 @@ app.get('/survey', async (c) => {
       SELECT * FROM survey_questions WHERE is_active = 1 ORDER BY sort_order ASC
     `).all()
     
+    // 講座リストを取得（講座選択質問用）
+    const coursesResult = await c.env.DB.prepare(`
+      SELECT title FROM courses ORDER BY created_at DESC
+    `).all()
+    const courseList = (coursesResult.results as any[]).map(c => c.title)
+    
+    // question_category === 'course' の質問の選択肢を講座リストで動的に置き換え
+    const processedQuestions = (questions.results as any[]).map(q => {
+      if (q.question_category === 'course' && q.question_type === 'dropdown') {
+        return { ...q, options: JSON.stringify(courseList) }
+      }
+      return q
+    })
+    
     // 設定を取得
     const settings = await c.env.DB.prepare(`SELECT survey_thank_you_video_url, survey_logo_url FROM site_stats WHERE id = 'main'`).first()
     
@@ -5262,7 +5276,7 @@ app.get('/survey', async (c) => {
       logo_url: (settings as any)?.survey_logo_url || ''
     }
     
-    return c.html(renderSurveyPage(questions.results as any[], bookingId, courseName, surveySettings))
+    return c.html(renderSurveyPage(processedQuestions, bookingId, courseName, surveySettings))
   } catch (error) {
     console.error('Survey page error:', error)
     return c.html(renderSurveyPage([], bookingId, courseName))
