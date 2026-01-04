@@ -3546,10 +3546,11 @@ app.post('/admin/api/upload', async (c) => {
       return c.json({ error: '対応していないファイル形式です。JPG, PNG, GIF, WebPのみ対応しています。' }, 400)
     }
 
-    // ファイルサイズチェック（D1保存のため2MBに制限）
-    const MAX_D1_FILE_SIZE = 2 * 1024 * 1024 // 2MB
+    // ファイルサイズチェック（D1保存のため750KBに制限 - Base64で約1MB）
+    const MAX_D1_FILE_SIZE = 750 * 1024 // 750KB
     if (file.size > MAX_D1_FILE_SIZE) {
-      return c.json({ error: 'ファイルサイズが大きすぎます（最大2MB）' }, 400)
+      const sizeKB = Math.round(file.size / 1024)
+      return c.json({ error: `ファイルサイズが大きすぎます（${sizeKB}KB）。最大750KBまでです。\nhttps://squoosh.app/ で圧縮してください。` }, 400)
     }
 
     // ファイル名を生成
@@ -3566,10 +3567,15 @@ app.post('/admin/api/upload', async (c) => {
     const base64Data = btoa(binary)
     
     // D1に保存
-    await c.env.DB.prepare(`
-      INSERT INTO media_files (id, filename, mime_type, size, data)
-      VALUES (?, ?, ?, ?, ?)
-    `).bind(fileId, fileName, file.type, file.size, base64Data).run()
+    try {
+      await c.env.DB.prepare(`
+        INSERT INTO media_files (id, filename, mime_type, size, data)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(fileId, fileName, file.type, file.size, base64Data).run()
+    } catch (dbError) {
+      console.error('D1 insert error:', dbError)
+      return c.json({ error: `データベース保存に失敗しました。画像サイズを小さくしてお試しください。` }, 500)
+    }
 
     // 公開URLを生成
     const url = `/media/${fileId}`
@@ -3583,7 +3589,8 @@ app.post('/admin/api/upload', async (c) => {
     })
   } catch (error) {
     console.error('Upload error:', error)
-    return c.json({ error: 'アップロードに失敗しました' }, 500)
+    const errorMsg = error instanceof Error ? error.message : 'アップロードに失敗しました'
+    return c.json({ error: errorMsg }, 500)
   }
 })
 
@@ -3605,7 +3612,7 @@ app.post('/admin/api/upload-multiple', async (c) => {
 
     const results: { url: string; fileName: string; size: number; type: string }[] = []
     const errors: string[] = []
-    const MAX_D1_FILE_SIZE = 2 * 1024 * 1024 // 2MB
+    const MAX_D1_FILE_SIZE = 750 * 1024 // 750KB
 
     for (const file of files) {
       // MIMEタイプチェック
@@ -3616,7 +3623,8 @@ app.post('/admin/api/upload-multiple', async (c) => {
 
       // ファイルサイズチェック
       if (file.size > MAX_D1_FILE_SIZE) {
-        errors.push(`${file.name}: ファイルサイズが大きすぎます（最大2MB）`)
+        const sizeKB = Math.round(file.size / 1024)
+        errors.push(`${file.name}: サイズ(${sizeKB}KB)が大きすぎます（最大750KB）`)
         continue
       }
 
