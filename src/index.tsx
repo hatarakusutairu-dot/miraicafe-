@@ -3390,7 +3390,7 @@ function generateFileName(originalName: string): string {
   return `${timestamp}_${random}.${ext}`
 }
 
-// 画像アップロードエンドポイント
+// 画像アップロードエンドポイント（D1 Base64保存）
 app.post('/admin/api/upload', async (c) => {
   // 認証チェック
   const sessionId = getCookie(c, 'admin_session')
@@ -3411,26 +3411,33 @@ app.post('/admin/api/upload', async (c) => {
       return c.json({ error: '対応していないファイル形式です。JPG, PNG, GIF, WebPのみ対応しています。' }, 400)
     }
 
-    // ファイルサイズチェック
-    if (file.size > MAX_FILE_SIZE) {
-      return c.json({ error: 'ファイルサイズが大きすぎます（最大5MB）' }, 400)
+    // ファイルサイズチェック（D1保存のため2MBに制限）
+    const MAX_D1_FILE_SIZE = 2 * 1024 * 1024 // 2MB
+    if (file.size > MAX_D1_FILE_SIZE) {
+      return c.json({ error: 'ファイルサイズが大きすぎます（最大2MB）' }, 400)
     }
 
     // ファイル名を生成
     const fileName = generateFileName(file.name)
-    const key = `uploads/${fileName}`
+    const fileId = `img-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
 
-    // R2にアップロード
+    // Base64エンコード
     const arrayBuffer = await file.arrayBuffer()
+    const uint8Array = new Uint8Array(arrayBuffer)
+    let binary = ''
+    for (let i = 0; i < uint8Array.length; i++) {
+      binary += String.fromCharCode(uint8Array[i])
+    }
+    const base64Data = btoa(binary)
     
-    await c.env.R2_BUCKET.put(key, arrayBuffer, {
-      httpMetadata: {
-        contentType: file.type,
-      },
-    })
+    // D1に保存
+    await c.env.DB.prepare(`
+      INSERT INTO media_files (id, filename, mime_type, size, data)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(fileId, fileName, file.type, file.size, base64Data).run()
 
-    // 公開URLを生成（R2パブリックバケットまたはWorker経由）
-    const url = `/images/${fileName}`
+    // 公開URLを生成
+    const url = `/media/${fileId}`
 
     return c.json({ 
       success: true, 
@@ -3445,7 +3452,7 @@ app.post('/admin/api/upload', async (c) => {
   }
 })
 
-// 複数画像アップロードエンドポイント
+// 複数画像アップロードエンドポイント（D1 Base64保存）
 app.post('/admin/api/upload-multiple', async (c) => {
   // 認証チェック
   const sessionId = getCookie(c, 'admin_session')
@@ -3463,6 +3470,7 @@ app.post('/admin/api/upload-multiple', async (c) => {
 
     const results: { url: string; fileName: string; size: number; type: string }[] = []
     const errors: string[] = []
+    const MAX_D1_FILE_SIZE = 2 * 1024 * 1024 // 2MB
 
     for (const file of files) {
       // MIMEタイプチェック
@@ -3472,24 +3480,32 @@ app.post('/admin/api/upload-multiple', async (c) => {
       }
 
       // ファイルサイズチェック
-      if (file.size > MAX_FILE_SIZE) {
-        errors.push(`${file.name}: ファイルサイズが大きすぎます（最大5MB）`)
+      if (file.size > MAX_D1_FILE_SIZE) {
+        errors.push(`${file.name}: ファイルサイズが大きすぎます（最大2MB）`)
         continue
       }
 
       try {
         const fileName = generateFileName(file.name)
-        const key = `uploads/${fileName}`
+        const fileId = `img-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
         const arrayBuffer = await file.arrayBuffer()
         
-        await c.env.R2_BUCKET.put(key, arrayBuffer, {
-          httpMetadata: {
-            contentType: file.type,
-          },
-        })
+        // Base64エンコード
+        const uint8Array = new Uint8Array(arrayBuffer)
+        let binary = ''
+        for (let i = 0; i < uint8Array.length; i++) {
+          binary += String.fromCharCode(uint8Array[i])
+        }
+        const base64Data = btoa(binary)
+        
+        // D1に保存
+        await c.env.DB.prepare(`
+          INSERT INTO media_files (id, filename, mime_type, size, data)
+          VALUES (?, ?, ?, ?, ?)
+        `).bind(fileId, fileName, file.type, file.size, base64Data).run()
 
         results.push({
-          url: `/images/${fileName}`,
+          url: `/media/${fileId}`,
           fileName,
           size: file.size,
           type: file.type
@@ -3511,62 +3527,16 @@ app.post('/admin/api/upload-multiple', async (c) => {
 })
 
 // 動画アップロードエンドポイント
+// 注意: 動画はサイズが大きいためD1に保存できません
+// YouTube/Vimeoの埋め込みURLを使用してください
 app.post('/admin/api/upload-video', async (c) => {
-  // 認証チェック
-  const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSession(sessionId)) {
-    return c.json({ error: '認証が必要です' }, 401)
-  }
-
-  try {
-    const formData = await c.req.formData()
-    const file = formData.get('file') as File | null
-
-    if (!file) {
-      return c.json({ error: 'ファイルが選択されていません' }, 400)
-    }
-
-    // MIMEタイプチェック
-    if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
-      return c.json({ error: '対応していないファイル形式です。MP4, WebM, MOVのみ対応しています。' }, 400)
-    }
-
-    // ファイルサイズチェック
-    if (file.size > MAX_VIDEO_SIZE) {
-      return c.json({ error: 'ファイルサイズが大きすぎます（最大100MB）' }, 400)
-    }
-
-    // ファイル名を生成
-    const fileName = generateFileName(file.name)
-    const key = `videos/${fileName}`
-
-    // R2にアップロード
-    const arrayBuffer = await file.arrayBuffer()
-    
-    await c.env.R2_BUCKET.put(key, arrayBuffer, {
-      httpMetadata: {
-        contentType: file.type,
-      },
-    })
-
-    // 公開URLを生成
-    const url = `/videos/${fileName}`
-
-    return c.json({ 
-      success: true, 
-      url,
-      fileName,
-      size: file.size,
-      type: file.type
-    })
-  } catch (error) {
-    console.error('Video upload error:', error)
-    return c.json({ error: '動画のアップロードに失敗しました' }, 500)
-  }
+  return c.json({ 
+    error: '動画の直接アップロードは現在利用できません。YouTube または Vimeo にアップロードして、埋め込みURLを使用してください。' 
+  }, 400)
 })
 
 // 画像削除エンドポイント
-app.delete('/admin/api/upload/:fileName', async (c) => {
+app.delete('/admin/api/upload/:fileIdOrName', async (c) => {
   // 認証チェック
   const sessionId = getCookie(c, 'admin_session')
   if (!sessionId || !validateSession(sessionId)) {
@@ -3574,10 +3544,12 @@ app.delete('/admin/api/upload/:fileName', async (c) => {
   }
 
   try {
-    const fileName = c.req.param('fileName')
-    const key = `uploads/${fileName}`
+    const fileIdOrName = c.req.param('fileIdOrName')
     
-    await c.env.R2_BUCKET.delete(key)
+    // media_filesテーブルから削除（IDまたはファイル名で検索）
+    const result = await c.env.DB.prepare(`
+      DELETE FROM media_files WHERE id = ? OR filename = ?
+    `).bind(fileIdOrName, fileIdOrName).run()
     
     return c.json({ success: true })
   } catch (error) {
@@ -3630,6 +3602,37 @@ app.get('/admin/api/ai/search-images', async (c) => {
   } catch (error) {
     console.error('Image search error:', error)
     return c.json({ error: '画像検索に失敗しました' }, 500)
+  }
+})
+
+// メディア配信エンドポイント（D1 Base64から配信）
+app.get('/media/:id', async (c) => {
+  try {
+    const id = c.req.param('id')
+    
+    const media = await c.env.DB.prepare(`
+      SELECT filename, mime_type, data FROM media_files WHERE id = ?
+    `).bind(id).first()
+    
+    if (!media) {
+      return c.notFound()
+    }
+    
+    // Base64デコード
+    const binaryString = atob(media.data as string)
+    const bytes = new Uint8Array(binaryString.length)
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i)
+    }
+    
+    const headers = new Headers()
+    headers.set('Content-Type', media.mime_type as string)
+    headers.set('Cache-Control', 'public, max-age=31536000')
+    
+    return new Response(bytes, { headers })
+  } catch (error) {
+    console.error('Media serve error:', error)
+    return c.notFound()
   }
 })
 
