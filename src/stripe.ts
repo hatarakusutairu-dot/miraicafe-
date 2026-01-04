@@ -107,6 +107,152 @@ export function formatAmount(amount: number, currency: string = 'jpy'): string {
   return `${(amount / 100).toFixed(2)} ${currency.toUpperCase()}`
 }
 
+// Create Stripe Product for Course Series
+export async function createCourseSeriesProduct(
+  stripe: Stripe,
+  seriesId: string,
+  title: string,
+  description?: string
+): Promise<Stripe.Product> {
+  return await stripe.products.create({
+    name: title,
+    description: description || `mirAIcafe コース: ${title}`,
+    metadata: {
+      series_id: seriesId,
+      type: 'course_series'
+    }
+  })
+}
+
+// Create Stripe Price (one-time payment)
+export async function createOneTimePrice(
+  stripe: Stripe,
+  productId: string,
+  amount: number,
+  nickname: string
+): Promise<Stripe.Price> {
+  return await stripe.prices.create({
+    product: productId,
+    unit_amount: amount,
+    currency: 'jpy',
+    nickname: nickname,
+  })
+}
+
+// Create Stripe Price (subscription/recurring)
+export async function createSubscriptionPrice(
+  stripe: Stripe,
+  productId: string,
+  amount: number,
+  intervalCount: number,
+  nickname: string
+): Promise<Stripe.Price> {
+  return await stripe.prices.create({
+    product: productId,
+    unit_amount: amount,
+    currency: 'jpy',
+    nickname: nickname,
+    recurring: {
+      interval: 'month',
+      interval_count: 1,
+    },
+    metadata: {
+      total_payments: intervalCount.toString()
+    }
+  })
+}
+
+// Create all prices for a course series
+export interface CourseSeriesPrices {
+  productId: string
+  coursePriceId: string  // 一括払い
+  earlyPriceId?: string  // 早期一括（オプション）
+  monthlyPriceId?: string // 月額払い（オプション）
+}
+
+export async function createCourseSeriesStripeProducts(
+  stripe: Stripe,
+  params: {
+    seriesId: string
+    title: string
+    description?: string
+    coursePriceIncl: number      // 一括価格（税込）
+    earlyPriceIncl?: number      // 早期価格（税込）
+    monthlyPriceIncl?: number    // 月額価格（税込）
+    totalSessions?: number       // 月額の回数
+    hasMonthlyOption: boolean
+  }
+): Promise<CourseSeriesPrices> {
+  // 1. Product作成
+  const product = await createCourseSeriesProduct(
+    stripe,
+    params.seriesId,
+    params.title,
+    params.description
+  )
+  
+  // 2. 一括払い Price作成
+  const coursePrice = await createOneTimePrice(
+    stripe,
+    product.id,
+    params.coursePriceIncl,
+    `${params.title} - コース一括`
+  )
+  
+  const result: CourseSeriesPrices = {
+    productId: product.id,
+    coursePriceId: coursePrice.id,
+  }
+  
+  // 3. 早期割引 Price作成（オプション）
+  if (params.earlyPriceIncl && params.earlyPriceIncl < params.coursePriceIncl) {
+    const earlyPrice = await createOneTimePrice(
+      stripe,
+      product.id,
+      params.earlyPriceIncl,
+      `${params.title} - 早期申込`
+    )
+    result.earlyPriceId = earlyPrice.id
+  }
+  
+  // 4. 月額払い Price作成（オプション）
+  if (params.hasMonthlyOption && params.monthlyPriceIncl && params.totalSessions) {
+    const monthlyPrice = await createSubscriptionPrice(
+      stripe,
+      product.id,
+      params.monthlyPriceIncl,
+      params.totalSessions,
+      `${params.title} - 月額払い`
+    )
+    result.monthlyPriceId = monthlyPrice.id
+  }
+  
+  return result
+}
+
+// Update Stripe Product
+export async function updateStripeProduct(
+  stripe: Stripe,
+  productId: string,
+  title: string,
+  description?: string
+): Promise<Stripe.Product> {
+  return await stripe.products.update(productId, {
+    name: title,
+    description: description || `mirAIcafe コース: ${title}`,
+  })
+}
+
+// Archive Stripe Product (when deleting course)
+export async function archiveStripeProduct(
+  stripe: Stripe,
+  productId: string
+): Promise<Stripe.Product> {
+  return await stripe.products.update(productId, {
+    active: false,
+  })
+}
+
 // Get payment status label in Japanese
 export function getPaymentStatusLabel(status: string): { label: string; color: string; bgColor: string } {
   switch (status) {

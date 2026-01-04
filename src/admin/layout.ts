@@ -222,7 +222,7 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
                 '<input type="file" class="hidden" accept="image/jpeg,image/png,image/gif,image/webp" ' +
                   'onchange="handleFileSelect(\\'' + containerId + '\\', \\'' + inputName + '\\', this.files[0])">' +
               '</label>' +
-              '<p class="text-xs text-gray-400 mt-3">JPG, PNG, GIF, WebP（最大5MB）</p>' +
+              '<p class="text-xs text-gray-400 mt-3">JPG, PNG, GIF, WebP（最大2MB）</p>' +
             '</div>' +
             '<div class="upload-progress hidden" id="' + containerId + '-progress">' +
               '<div class="upload-progress-bar" style="width: 0%"></div>' +
@@ -389,8 +389,8 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
         return;
       }
       
-      if (file.size > 5 * 1024 * 1024) {
-        alert('ファイルサイズが大きすぎます（最大5MB）');
+      if (file.size > 2 * 1024 * 1024) {
+        alert('ファイルサイズが大きすぎます（最大2MB）。\\n\\n画像を圧縮するか、サイズを小さくしてからお試しください。\\nhttps://squoosh.app/ などの圧縮ツールをお使いください。');
         return;
       }
       
@@ -431,7 +431,12 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
           throw new Error(result.error || 'アップロードに失敗しました');
         }
       } catch (error) {
-        alert(error.message);
+        console.error('Upload error:', error);
+        let errorMsg = error.message || 'アップロードに失敗しました';
+        if (errorMsg.includes('2MB') || errorMsg.includes('サイズ')) {
+          errorMsg += '\\n\\n画像圧縮サイト: https://squoosh.app/';
+        }
+        alert(errorMsg);
         progress.classList.add('hidden');
         placeholder.classList.remove('hidden');
       } finally {
@@ -555,8 +560,8 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
           continue;
         }
         
-        if (file.size > 5 * 1024 * 1024) {
-          alert(file.name + ': ファイルサイズが大きすぎます（最大5MB）');
+        if (file.size > 2 * 1024 * 1024) {
+          alert(file.name + ': ファイルサイズが大きすぎます（最大2MB）\\n\\n画像を圧縮してください: https://squoosh.app/');
           continue;
         }
         

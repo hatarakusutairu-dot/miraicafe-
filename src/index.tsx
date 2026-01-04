@@ -50,7 +50,15 @@ import {
   type PageContent 
 } from './services/seo'
 import { collectAINews } from './services/ai-news-collector'
-import { createStripeClient, createCheckoutSession, formatAmount, getPaymentStatusLabel } from './stripe'
+import { 
+  createStripeClient, 
+  createCheckoutSession, 
+  formatAmount, 
+  getPaymentStatusLabel,
+  createCourseSeriesStripeProducts,
+  updateStripeProduct,
+  archiveStripeProduct
+} from './stripe'
 import { generateAllCalendarLinks, generateEventDescription, type CalendarEvent } from './services/calendar'
 
 // Data
@@ -3100,14 +3108,52 @@ app.post('/admin/api/course-series', async (c) => {
     const data = await c.req.json()
     const id = `series-${Date.now()}`
     
+    // Stripe商品・価格を自動作成（公開時のみ）
+    let stripeProductId = null
+    let stripePriceIdCourse = null
+    let stripePriceIdEarly = null
+    let stripePriceIdMonthly = null
+    
+    if (data.status === 'published' && c.env.STRIPE_SECRET_KEY) {
+      try {
+        // 料金パターン情報を取得
+        const pattern = await c.env.DB.prepare(`
+          SELECT has_monthly_option FROM pricing_patterns WHERE id = ?
+        `).bind(data.pricing_pattern_id).first() as { has_monthly_option: number } | null
+        
+        const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY)
+        const stripeResult = await createCourseSeriesStripeProducts(stripe, {
+          seriesId: id,
+          title: data.title,
+          description: data.description,
+          coursePriceIncl: data.calc_course_price_incl,
+          earlyPriceIncl: data.calc_early_price_incl,
+          monthlyPriceIncl: data.calc_monthly_price_incl,
+          totalSessions: data.total_sessions,
+          hasMonthlyOption: pattern?.has_monthly_option === 1
+        })
+        
+        stripeProductId = stripeResult.productId
+        stripePriceIdCourse = stripeResult.coursePriceId
+        stripePriceIdEarly = stripeResult.earlyPriceId || null
+        stripePriceIdMonthly = stripeResult.monthlyPriceId || null
+        
+        console.log('Stripe products created:', stripeResult)
+      } catch (stripeError) {
+        console.error('Stripe product creation failed:', stripeError)
+        // Stripe作成失敗してもDB保存は続行
+      }
+    }
+    
     await c.env.DB.prepare(`
       INSERT INTO course_series (
         id, title, subtitle, description, total_sessions, duration_minutes,
         base_price_per_session, pricing_pattern_id,
         calc_single_price_incl, calc_single_total_incl, calc_course_price_incl,
         calc_early_price_incl, calc_monthly_price_incl, calc_savings_course, calc_savings_early,
-        early_bird_deadline, is_featured, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        early_bird_deadline, is_featured, status,
+        stripe_product_id, stripe_price_id_course, stripe_price_id_early, stripe_price_id_monthly
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       data.title,
@@ -3126,7 +3172,11 @@ app.post('/admin/api/course-series', async (c) => {
       data.calc_savings_early,
       data.early_bird_deadline,
       data.is_featured,
-      data.status
+      data.status,
+      stripeProductId,
+      stripePriceIdCourse,
+      stripePriceIdEarly,
+      stripePriceIdMonthly
     ).run()
     
     // 講座の紐付け
@@ -3138,7 +3188,7 @@ app.post('/admin/api/course-series', async (c) => {
       }
     }
     
-    return c.json({ success: true, id })
+    return c.json({ success: true, id, stripeProductId })
   } catch (error) {
     console.error('Create course series error:', error)
     return c.json({ success: false, error: '作成に失敗しました' }, 500)
@@ -3150,6 +3200,68 @@ app.put('/admin/api/course-series/:id', async (c) => {
   
   try {
     const data = await c.req.json()
+    
+    // 既存のStripe情報を取得
+    const existing = await c.env.DB.prepare(`
+      SELECT stripe_product_id, stripe_price_id_course, stripe_price_id_early, stripe_price_id_monthly, status as old_status
+      FROM course_series WHERE id = ?
+    `).bind(id).first() as { 
+      stripe_product_id: string | null
+      stripe_price_id_course: string | null
+      stripe_price_id_early: string | null
+      stripe_price_id_monthly: string | null
+      old_status: string 
+    } | null
+    
+    let stripeProductId = existing?.stripe_product_id || null
+    let stripePriceIdCourse = existing?.stripe_price_id_course || null
+    let stripePriceIdEarly = existing?.stripe_price_id_early || null
+    let stripePriceIdMonthly = existing?.stripe_price_id_monthly || null
+    
+    // Stripe商品の作成/更新
+    if (c.env.STRIPE_SECRET_KEY) {
+      try {
+        const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY)
+        
+        // 料金パターン情報を取得
+        const pattern = await c.env.DB.prepare(`
+          SELECT has_monthly_option FROM pricing_patterns WHERE id = ?
+        `).bind(data.pricing_pattern_id).first() as { has_monthly_option: number } | null
+        
+        if (data.status === 'published') {
+          if (!stripeProductId) {
+            // 新規作成（下書き→公開時）
+            const stripeResult = await createCourseSeriesStripeProducts(stripe, {
+              seriesId: id,
+              title: data.title,
+              description: data.description,
+              coursePriceIncl: data.calc_course_price_incl,
+              earlyPriceIncl: data.calc_early_price_incl,
+              monthlyPriceIncl: data.calc_monthly_price_incl,
+              totalSessions: data.total_sessions,
+              hasMonthlyOption: pattern?.has_monthly_option === 1
+            })
+            
+            stripeProductId = stripeResult.productId
+            stripePriceIdCourse = stripeResult.coursePriceId
+            stripePriceIdEarly = stripeResult.earlyPriceId || null
+            stripePriceIdMonthly = stripeResult.monthlyPriceId || null
+            
+            console.log('Stripe products created on publish:', stripeResult)
+          } else {
+            // 既存の商品名を更新
+            await updateStripeProduct(stripe, stripeProductId, data.title, data.description)
+            console.log('Stripe product updated:', stripeProductId)
+          }
+        } else if (data.status === 'draft' && existing?.old_status === 'published' && stripeProductId) {
+          // 公開→下書きに変更時はアーカイブ
+          await archiveStripeProduct(stripe, stripeProductId)
+          console.log('Stripe product archived:', stripeProductId)
+        }
+      } catch (stripeError) {
+        console.error('Stripe update failed:', stripeError)
+      }
+    }
     
     await c.env.DB.prepare(`
       UPDATE course_series SET
@@ -3170,6 +3282,10 @@ app.put('/admin/api/course-series/:id', async (c) => {
         early_bird_deadline = ?,
         is_featured = ?,
         status = ?,
+        stripe_product_id = ?,
+        stripe_price_id_course = ?,
+        stripe_price_id_early = ?,
+        stripe_price_id_monthly = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(
@@ -3190,6 +3306,10 @@ app.put('/admin/api/course-series/:id', async (c) => {
       data.early_bird_deadline,
       data.is_featured,
       data.status,
+      stripeProductId,
+      stripePriceIdCourse,
+      stripePriceIdEarly,
+      stripePriceIdMonthly,
       id
     ).run()
     
@@ -3207,7 +3327,7 @@ app.put('/admin/api/course-series/:id', async (c) => {
       }
     }
     
-    return c.json({ success: true })
+    return c.json({ success: true, stripeProductId })
   } catch (error) {
     console.error('Update course series error:', error)
     return c.json({ success: false, error: '更新に失敗しました' }, 500)
@@ -3218,6 +3338,21 @@ app.delete('/admin/api/course-series/:id', async (c) => {
   const id = c.req.param('id')
   
   try {
+    // 既存のStripe情報を取得してアーカイブ
+    const existing = await c.env.DB.prepare(`
+      SELECT stripe_product_id FROM course_series WHERE id = ?
+    `).bind(id).first() as { stripe_product_id: string | null } | null
+    
+    if (existing?.stripe_product_id && c.env.STRIPE_SECRET_KEY) {
+      try {
+        const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY)
+        await archiveStripeProduct(stripe, existing.stripe_product_id)
+        console.log('Stripe product archived on delete:', existing.stripe_product_id)
+      } catch (stripeError) {
+        console.error('Stripe archive failed:', stripeError)
+      }
+    }
+    
     // 紐付けを解除
     await c.env.DB.prepare(`
       UPDATE courses SET series_id = NULL, session_number = NULL WHERE series_id = ?
