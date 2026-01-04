@@ -222,7 +222,7 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
                 '<input type="file" class="hidden" accept="image/jpeg,image/png,image/gif,image/webp" ' +
                   'onchange="handleFileSelect(\\'' + containerId + '\\', \\'' + inputName + '\\', this.files[0])">' +
               '</label>' +
-              '<p class="text-xs text-gray-400 mt-3">JPG, PNG, GIF, WebP（最大750KB）</p>' +
+              '<p class="text-xs text-gray-400 mt-3">JPG, PNG, GIF, WebP（最大10MB）</p>' +
             '</div>' +
             '<div class="upload-progress hidden" id="' + containerId + '-progress">' +
               '<div class="upload-progress-bar" style="width: 0%"></div>' +
@@ -389,9 +389,9 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
         return;
       }
       
-      if (file.size > 750 * 1024) {
-        var sizeKB = Math.round(file.size / 1024);
-        alert('ファイルサイズが大きすぎます（' + sizeKB + 'KB）。\\n最大750KBまでです。\\n\\nhttps://squoosh.app/ で圧縮してください。');
+      if (file.size > 10 * 1024 * 1024) {
+        var sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        alert('ファイルサイズが大きすぎます（' + sizeMB + 'MB）。\\n最大10MBまでです。');
         return;
       }
       
@@ -561,9 +561,9 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
           continue;
         }
         
-        if (file.size > 750 * 1024) {
-          var sizeKB = Math.round(file.size / 1024);
-          alert(file.name + ': サイズが大きすぎます（' + sizeKB + 'KB）。最大750KBまでです。\\nhttps://squoosh.app/ で圧縮してください。');
+        if (file.size > 10 * 1024 * 1024) {
+          var sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+          alert(file.name + ': サイズが大きすぎます（' + sizeMB + 'MB）。最大10MBまでです。');
           continue;
         }
         

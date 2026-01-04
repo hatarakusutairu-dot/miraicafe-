@@ -60,6 +60,7 @@ import {
   archiveStripeProduct
 } from './stripe'
 import { generateAllCalendarLinks, generateEventDescription, type CalendarEvent } from './services/calendar'
+import { uploadToSupabase, deleteFromSupabase, type SupabaseConfig } from './services/supabase-storage'
 
 // Data
 import { courses, blogPosts, schedules, portfolios } from './data'
@@ -73,6 +74,8 @@ type Bindings = {
   UNSPLASH_ACCESS_KEY?: string
   STRIPE_SECRET_KEY?: string
   STRIPE_WEBHOOK_SECRET?: string
+  SUPABASE_URL?: string
+  SUPABASE_ANON_KEY?: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -3525,7 +3528,7 @@ function generateFileName(originalName: string): string {
   return `${timestamp}_${random}.${ext}`
 }
 
-// 画像アップロードエンドポイント（D1 Base64保存）
+// 画像アップロードエンドポイント（Supabase Storage）
 app.post('/admin/api/upload', async (c) => {
   // 認証チェック
   const sessionId = getCookie(c, 'admin_session')
@@ -3546,46 +3549,36 @@ app.post('/admin/api/upload', async (c) => {
       return c.json({ error: '対応していないファイル形式です。JPG, PNG, GIF, WebPのみ対応しています。' }, 400)
     }
 
-    // ファイルサイズチェック（D1保存のため750KBに制限 - Base64で約1MB）
-    const MAX_D1_FILE_SIZE = 750 * 1024 // 750KB
-    if (file.size > MAX_D1_FILE_SIZE) {
-      const sizeKB = Math.round(file.size / 1024)
-      return c.json({ error: `ファイルサイズが大きすぎます（${sizeKB}KB）。最大750KBまでです。\nhttps://squoosh.app/ で圧縮してください。` }, 400)
+    // ファイルサイズチェック（Supabaseは50MBまで可能だが、10MBに制限）
+    const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+    if (file.size > MAX_FILE_SIZE) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1)
+      return c.json({ error: `ファイルサイズが大きすぎます（${sizeMB}MB）。最大10MBまでです。` }, 400)
     }
 
-    // ファイル名を生成
-    const fileName = generateFileName(file.name)
-    const fileId = `img-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
-
-    // Base64エンコード
-    const arrayBuffer = await file.arrayBuffer()
-    const uint8Array = new Uint8Array(arrayBuffer)
-    let binary = ''
-    for (let i = 0; i < uint8Array.length; i++) {
-      binary += String.fromCharCode(uint8Array[i])
-    }
-    const base64Data = btoa(binary)
-    
-    // D1に保存
-    try {
-      await c.env.DB.prepare(`
-        INSERT INTO media_files (id, filename, mime_type, size, data)
-        VALUES (?, ?, ?, ?, ?)
-      `).bind(fileId, fileName, file.type, file.size, base64Data).run()
-    } catch (dbError) {
-      console.error('D1 insert error:', dbError)
-      return c.json({ error: `データベース保存に失敗しました。画像サイズを小さくしてお試しください。` }, 500)
+    // Supabase設定チェック
+    if (!c.env.SUPABASE_URL || !c.env.SUPABASE_ANON_KEY) {
+      return c.json({ error: 'ストレージが設定されていません' }, 500)
     }
 
-    // 公開URLを生成
-    const url = `/media/${fileId}`
+    const supabaseConfig: SupabaseConfig = {
+      url: c.env.SUPABASE_URL,
+      anonKey: c.env.SUPABASE_ANON_KEY
+    }
+
+    // Supabase Storageにアップロード
+    const result = await uploadToSupabase(supabaseConfig, file)
+
+    if (!result.success) {
+      return c.json({ error: result.error || 'アップロードに失敗しました' }, 500)
+    }
 
     return c.json({ 
       success: true, 
-      url,
-      fileName,
-      size: file.size,
-      type: file.type
+      url: result.url,
+      fileName: result.fileName,
+      size: result.size,
+      type: result.type
     })
   } catch (error) {
     console.error('Upload error:', error)
@@ -3594,7 +3587,7 @@ app.post('/admin/api/upload', async (c) => {
   }
 })
 
-// 複数画像アップロードエンドポイント（D1 Base64保存）
+// 複数画像アップロードエンドポイント（Supabase Storage）
 app.post('/admin/api/upload-multiple', async (c) => {
   // 認証チェック
   const sessionId = getCookie(c, 'admin_session')
@@ -3610,9 +3603,19 @@ app.post('/admin/api/upload-multiple', async (c) => {
       return c.json({ error: 'ファイルが選択されていません' }, 400)
     }
 
+    // Supabase設定チェック
+    if (!c.env.SUPABASE_URL || !c.env.SUPABASE_ANON_KEY) {
+      return c.json({ error: 'ストレージが設定されていません' }, 500)
+    }
+
+    const supabaseConfig: SupabaseConfig = {
+      url: c.env.SUPABASE_URL,
+      anonKey: c.env.SUPABASE_ANON_KEY
+    }
+
     const results: { url: string; fileName: string; size: number; type: string }[] = []
     const errors: string[] = []
-    const MAX_D1_FILE_SIZE = 750 * 1024 // 750KB
+    const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
     for (const file of files) {
       // MIMEタイプチェック
@@ -3622,39 +3625,23 @@ app.post('/admin/api/upload-multiple', async (c) => {
       }
 
       // ファイルサイズチェック
-      if (file.size > MAX_D1_FILE_SIZE) {
-        const sizeKB = Math.round(file.size / 1024)
-        errors.push(`${file.name}: サイズ(${sizeKB}KB)が大きすぎます（最大750KB）`)
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1)
+        errors.push(`${file.name}: サイズ(${sizeMB}MB)が大きすぎます（最大10MB）`)
         continue
       }
 
-      try {
-        const fileName = generateFileName(file.name)
-        const fileId = `img-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
-        const arrayBuffer = await file.arrayBuffer()
-        
-        // Base64エンコード
-        const uint8Array = new Uint8Array(arrayBuffer)
-        let binary = ''
-        for (let i = 0; i < uint8Array.length; i++) {
-          binary += String.fromCharCode(uint8Array[i])
-        }
-        const base64Data = btoa(binary)
-        
-        // D1に保存
-        await c.env.DB.prepare(`
-          INSERT INTO media_files (id, filename, mime_type, size, data)
-          VALUES (?, ?, ?, ?, ?)
-        `).bind(fileId, fileName, file.type, file.size, base64Data).run()
-
+      const result = await uploadToSupabase(supabaseConfig, file)
+      
+      if (result.success && result.url) {
         results.push({
-          url: `/media/${fileId}`,
-          fileName,
-          size: file.size,
-          type: file.type
+          url: result.url,
+          fileName: result.fileName || file.name,
+          size: result.size || file.size,
+          type: result.type || file.type
         })
-      } catch (err) {
-        errors.push(`${file.name}: アップロードに失敗しました`)
+      } else {
+        errors.push(`${file.name}: ${result.error || 'アップロードに失敗しました'}`)
       }
     }
 
@@ -3669,13 +3656,83 @@ app.post('/admin/api/upload-multiple', async (c) => {
   }
 })
 
-// 動画アップロードエンドポイント
-// 注意: 動画はサイズが大きいためD1に保存できません
-// YouTube/Vimeoの埋め込みURLを使用してください
+// 動画アップロードエンドポイント（Supabase Storage）
 app.post('/admin/api/upload-video', async (c) => {
-  return c.json({ 
-    error: '動画の直接アップロードは現在利用できません。YouTube または Vimeo にアップロードして、埋め込みURLを使用してください。' 
-  }, 400)
+  // 認証チェック
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSession(sessionId)) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+
+  try {
+    const formData = await c.req.formData()
+    const file = formData.get('file') as File | null
+
+    if (!file) {
+      return c.json({ error: 'ファイルが選択されていません' }, 400)
+    }
+
+    // MIMEタイプチェック
+    if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
+      return c.json({ error: '対応していないファイル形式です。MP4, WebM, MOVのみ対応しています。' }, 400)
+    }
+
+    // ファイルサイズチェック（50MBまで）
+    const MAX_VIDEO_SIZE = 50 * 1024 * 1024 // 50MB
+    if (file.size > MAX_VIDEO_SIZE) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1)
+      return c.json({ error: `ファイルサイズが大きすぎます（${sizeMB}MB）。最大50MBまでです。` }, 400)
+    }
+
+    // Supabase設定チェック
+    if (!c.env.SUPABASE_URL || !c.env.SUPABASE_ANON_KEY) {
+      return c.json({ error: 'ストレージが設定されていません' }, 500)
+    }
+
+    const supabaseConfig: SupabaseConfig = {
+      url: c.env.SUPABASE_URL,
+      anonKey: c.env.SUPABASE_ANON_KEY
+    }
+
+    // Supabase Storageにアップロード（videosフォルダ）
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substring(2, 9)
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'mp4'
+    const fileName = `${timestamp}_${random}.${ext}`
+    const filePath = `videos/${fileName}`
+
+    const response = await fetch(
+      `${supabaseConfig.url}/storage/v1/object/media/${filePath}`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+          'apikey': supabaseConfig.anonKey,
+          'Content-Type': file.type,
+          'x-upsert': 'true'
+        },
+        body: file
+      }
+    )
+
+    if (!response.ok) {
+      console.error('Video upload error:', await response.text())
+      return c.json({ error: '動画のアップロードに失敗しました' }, 500)
+    }
+
+    const publicUrl = `${supabaseConfig.url}/storage/v1/object/public/media/${filePath}`
+
+    return c.json({ 
+      success: true, 
+      url: publicUrl,
+      fileName,
+      size: file.size,
+      type: file.type
+    })
+  } catch (error) {
+    console.error('Video upload error:', error)
+    return c.json({ error: 'アップロードに失敗しました' }, 500)
+  }
 })
 
 // 画像削除エンドポイント
