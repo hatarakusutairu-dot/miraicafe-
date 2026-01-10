@@ -83,6 +83,147 @@ export const renderLayout = (title: string, content: string, activeNav: string =
   <style>
     * { font-family: 'Zen Maru Gothic', 'Noto Sans JP', sans-serif; }
     
+    /* ========== Mobile-First Base Typography ========== */
+    html {
+      font-size: 16px;
+      -webkit-text-size-adjust: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    body {
+      font-size: 1rem;
+      line-height: 1.7;
+      letter-spacing: 0.02em;
+    }
+    
+    /* Mobile typography adjustments */
+    @media (max-width: 640px) {
+      body {
+        font-size: 0.9375rem; /* 15px */
+        line-height: 1.8;
+      }
+      
+      h1 { font-size: 1.75rem !important; line-height: 1.3 !important; }
+      h2 { font-size: 1.5rem !important; line-height: 1.35 !important; }
+      h3 { font-size: 1.25rem !important; line-height: 1.4 !important; }
+      h4 { font-size: 1.125rem !important; line-height: 1.45 !important; }
+      
+      p, li, span, div {
+        word-break: break-word;
+        overflow-wrap: break-word;
+      }
+      
+      /* Better touch targets */
+      button, a, input, select, textarea {
+        min-height: 44px;
+        min-width: 44px;
+      }
+      
+      /* Reduce padding on mobile */
+      .px-4 { padding-left: 1rem; padding-right: 1rem; }
+      .px-6 { padding-left: 1.25rem; padding-right: 1.25rem; }
+      .px-8 { padding-left: 1.5rem; padding-right: 1.5rem; }
+      
+      /* Smaller gaps on mobile */
+      .gap-8 { gap: 1.5rem; }
+      .gap-6 { gap: 1rem; }
+    }
+    
+    /* ========== Universal Modal Styles ========== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    .modal-content {
+      background: white;
+      border-radius: 1.5rem;
+      max-width: 90vw;
+      max-height: 85vh;
+      overflow-y: auto;
+      transform: scale(0.95) translateY(10px);
+      transition: transform 0.3s ease;
+      position: relative;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .modal-overlay.active .modal-content {
+      transform: scale(1) translateY(0);
+    }
+    
+    /* Modal close button - large tap target */
+    .modal-close-btn {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 50%;
+      font-size: 1.25rem;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      z-index: 10;
+    }
+    
+    .modal-close-btn:hover, .modal-close-btn:active {
+      background: rgba(0, 0, 0, 0.2);
+      color: #333;
+    }
+    
+    @media (max-width: 640px) {
+      .modal-content {
+        max-width: 95vw;
+        max-height: 90vh;
+        border-radius: 1rem;
+        margin: 0.5rem;
+      }
+      
+      .modal-close-btn {
+        top: 0.5rem;
+        right: 0.5rem;
+        width: 48px;
+        height: 48px;
+        font-size: 1.5rem;
+      }
+    }
+    
+    /* ========== Better scrollbar for modals ========== */
+    .modal-content::-webkit-scrollbar {
+      width: 6px;
+    }
+    .modal-content::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 3px;
+    }
+    .modal-content::-webkit-scrollbar-thumb {
+      background: #ccc;
+      border-radius: 3px;
+    }
+    .modal-content::-webkit-scrollbar-thumb:hover {
+      background: #999;
+    }
+    
     /* Warm Natural Gradients */
     .gradient-warm { 
       background: linear-gradient(135deg, #B8956A 0%, #C4A574 50%, #D4C4A8 100%);
@@ -896,28 +1037,28 @@ export const renderLayout = (title: string, content: string, activeNav: string =
         </nav>
         
         <!-- Mobile Menu Button -->
-        <button id="mobile-menu-btn" class="md:hidden text-cafe-text p-2 hover:bg-cafe-cream rounded-xl transition-colors">
-          <i class="fas fa-bars text-xl"></i>
+        <button id="mobile-menu-btn" class="md:hidden text-cafe-text p-3 hover:bg-cafe-cream rounded-xl transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center" aria-label="メニュー">
+          <i class="fas fa-bars text-2xl"></i>
         </button>
       </div>
       
       <!-- Mobile Navigation -->
       <nav id="mobile-menu" class="hidden md:hidden pb-4">
-        <div class="flex flex-col space-y-2 bg-cafe-cream rounded-2xl p-4">
-          <a href="/" class="nav-link font-medium py-2 ${activeNav === 'home' ? 'active' : ''}">
-            <i class="fas fa-home mr-2"></i>ホーム
+        <div class="flex flex-col space-y-1 bg-cafe-cream rounded-2xl p-3">
+          <a href="/" class="nav-link font-medium py-3 px-4 text-base ${activeNav === 'home' ? 'active' : ''}">
+            <i class="fas fa-home mr-3"></i>ホーム
           </a>
-          <a href="/courses" class="nav-link font-medium py-2 ${activeNav === 'courses' ? 'active' : ''}">
-            <i class="fas fa-book-open mr-2"></i>講座一覧
+          <a href="/courses" class="nav-link font-medium py-3 px-4 text-base ${activeNav === 'courses' ? 'active' : ''}">
+            <i class="fas fa-book-open mr-3"></i>講座一覧
           </a>
-          <a href="/reservation" class="nav-link font-medium py-2 ${activeNav === 'reservation' ? 'active' : ''}">
-            <i class="fas fa-calendar-alt mr-2"></i>予約
+          <a href="/reservation" class="nav-link font-medium py-3 px-4 text-base ${activeNav === 'reservation' ? 'active' : ''}">
+            <i class="fas fa-calendar-alt mr-3"></i>予約
           </a>
-          <a href="/blog" class="nav-link font-medium py-2 ${activeNav === 'blog' ? 'active' : ''}">
-            <i class="fas fa-newspaper mr-2"></i>ブログ
+          <a href="/blog" class="nav-link font-medium py-3 px-4 text-base ${activeNav === 'blog' ? 'active' : ''}">
+            <i class="fas fa-newspaper mr-3"></i>ブログ
           </a>
-          <a href="/contact" class="nav-link font-medium py-2 ${activeNav === 'contact' ? 'active' : ''}">
-            <i class="fas fa-envelope mr-2"></i>お問い合わせ
+          <a href="/contact" class="nav-link font-medium py-3 px-4 text-base ${activeNav === 'contact' ? 'active' : ''}">
+            <i class="fas fa-envelope mr-3"></i>お問い合わせ
           </a>
         </div>
       </nav>
@@ -956,8 +1097,8 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       </svg>
     </div>
     
-    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 pt-24">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 pt-20 sm:pt-24">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
         <!-- Brand -->
         <div class="col-span-1 md:col-span-2">
           <div class="flex items-center space-x-3 mb-4">

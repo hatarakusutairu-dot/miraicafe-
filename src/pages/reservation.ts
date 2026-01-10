@@ -86,8 +86,8 @@ export const renderReservationPage = (
         <span class="inline-flex items-center gradient-ai text-white font-medium px-4 py-2 rounded-full text-sm mb-4">
           <i class="fas fa-calendar-alt mr-2"></i>RESERVATION
         </span>
-        <h1 class="text-5xl font-bold text-future-text mb-4">講座予約</h1>
-        <p class="text-future-textLight text-lg max-w-xl mx-auto">
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-future-text mb-3 sm:mb-4">講座予約</h1>
+        <p class="text-future-textLight text-base sm:text-lg max-w-xl mx-auto">
           ご希望の講座と日程を選択して予約してください
         </p>
       </div>

@@ -76,8 +76,8 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
         <span class="inline-flex items-center gradient-ai text-white font-medium px-4 py-2 rounded-full text-sm mb-4">
           <i class="fas fa-book-open mr-2"></i>ALL COURSES
         </span>
-        <h1 class="text-5xl font-bold text-future-text mb-4">講座一覧</h1>
-        <p class="text-future-textLight text-lg max-w-xl mx-auto">
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-future-text mb-3 sm:mb-4">講座一覧</h1>
+        <p class="text-future-textLight text-base sm:text-lg max-w-xl mx-auto">
           目的やレベルに合わせて、最適な講座をお選びください
         </p>
       </div>
@@ -164,7 +164,7 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
         
         <!-- Mobile Filter Toggle -->
         <div class="lg:hidden">
-          <button id="filter-toggle" class="w-full flex items-center justify-between glass text-future-text px-4 py-2 rounded-xl font-medium text-sm">
+          <button id="filter-toggle" class="w-full flex items-center justify-between glass text-future-text px-4 py-3 rounded-xl font-medium text-sm min-h-[48px]">
             <span class="flex items-center">
               <i class="fas fa-filter mr-2 text-ai-blue"></i>
               フィルター・検索
@@ -172,7 +172,7 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
                 (<span id="filter-count">0</span>)
               </span>
             </span>
-            <i class="fas fa-chevron-down transition-transform text-sm" id="filter-toggle-icon"></i>
+            <i class="fas fa-chevron-down transition-transform text-base" id="filter-toggle-icon"></i>
           </button>
         </div>
 
@@ -1135,19 +1135,22 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
             </div>
             
             <!-- 画像モーダル -->
-            <div id="gallery-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/90 p-4">
-              <button id="modal-close" class="absolute top-4 right-4 text-white text-3xl hover:text-gray-300 transition-colors">
-                <i class="fas fa-times"></i>
+            <div id="gallery-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/95 p-2 sm:p-4" onclick="if(event.target === this) closeModal()">
+              <!-- 閉じるボタン（大きく、タップしやすく） -->
+              <button id="modal-close" class="absolute top-3 right-3 sm:top-4 sm:right-4 w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all z-10" aria-label="閉じる">
+                <i class="fas fa-times text-xl sm:text-2xl"></i>
               </button>
-              <button id="modal-prev" class="absolute left-4 top-1/2 -translate-y-1/2 text-white text-3xl hover:text-gray-300 transition-colors">
-                <i class="fas fa-chevron-left"></i>
+              <!-- 前へボタン -->
+              <button id="modal-prev" class="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all z-10" aria-label="前の画像">
+                <i class="fas fa-chevron-left text-lg sm:text-xl"></i>
               </button>
-              <button id="modal-next" class="absolute right-4 top-1/2 -translate-y-1/2 text-white text-3xl hover:text-gray-300 transition-colors">
-                <i class="fas fa-chevron-right"></i>
+              <!-- 次へボタン -->
+              <button id="modal-next" class="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all z-10" aria-label="次の画像">
+                <i class="fas fa-chevron-right text-lg sm:text-xl"></i>
               </button>
-              <div class="max-w-4xl max-h-[80vh]">
-                <img id="modal-image" src="" alt="" class="max-w-full max-h-[75vh] object-contain mx-auto">
-                <p id="modal-caption" class="text-white text-center mt-4"></p>
+              <div class="max-w-4xl max-h-[85vh] sm:max-h-[80vh] px-12 sm:px-16">
+                <img id="modal-image" src="" alt="" class="max-w-full max-h-[70vh] sm:max-h-[75vh] object-contain mx-auto rounded-lg">
+                <p id="modal-caption" class="text-white text-center mt-3 sm:mt-4 text-sm sm:text-base px-4"></p>
               </div>
             </div>
             ` : ''}

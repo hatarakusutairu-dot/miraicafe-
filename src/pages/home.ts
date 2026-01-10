@@ -44,21 +44,21 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
             <span class="text-cafe-text text-sm font-medium">初心者大歓迎・少人数制で安心サポート</span>
           </div>
           
-          <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold text-cafe-text mb-6 leading-relaxed md:leading-snug">
-            <span class="block hero-slide-up mb-2 md:mb-3" style="animation-delay: 0.4s;">温かな空間で、</span>
+          <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-cafe-text mb-4 sm:mb-6 leading-tight sm:leading-snug">
+            <span class="block hero-slide-up mb-1 sm:mb-2" style="animation-delay: 0.4s;">温かな空間で、</span>
             <span class="block text-wood-gradient hero-slide-up hero-text-glow" style="animation-delay: 0.6s;">AIを学ぼう。</span>
           </h1>
           
-          <p class="text-xl text-cafe-textLight mb-8 leading-relaxed hero-fade-in" style="animation-delay: 0.8s;">
-            mirAIcafeは、カフェのようなリラックスした空間で<br class="hidden md:inline">
+          <p class="text-base sm:text-lg md:text-xl text-cafe-textLight mb-6 sm:mb-8 leading-relaxed hero-fade-in" style="animation-delay: 0.8s;">
+            mirAIcafeは、カフェのようなリラックスした空間で<br class="hidden sm:inline">
             AIスキルを楽しく学べるオンラインプラットフォームです。
           </p>
           
-          <div class="flex flex-col sm:flex-row gap-4 hero-fade-in" style="animation-delay: 1s;">
-            <a href="/courses" class="btn-warm inline-flex items-center justify-center px-8 py-4 font-bold shadow-lg hero-btn-shine">
+          <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 hero-fade-in" style="animation-delay: 1s;">
+            <a href="/courses" class="btn-warm inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 font-bold shadow-lg hero-btn-shine text-sm sm:text-base">
               <i class="fas fa-book-open mr-2"></i>講座を探す
             </a>
-            <a href="/reservation" class="btn-outline inline-flex items-center justify-center px-8 py-4 font-bold">
+            <a href="/reservation" class="btn-outline inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 font-bold text-sm sm:text-base">
               <i class="fas fa-calendar-check mr-2"></i>今すぐ予約
             </a>
           </div>
@@ -800,10 +800,14 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
     <!-- ワークスペース予約モーダル -->
     <div id="workspace-modal" class="workspace-modal-overlay" style="display:none;" onclick="if(event.target === this) closeWorkspaceModal()">
       <div class="workspace-modal cafe-door-frame">
-        <div class="cafe-door-header">
-          <img src="/static/miraicafe-cup.png" alt="mirAIcafe" class="w-20 h-20 mx-auto mb-3 drop-shadow-md">
-          <h2 class="text-2xl font-bold text-amber-900">mirAIcafe ワークスペース</h2>
-          <p class="text-amber-700 mt-2">みんなでAIツールを触る時間☕</p>
+        <!-- 閉じるボタン（タップしやすい大きさ） -->
+        <button onclick="closeWorkspaceModal()" class="absolute top-2 right-2 sm:top-3 sm:right-3 w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center bg-amber-900/80 hover:bg-amber-900 text-white rounded-full z-10 transition-colors shadow-lg" aria-label="閉じる">
+          <i class="fas fa-times text-lg"></i>
+        </button>
+        <div class="cafe-door-header pt-12 sm:pt-8">
+          <img src="/static/miraicafe-cup.png" alt="mirAIcafe" class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 sm:mb-3 drop-shadow-md">
+          <h2 class="text-xl sm:text-2xl font-bold text-amber-900">mirAIcafe ワークスペース</h2>
+          <p class="text-amber-700 mt-1 sm:mt-2 text-sm sm:text-base">みんなでAIツールを触る時間☕</p>
         </div>
         <div class="cafe-door-content">
           <div class="mb-6">
@@ -867,8 +871,8 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
             <p class="text-xs text-gray-400 text-center mt-2">決済はStripeで安全に処理されます</p>
           </div>
           
-          <button onclick="closeWorkspaceModal()" class="w-full mt-4 py-2 text-gray-500 hover:text-gray-700 text-sm">
-            閉じる
+          <button onclick="closeWorkspaceModal()" class="w-full mt-4 py-3 text-gray-500 hover:text-gray-700 text-sm sm:text-base bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+            <i class="fas fa-times mr-2"></i>閉じる
           </button>
         </div>
       </div>
@@ -1166,6 +1170,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         inset: 0;
         background: rgba(0, 0, 0, 0.6);
         backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
         z-index: 9999;
         opacity: 0;
         visibility: hidden;
@@ -1174,6 +1179,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         display: flex;
         align-items: center;
         justify-content: center;
+        padding: 1rem;
       }
       
       .workspace-modal-overlay.active {
@@ -1184,15 +1190,16 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       
       .workspace-modal {
         background: #fefce8;
-        border-radius: 24px;
+        border-radius: 20px;
         max-width: 500px;
-        width: 90%;
-        max-height: 90vh;
+        width: 100%;
+        max-height: 85vh;
         overflow-y: auto;
-        transform: scale(0.9) translateY(20px);
+        transform: scale(0.95) translateY(10px);
         transition: transform 0.3s ease;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         position: relative;
+        -webkit-overflow-scrolling: touch;
       }
       
       .workspace-modal-overlay.active .workspace-modal {
@@ -1201,8 +1208,8 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       
       /* カフェ扉風デザイン */
       .cafe-door-frame {
-        border: 8px solid #92400e;
-        border-radius: 20px;
+        border: 6px solid #92400e;
+        border-radius: 16px;
         position: relative;
         overflow: hidden;
       }
@@ -1215,23 +1222,57 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         transform: translateX(-50%);
         background: #92400e;
         color: #fef3c7;
-        padding: 4px 20px;
-        font-size: 12px;
+        padding: 4px 16px;
+        font-size: 11px;
         font-weight: bold;
-        border-radius: 0 0 12px 12px;
-        letter-spacing: 2px;
+        border-radius: 0 0 10px 10px;
+        letter-spacing: 1px;
       }
       
       .cafe-door-header {
         background: linear-gradient(135deg, #fef3c7, #fde68a);
-        padding: 2rem 1.5rem 1.5rem;
+        padding: 1.5rem 1rem 1rem;
         text-align: center;
         border-bottom: 2px dashed #d97706;
       }
       
       .cafe-door-content {
-        padding: 1.5rem;
+        padding: 1rem;
         background: white;
+      }
+      
+      @media (min-width: 640px) {
+        .workspace-modal {
+          max-height: 90vh;
+          border-radius: 24px;
+        }
+        .cafe-door-frame {
+          border-width: 8px;
+          border-radius: 20px;
+        }
+        .cafe-door-frame::before {
+          padding: 4px 20px;
+          font-size: 12px;
+          letter-spacing: 2px;
+        }
+        .cafe-door-header {
+          padding: 2rem 1.5rem 1.5rem;
+        }
+        .cafe-door-content {
+          padding: 1.5rem;
+        }
+      }
+      
+      /* Modal scrollbar */
+      .workspace-modal::-webkit-scrollbar {
+        width: 6px;
+      }
+      .workspace-modal::-webkit-scrollbar-track {
+        background: #fef3c7;
+      }
+      .workspace-modal::-webkit-scrollbar-thumb {
+        background: #d97706;
+        border-radius: 3px;
       }
     </style>
   `

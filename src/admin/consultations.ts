@@ -437,12 +437,12 @@ export function renderConsultationAdmin(bookings: ConsultationBooking[]): string
     </div>
 
     <!-- 詳細モーダル -->
-    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div class="bg-gradient-to-r from-pink-500 to-rose-500 px-6 py-4 flex justify-between items-center">
-          <h3 class="text-lg font-bold text-white">予約詳細</h3>
-          <button onclick="closeDetailModal()" class="text-white hover:text-pink-200">
-            <i class="fas fa-times text-xl"></i>
+    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-4" onclick="if(event.target === this) closeDetailModal()">
+      <div class="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+        <div class="bg-gradient-to-r from-pink-500 to-rose-500 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center sticky top-0 z-10">
+          <h3 class="text-base sm:text-lg font-bold text-white">予約詳細</h3>
+          <button onclick="closeDetailModal()" class="text-white hover:text-pink-200 w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors" aria-label="閉じる">
+            <i class="fas fa-times text-lg sm:text-xl"></i>
           </button>
         </div>
         <div id="detailContent" class="p-6">

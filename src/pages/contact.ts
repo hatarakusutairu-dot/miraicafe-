@@ -13,8 +13,8 @@ export const renderContactPage = () => {
         <span class="inline-flex items-center gradient-ai text-white font-medium px-4 py-2 rounded-full text-sm mb-4">
           <i class="fas fa-envelope mr-2"></i>CONTACT
         </span>
-        <h1 class="text-5xl font-bold text-future-text mb-4">お問い合わせ</h1>
-        <p class="text-future-textLight text-lg max-w-xl mx-auto">
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-future-text mb-3 sm:mb-4">お問い合わせ</h1>
+        <p class="text-future-textLight text-base sm:text-lg max-w-xl mx-auto">
           ご質問・ご相談はお気軽にどうぞ
         </p>
       </div>

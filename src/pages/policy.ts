@@ -132,8 +132,8 @@ export const renderPolicyPage = (policy: Policy | null, policyType: string) => {
         <span class="inline-flex items-center gradient-ai text-white font-medium px-4 py-2 rounded-full text-sm mb-4">
           <i class="fas ${config.icon} mr-2"></i>${config.badge}
         </span>
-        <h1 class="text-5xl font-bold text-future-text mb-4">${title}</h1>
-        <p class="text-future-textLight text-lg max-w-xl mx-auto">
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-future-text mb-3 sm:mb-4">${title}</h1>
+        <p class="text-future-textLight text-base sm:text-lg max-w-xl mx-auto">
           ${config.subtitle}
         </p>
       </div>
