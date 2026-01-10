@@ -1786,12 +1786,6 @@ ${MEET_URL}
     
     const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${formatGoogleDate(startDateUTC)}/${formatGoogleDate(endDateUTC)}&details=${encodeURIComponent(eventDetails)}&location=${encodeURIComponent(MEET_URL)}`;
     
-    // Yahoo!カレンダー用URL
-    const yahooCalendarUrl = `https://calendar.yahoo.co.jp/?v=60&title=${encodeURIComponent(eventTitle)}&st=${year}${String(month).padStart(2,'0')}${String(day).padStart(2,'0')}T${String(hour).padStart(2,'0')}${String(minute).padStart(2,'0')}00&dur=${String(Math.floor(durationMinutes/60)).padStart(2,'0')}${String(durationMinutes%60).padStart(2,'0')}&desc=${encodeURIComponent(eventDetails)}&in_loc=${encodeURIComponent(MEET_URL)}`;
-    
-    // Outlook/ICS用
-    const outlookCalendarUrl = `https://outlook.live.com/calendar/0/action/compose?subject=${encodeURIComponent(eventTitle)}&startdt=${startDateUTC.toISOString()}&enddt=${endDateUTC.toISOString()}&body=${encodeURIComponent(eventDetails)}&location=${encodeURIComponent(MEET_URL)}`;
-    
     return c.html(renderLayout('予約完了', `
         <div class="min-h-screen bg-gradient-to-b from-pink-50 to-white flex items-center justify-center p-4">
           <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
@@ -1836,19 +1830,12 @@ ${MEET_URL}
             <!-- カレンダー登録セクション -->
             <div class="bg-blue-50 rounded-xl p-4 text-left mb-6">
               <h4 class="font-bold text-blue-800 mb-3"><i class="fas fa-calendar-plus mr-2"></i>カレンダーに追加</h4>
-              <p class="text-sm text-blue-700 mb-3">予定をカレンダーに登録して忘れないようにしましょう！</p>
-              <div class="grid grid-cols-1 gap-2">
-                <a href="${googleCalendarUrl}" target="_blank" rel="noopener noreferrer"
-                   class="flex items-center justify-center gap-2 py-2.5 bg-white border-2 border-blue-200 text-blue-700 rounded-lg font-medium hover:bg-blue-100 hover:border-blue-300 transition-colors">
-                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19.5 3h-15A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zm-9 15h-3v-6h3v6zm4.5 0h-3v-9h3v9zm4.5 0h-3v-3h3v3z"/></svg>
-                  Google カレンダー
-                </a>
-                <a href="${outlookCalendarUrl}" target="_blank" rel="noopener noreferrer"
-                   class="flex items-center justify-center gap-2 py-2.5 bg-white border-2 border-blue-200 text-blue-700 rounded-lg font-medium hover:bg-blue-100 hover:border-blue-300 transition-colors">
-                  <i class="fab fa-microsoft"></i>
-                  Outlook カレンダー
-                </a>
-              </div>
+              <p class="text-sm text-blue-700 mb-3">予定を登録して忘れないようにしましょう！</p>
+              <a href="${googleCalendarUrl}" target="_blank" rel="noopener noreferrer"
+                 class="flex items-center justify-center gap-2 py-2.5 bg-white border-2 border-blue-200 text-blue-700 rounded-lg font-medium hover:bg-blue-100 hover:border-blue-300 transition-colors">
+                <i class="fas fa-calendar-plus"></i>
+                Google カレンダーに追加
+              </a>
             </div>
             
             <a href="/" class="inline-block px-6 py-3 bg-pink-500 text-white rounded-lg font-medium hover:bg-pink-600">
