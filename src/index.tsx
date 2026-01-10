@@ -1608,6 +1608,17 @@ app.get('/consultation/complete', async (c) => {
         const typeLabel = metadata.type === 'ai' ? 'AI活用相談' : 'キャリア・メンタル相談';
         const dateLabel = formatDateJa(metadata.date);
         
+        // カレンダー登録用URL生成（メール用）
+        const [emailYear, emailMonth, emailDay] = (metadata.date || '').split('-').map(Number);
+        const [emailHour, emailMinute] = (metadata.time || '10:00').split(':').map(Number);
+        const emailDuration = parseInt(metadata.duration || '30');
+        const emailStartUTC = new Date(Date.UTC(emailYear, emailMonth - 1, emailDay, emailHour - 9, emailMinute));
+        const emailEndUTC = new Date(emailStartUTC.getTime() + emailDuration * 60 * 1000);
+        const emailFormatDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+        const emailEventTitle = `【mirAIcafe】${typeLabel}`;
+        const emailEventDetails = `mirAIcafe 個別相談\n\n相談タイプ: ${typeLabel}\n所要時間: ${emailDuration}分\n\n【Google Meet URL】\n${MEET_URL}\n\n開始時刻の5分前にはお入りください。`;
+        const emailGoogleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(emailEventTitle)}&dates=${emailFormatDate(emailStartUTC)}/${emailFormatDate(emailEndUTC)}&details=${encodeURIComponent(emailEventDetails)}&location=${encodeURIComponent(MEET_URL)}`;
+        
         await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -1657,6 +1668,16 @@ app.get('/consultation/complete', async (c) => {
                       Google Meet に参加する
                     </a>
                     <p style="margin: 16px 0 0 0; font-size: 13px; color: #6b7280;">URL: ${MEET_URL}</p>
+                  </div>
+                  
+                  <!-- カレンダー登録セクション -->
+                  <div style="background: #eff6ff; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
+                    <h2 style="margin: 0 0 12px 0; color: #1d4ed8; font-size: 18px;">📆 カレンダーに登録</h2>
+                    <p style="margin: 0 0 16px 0; color: #374151;">予定を忘れないようにカレンダーに追加しましょう！</p>
+                    <a href="${emailGoogleCalUrl}" 
+                       style="display: inline-block; background: #3b82f6; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
+                      📅 Googleカレンダーに追加
+                    </a>
                   </div>
                   
                   <div style="background: #fef3c7; border-radius: 8px; padding: 16px; margin: 20px 0;">
@@ -1733,6 +1754,28 @@ app.get('/consultation/complete', async (c) => {
     const typeLabel = metadata.type === 'ai' ? 'AI活用相談' : 'キャリア・メンタル相談';
     const dateLabel = formatDateJa(metadata.date);
     
+    // カレンダー登録用のURL生成
+    const [year, month, day] = (metadata.date || '').split('-').map(Number);
+    const [hour, minute] = (metadata.time || '10:00').split(':').map(Number);
+    const durationMinutes = parseInt(metadata.duration || '30');
+    
+    // JST時刻をUTCに変換してGoogle Calendar形式に
+    const startDateUTC = new Date(Date.UTC(year, month - 1, day, hour - 9, minute));
+    const endDateUTC = new Date(startDateUTC.getTime() + durationMinutes * 60 * 1000);
+    
+    const formatGoogleDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    
+    const eventTitle = `【mirAIcafe】${typeLabel}`;
+    const eventDetails = `mirAIcafe 個別相談\\n\\n相談タイプ: ${typeLabel}\\n所要時間: ${durationMinutes}分\\n\\n【Google Meet URL】\\n${MEET_URL}\\n\\n開始時刻の5分前にはお入りください。`;
+    
+    const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${formatGoogleDate(startDateUTC)}/${formatGoogleDate(endDateUTC)}&details=${encodeURIComponent(eventDetails)}&location=${encodeURIComponent(MEET_URL)}`;
+    
+    // Yahoo!カレンダー用URL
+    const yahooCalendarUrl = `https://calendar.yahoo.co.jp/?v=60&title=${encodeURIComponent(eventTitle)}&st=${year}${String(month).padStart(2,'0')}${String(day).padStart(2,'0')}T${String(hour).padStart(2,'0')}${String(minute).padStart(2,'0')}00&dur=${String(Math.floor(durationMinutes/60)).padStart(2,'0')}${String(durationMinutes%60).padStart(2,'0')}&desc=${encodeURIComponent(eventDetails)}&in_loc=${encodeURIComponent(MEET_URL)}`;
+    
+    // Outlook/ICS用
+    const outlookCalendarUrl = `https://outlook.live.com/calendar/0/action/compose?subject=${encodeURIComponent(eventTitle)}&startdt=${startDateUTC.toISOString()}&enddt=${endDateUTC.toISOString()}&body=${encodeURIComponent(eventDetails)}&location=${encodeURIComponent(MEET_URL)}`;
+    
     return c.html(renderLayout('予約完了', `
         <div class="min-h-screen bg-gradient-to-b from-pink-50 to-white flex items-center justify-center p-4">
           <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
@@ -1772,6 +1815,24 @@ app.get('/consultation/complete', async (c) => {
                 Google Meet に参加
               </a>
               <p class="text-xs text-green-600 mt-2 text-center break-all">${MEET_URL}</p>
+            </div>
+            
+            <!-- カレンダー登録セクション -->
+            <div class="bg-blue-50 rounded-xl p-4 text-left mb-6">
+              <h4 class="font-bold text-blue-800 mb-3"><i class="fas fa-calendar-plus mr-2"></i>カレンダーに追加</h4>
+              <p class="text-sm text-blue-700 mb-3">予定をカレンダーに登録して忘れないようにしましょう！</p>
+              <div class="grid grid-cols-1 gap-2">
+                <a href="${googleCalendarUrl}" target="_blank" rel="noopener noreferrer"
+                   class="flex items-center justify-center gap-2 py-2.5 bg-white border-2 border-blue-200 text-blue-700 rounded-lg font-medium hover:bg-blue-100 hover:border-blue-300 transition-colors">
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19.5 3h-15A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zm-9 15h-3v-6h3v6zm4.5 0h-3v-9h3v9zm4.5 0h-3v-3h3v3z"/></svg>
+                  Google カレンダー
+                </a>
+                <a href="${outlookCalendarUrl}" target="_blank" rel="noopener noreferrer"
+                   class="flex items-center justify-center gap-2 py-2.5 bg-white border-2 border-blue-200 text-blue-700 rounded-lg font-medium hover:bg-blue-100 hover:border-blue-300 transition-colors">
+                  <i class="fab fa-microsoft"></i>
+                  Outlook カレンダー
+                </a>
+              </div>
             </div>
             
             <a href="/" class="inline-block px-6 py-3 bg-pink-500 text-white rounded-lg font-medium hover:bg-pink-600">
