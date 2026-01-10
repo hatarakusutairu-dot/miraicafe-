@@ -1,132 +1,283 @@
-// Googleカレンダー連携サービス（クライアントサイド用のヘルパー）
+// Google Calendar API連携サービス
 
-// カレンダーイベント用のデータ型
-export interface CalendarEventData {
-  title: string
-  description: string
-  startDateTime: string  // ISO 8601形式
-  endDateTime: string    // ISO 8601形式
-  location?: string
-  meetingUrl?: string
+interface CalendarEvent {
+  id: string;
+  start: { dateTime?: string; date?: string };
+  end: { dateTime?: string; date?: string };
+  summary?: string;
 }
 
-// Googleカレンダー追加用URLを生成（Google Calendar公式のURL形式）
-export function generateGoogleCalendarUrl(event: CalendarEventData): string {
-  const formatDateTime = (dateTime: string) => {
-    // ISO 8601形式の日時をGoogleカレンダー形式に変換（YYYYMMDDTHHmmssZ）
-    return new Date(dateTime).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
-  }
-
-  const params = new URLSearchParams({
-    action: 'TEMPLATE',
-    text: event.title,
-    dates: `${formatDateTime(event.startDateTime)}/${formatDateTime(event.endDateTime)}`,
-    details: event.description + (event.meetingUrl ? `\n\nオンラインURL: ${event.meetingUrl}` : ''),
-    location: event.location || (event.meetingUrl ? 'オンライン' : ''),
-    trp: 'false'  // 出欠確認を無効化
-  })
-
-  return `https://calendar.google.com/calendar/render?${params.toString()}`
+interface BusySlot {
+  start: number; // Unix timestamp (ms)
+  end: number;   // Unix timestamp (ms)
 }
 
-// クライアントサイドでカレンダーに追加するボタン用のHTML生成
-export function generateAddToCalendarButton(event: CalendarEventData, buttonText: string = 'Googleカレンダーに追加'): string {
-  const googleUrl = generateGoogleCalendarUrl(event)
+// 予約可能時間の設定
+const BUSINESS_HOURS = {
+  weekdays: { start: 10, end: 20 },  // 平日 10:00-20:00
+  saturday: { start: 10, end: 20 },   // 土曜 10:00-20:00
+  // 日曜は予約不可
+};
+
+// 予約前後のバッファ時間（分）
+const BUFFER_MINUTES = 60;
+
+/**
+ * 日本時間の現在日付を取得 (YYYY-MM-DD)
+ */
+function getTodayJST(): { year: number; month: number; day: number; dateStr: string } {
+  const now = new Date();
+  // JSTオフセット（+9時間）を加算
+  const jstTime = now.getTime() + 9 * 60 * 60 * 1000;
+  const jstDate = new Date(jstTime);
   
-  return `
-    <a href="${googleUrl}" target="_blank" rel="noopener noreferrer"
-       class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
-      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M19.5 3h-15A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3z" fill="#fff" stroke="#4285F4" stroke-width="1.5"/>
-        <path d="M16 2v4M8 2v4M3 10h18" stroke="#4285F4" stroke-width="1.5" stroke-linecap="round"/>
-        <rect x="7" y="13" width="4" height="4" rx="0.5" fill="#34A853"/>
-        <rect x="13" y="13" width="4" height="4" rx="0.5" fill="#EA4335"/>
-      </svg>
-      <span class="text-sm font-medium text-gray-700">${buttonText}</span>
-    </a>
-  `
-}
-
-// iCal形式のデータを生成（.icsファイル用）
-export function generateICalData(event: CalendarEventData): string {
-  const formatICalDate = (dateTime: string) => {
-    return new Date(dateTime).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
-  }
-
-  const uid = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}@miraicafe`
-  const now = formatICalDate(new Date().toISOString())
+  const year = jstDate.getUTCFullYear();
+  const month = jstDate.getUTCMonth() + 1;
+  const day = jstDate.getUTCDate();
+  const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   
-  let description = event.description.replace(/\n/g, '\\n')
-  if (event.meetingUrl) {
-    description += `\\n\\nオンラインURL: ${event.meetingUrl}`
-  }
-
-  return `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//mirAIcafe//Calendar//JP
-CALSCALE:GREGORIAN
-METHOD:PUBLISH
-BEGIN:VEVENT
-UID:${uid}
-DTSTAMP:${now}
-DTSTART:${formatICalDate(event.startDateTime)}
-DTEND:${formatICalDate(event.endDateTime)}
-SUMMARY:${event.title}
-DESCRIPTION:${description}
-LOCATION:${event.location || (event.meetingUrl ? 'オンライン' : '')}
-STATUS:CONFIRMED
-END:VEVENT
-END:VCALENDAR`
+  return { year, month, day, dateStr };
 }
 
-// 予約情報からカレンダーイベントデータを生成
-export function createBookingCalendarEvent(booking: {
-  courseName: string
-  date: string
-  startTime: string
-  endTime: string
-  customerName?: string
-  meetingUrl?: string
-}): CalendarEventData {
-  // 日付と時刻を結合してISO形式に変換
-  const startDateTime = `${booking.date}T${booking.startTime}:00+09:00`
-  const endDateTime = `${booking.date}T${booking.endTime}:00+09:00`
+/**
+ * 日付文字列にN日を加算
+ */
+function addDaysToDate(dateStr: string, days: number): { year: number; month: number; day: number; dateStr: string } {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + days);
+  
+  const newYear = date.getFullYear();
+  const newMonth = date.getMonth() + 1;
+  const newDay = date.getDate();
+  const newDateStr = `${newYear}-${String(newMonth).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`;
+  
+  return { year: newYear, month: newMonth, day: newDay, dateStr: newDateStr };
+}
 
-  return {
-    title: `【mirAIcafe】${booking.courseName}`,
-    description: `mirAIcafe AI講座の予約です。\n\n講座名: ${booking.courseName}\n日時: ${booking.date} ${booking.startTime}〜${booking.endTime}${booking.customerName ? `\nお名前: ${booking.customerName}` : ''}`,
-    startDateTime,
-    endDateTime,
-    meetingUrl: booking.meetingUrl
+/**
+ * Googleカレンダーから指定期間の予定を取得
+ */
+export async function getCalendarEvents(
+  apiKey: string,
+  calendarId: string,
+  timeMin: Date,
+  timeMax: Date
+): Promise<CalendarEvent[]> {
+  const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`);
+  url.searchParams.set('key', apiKey);
+  url.searchParams.set('timeMin', timeMin.toISOString());
+  url.searchParams.set('timeMax', timeMax.toISOString());
+  url.searchParams.set('singleEvents', 'true');
+  url.searchParams.set('orderBy', 'startTime');
+  url.searchParams.set('maxResults', '250');
+
+  const response = await fetch(url.toString());
+  
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('Google Calendar API error:', error);
+    throw new Error(`カレンダーの取得に失敗しました: ${response.status}`);
+  }
+
+  const data = await response.json();
+  console.log(`Fetched ${data.items?.length || 0} events from calendar`);
+  return data.items || [];
+}
+
+/**
+ * 予定から忙しい時間帯を抽出（バッファ込み）
+ * 全てUTCのUnixタイムスタンプで管理
+ */
+export function getBusySlots(events: CalendarEvent[]): BusySlot[] {
+  const slots = events.map(event => {
+    const startStr = event.start.dateTime || event.start.date;
+    const endStr = event.end.dateTime || event.end.date;
+    
+    if (!startStr || !endStr) return null;
+
+    let startMs: number;
+    let endMs: number;
+
+    // 終日イベントの場合（dateのみ）
+    if (event.start.date && !event.start.dateTime) {
+      // 終日イベントは日本時間の00:00-23:59として扱う
+      const [year, month, day] = event.start.date.split('-').map(Number);
+      // JST 00:00 = UTC 前日15:00
+      startMs = Date.UTC(year, month - 1, day, -9, 0, 0);
+      
+      const [endYear, endMonth, endDay] = event.end.date.split('-').map(Number);
+      // 終日イベントのendは翌日なので、前日の23:59 JST = UTC 14:59
+      endMs = Date.UTC(endYear, endMonth - 1, endDay, -9, 0, 0) - 1;
+    } else {
+      // 時刻付きイベント（dateTime形式: 2026-01-13T10:00:00+09:00）
+      startMs = new Date(startStr).getTime();
+      endMs = new Date(endStr).getTime();
+    }
+
+    // バッファを追加（前後1時間）
+    const bufferedStart = startMs - BUFFER_MINUTES * 60 * 1000;
+    const bufferedEnd = endMs + BUFFER_MINUTES * 60 * 1000;
+
+    console.log(`Event: ${startStr} - ${endStr}`);
+    console.log(`  Original: ${new Date(startMs).toISOString()} - ${new Date(endMs).toISOString()}`);
+    console.log(`  Buffered: ${new Date(bufferedStart).toISOString()} - ${new Date(bufferedEnd).toISOString()}`);
+
+    return { start: bufferedStart, end: bufferedEnd };
+  }).filter((slot): slot is BusySlot => slot !== null);
+  
+  console.log(`Total busy slots: ${slots.length}`);
+  return slots;
+}
+
+/**
+ * 指定日の予約可能時間枠を取得（日本時間で計算）
+ */
+export function getAvailableSlots(
+  dateStr: string, // YYYY-MM-DD形式（日本時間の日付）
+  busySlots: BusySlot[],
+  duration: number = 30
+): { time: string; available: boolean }[] {
+  // 日本時間でパース
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const dayOfWeek = new Date(year, month - 1, day).getDay();
+  const slots: { time: string; available: boolean }[] = [];
+
+  // 日曜日は予約不可
+  if (dayOfWeek === 0) {
+    return [];
+  }
+
+  // 営業時間を取得
+  const hours = dayOfWeek === 6 ? BUSINESS_HOURS.saturday : BUSINESS_HOURS.weekdays;
+
+  // 現在時刻（日本時間）
+  const today = getTodayJST();
+  const isToday = dateStr === today.dateStr;
+  
+  // 現在の日本時間
+  const nowJST = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const currentHourJST = nowJST.getUTCHours();
+  const currentMinuteJST = nowJST.getUTCMinutes();
+
+  // 30分刻みでスロットを生成
+  for (let hour = hours.start; hour < hours.end; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      // 営業時間の終了時刻を超える場合はスキップ
+      const slotEndHour = hour + Math.floor((minute + duration) / 60);
+      const slotEndMinute = (minute + duration) % 60;
+      if (slotEndHour > hours.end || (slotEndHour === hours.end && slotEndMinute > 0)) {
+        continue;
+      }
+
+      // 過去の時間はスキップ（今日の場合）
+      if (isToday) {
+        if (hour < currentHourJST || (hour === currentHourJST && minute <= currentMinuteJST)) {
+          continue;
+        }
+      }
+
+      // スロットの開始・終了時刻をUTCタイムスタンプで計算（JST -> UTC）
+      // JST hour:minute を UTC に変換: UTC = JST - 9時間
+      const slotStartMs = Date.UTC(year, month - 1, day, hour - 9, minute, 0);
+      const slotEndMs = slotStartMs + duration * 60 * 1000;
+      
+      // 相談前後にもバッファが必要
+      // 相談開始前1時間 ～ 相談終了後1時間 が空いている必要がある
+      const slotStartWithBuffer = slotStartMs - BUFFER_MINUTES * 60 * 1000;
+      const slotEndWithBuffer = slotEndMs + BUFFER_MINUTES * 60 * 1000;
+
+      // 忙しい時間帯と重なっていないかチェック（バッファ込み）
+      const isAvailable = !busySlots.some(busy => {
+        // 相談スロット（バッファ込み）と予定（バッファ込み）が重なるかチェック
+        const overlaps = slotStartWithBuffer < busy.end && slotEndWithBuffer > busy.start;
+        return overlaps;
+      });
+
+      const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      slots.push({ time: timeStr, available: isAvailable });
+    }
+  }
+
+  return slots;
+}
+
+/**
+ * 指定期間の予約可能日を取得
+ */
+export async function getAvailableDates(
+  apiKey: string,
+  calendarId: string,
+  startDate: Date,
+  days: number = 60,
+  duration: number = 30
+): Promise<{ date: string; dayOfWeek: number; hasSlots: boolean; slots: { time: string; available: boolean }[] }[]> {
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + days);
+
+  // カレンダーイベントを取得
+  const events = await getCalendarEvents(apiKey, calendarId, startDate, endDate);
+  const busySlots = getBusySlots(events);
+
+  const result: { date: string; dayOfWeek: number; hasSlots: boolean; slots: { time: string; available: boolean }[] }[] = [];
+
+  // 日本時間の今日を取得
+  const today = getTodayJST();
+  
+  for (let i = 0; i < days; i++) {
+    const targetDate = addDaysToDate(today.dateStr, i);
+    const { year, month, day, dateStr } = targetDate;
+    
+    const dayOfWeek = new Date(year, month - 1, day).getDay();
+    
+    // 日曜日はスキップ
+    if (dayOfWeek === 0) {
+      continue;
+    }
+
+    const slots = getAvailableSlots(dateStr, busySlots, duration);
+    const availableSlots = slots.filter(s => s.available);
+
+    result.push({
+      date: dateStr,
+      dayOfWeek,
+      hasSlots: availableSlots.length > 0,
+      slots
+    });
+  }
+
+  return result;
+}
+
+/**
+ * 日本の祝日を取得（簡易版）
+ */
+export async function getJapaneseHolidays(year: number): Promise<Set<string>> {
+  try {
+    const response = await fetch(`https://holidays-jp.github.io/api/v1/${year}/date.json`);
+    if (!response.ok) return new Set();
+    const data = await response.json();
+    return new Set(Object.keys(data));
+  } catch {
+    return new Set();
   }
 }
 
-// 講座情報からカレンダーイベントデータを生成（管理者用）
-export function createCourseCalendarEvent(course: {
-  title: string
-  date: string
-  startTime: string
-  endTime: string
-  description?: string
-  meetingUrl?: string
-  studentName?: string
-}): CalendarEventData {
-  const startDateTime = `${course.date}T${course.startTime}:00+09:00`
-  const endDateTime = `${course.date}T${course.endTime}:00+09:00`
+/**
+ * 予約料金を計算
+ */
+export function calculatePrice(duration: number): number {
+  if (duration === 30) return 3000;
+  if (duration === 60) return 5000;
+  return 3000;
+}
 
-  let description = `AI講座\n\n講座名: ${course.title}\n日時: ${course.date} ${course.startTime}〜${course.endTime}`
-  if (course.studentName) {
-    description += `\n受講者: ${course.studentName}`
-  }
-  if (course.description) {
-    description += `\n\n${course.description}`
-  }
-
-  return {
-    title: `【講座】${course.title}${course.studentName ? ` - ${course.studentName}様` : ''}`,
-    description,
-    startDateTime,
-    endDateTime,
-    meetingUrl: course.meetingUrl
-  }
+/**
+ * 日付をフォーマット
+ */
+export function formatDateJa(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+  return `${month}月${day}日(${weekdays[date.getDay()]})`;
 }

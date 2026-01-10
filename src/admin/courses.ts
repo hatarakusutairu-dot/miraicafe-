@@ -36,7 +36,7 @@ export const renderCoursesList = (courses: Course[]) => {
               <span class="px-2 py-1 text-xs rounded bg-white/90 text-gray-700">${course.category}</span>
             </div>
             <div class="absolute top-3 left-3">
-              <button onclick="confirmDelete('${course.id}', '${escapeAttr(course.title).replace(/'/g, "\\'")}')" 
+              <button data-id="${course.id}" data-title="${escapeAttr(course.title)}" onclick="confirmDelete(this.dataset.id, this.dataset.title)" 
                 class="w-8 h-8 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center text-sm shadow-lg transition">
                 <i class="fas fa-trash"></i>
               </button>
@@ -127,9 +127,9 @@ export const renderCourseForm = (course?: Course, error?: string) => {
   const defaultFaq = [
     { question: '初心者でも参加できますか？', answer: 'はい、初心者の方でも安心してご参加いただけます。基礎から丁寧に解説しますので、AIに触れたことがない方でも大丈夫です。' },
     { question: '受講に必要なものは何ですか？', answer: 'パソコン（Windows/Mac）とインターネット環境があればご参加いただけます。スマートフォンやタブレットでも視聴可能ですが、実践演習にはパソコンをお勧めします。' },
-    { question: '講座の録画はありますか？', answer: 'はい、講座終了後に録画をお送りしますので、復習や当日参加できなかった場合もご安心ください。録画は30日間視聴可能です。' },
     { question: '質問はできますか？', answer: 'はい、講座中はいつでも質問していただけます。チャットでの質問に加え、質疑応答の時間も設けています。' },
-    { question: '支払い方法を教えてください', answer: 'クレジットカード（Visa、Mastercard、JCB、American Express）でのお支払いに対応しています。' }
+    { question: '支払い方法を教えてください', answer: 'クレジットカード決済（Stripe）に対応しております。VISA、Mastercard、American Expressがご利用いただけます。※JCB、Diners Club、Discoverは現在ご利用いただけません。コース講座の場合は、一括払い（早期割引あり）・単発参加からお選びいただけます。' },
+    { question: 'キャンセルや返金はできますか？', answer: 'デジタルコンテンツの性質上、お申込み・決済完了後の返金には原則として応じておりません。個別日程の講座については、開催日の3日前までにご連絡いただければ、1回に限り日程変更が可能です。詳細はキャンセルポリシーをご確認ください。' }
   ]
 
   const content = `
@@ -320,15 +320,15 @@ export const renderCourseForm = (course?: Course, error?: string) => {
 
           <div id="online-url-section">
             <label class="block text-sm font-medium text-gray-700 mb-1">
-              オンラインURL（Zoom/Google Meet等）
+              オンラインURL（Google Meet）
               <span class="text-xs text-gray-500 ml-1">予約完了後に受講者に共有されます</span>
             </label>
             <input type="url" name="online_url" value="${escapeAttr(course?.online_url || '')}"
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="例: https://zoom.us/j/123456789 または https://meet.google.com/xxx-xxxx-xxx">
+              placeholder="例: https://meet.google.com/xxx-xxxx-xxx">
             <p class="mt-1 text-xs text-gray-500">
               <i class="fas fa-info-circle mr-1"></i>
-              Zoomの定期ミーティングURLやGoogle Meetのリンクを設定できます
+              Google Meetのリンクを設定してください
             </p>
           </div>
         </div>

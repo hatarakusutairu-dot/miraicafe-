@@ -1,7 +1,69 @@
 import { renderLayout } from '../components/layout'
 import { Course, Schedule } from '../data'
 
-export const renderCoursesPage = (courses: Course[]) => {
+// コースシリーズ情報の型定義
+interface SeriesInfo {
+  id: string
+  title: string
+  subtitle?: string
+  description?: string
+  total_sessions: number
+  duration_minutes?: number
+  base_price_per_session: number
+  pricing_pattern_id?: string
+  calc_single_price_incl: number
+  calc_single_total_incl: number
+  calc_course_price_incl: number
+  calc_early_price_incl: number
+  calc_monthly_price_incl: number
+  calc_savings_course: number
+  calc_savings_early: number
+  early_bird_deadline?: string
+  pattern_name?: string
+  course_discount_rate?: number
+  early_bird_discount_rate?: number
+  early_bird_days?: number
+  has_monthly_option?: number
+  tax_rate?: number
+  currentSessionNumber?: number
+  linkedCourses?: { id: string; title: string; session_number: number }[]
+}
+
+// シリーズマップの型
+interface SeriesMapEntry {
+  seriesId: string
+  seriesTitle: string
+  totalSessions: number
+  sessionNumber: number
+}
+
+// コースシリーズの型
+interface CourseSeries {
+  id: string
+  title: string
+  subtitle?: string
+  description?: string
+  image?: string
+  total_sessions: number
+  duration_minutes: number
+  base_price_per_session: number
+  calc_single_price_incl: number
+  calc_course_price_incl: number
+  calc_early_price_incl: number
+  calc_monthly_price_incl: number
+  calc_savings_course: number
+  calc_savings_early: number
+  early_bird_deadline?: string
+  course_discount_rate?: number
+  early_bird_discount_rate?: number
+  is_featured?: number
+  status: string
+}
+
+export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, SeriesMapEntry>, courseSeriesList?: CourseSeries[]) => {
+  // シリーズ情報を保持（表示用）
+  const seriesCourseIds = new Set(Object.keys(seriesMap || {}))
+  
   const content = `
     <!-- Page Header -->
     <section class="relative py-20 overflow-hidden">
@@ -188,9 +250,112 @@ export const renderCoursesPage = (courses: Course[]) => {
       </div>
     </section>
 
-    <!-- Courses Grid -->
+    <!-- Course Series Section -->
+    ${courseSeriesList && courseSeriesList.length > 0 ? `
+    <section class="py-16 bg-gradient-to-br from-cafe-cream via-white to-nature-mint/10">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+          <span class="inline-flex items-center bg-gradient-to-r from-ai-purple to-ai-blue text-white font-medium px-4 py-2 rounded-full text-sm mb-4">
+            <i class="fas fa-layer-group mr-2"></i>COURSE SERIES
+          </span>
+          <h2 class="text-3xl font-bold text-future-text mb-4">コースで体系的に学ぶ</h2>
+          <p class="text-future-textLight max-w-2xl mx-auto">
+            複数回の講座を通じて、スキルを段階的に習得できるコースプログラムです。<br>
+            単発参加・コース一括（早期割引あり）から選べます。
+          </p>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          ${courseSeriesList.map(series => `
+            <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-future-sky/50 hover:shadow-2xl transition-all duration-300 group">
+              <!-- ヘッダー画像 -->
+              <div class="aspect-[21/9] relative overflow-hidden bg-gradient-to-br from-ai-purple/20 to-ai-blue/20">
+                ${series.image ? `
+                  <img src="${series.image}" alt="${series.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                ` : `
+                  <div class="w-full h-full flex items-center justify-center">
+                    <i class="fas fa-layer-group text-6xl text-ai-purple/30"></i>
+                  </div>
+                `}
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                <div class="absolute top-4 left-4 flex gap-2">
+                  <span class="bg-ai-purple text-white text-xs font-bold px-3 py-1 rounded-full shadow">
+                    <i class="fas fa-layer-group mr-1"></i>全${series.total_sessions}回コース
+                  </span>
+                  ${series.is_featured ? `
+                    <span class="bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs font-bold px-3 py-1 rounded-full shadow">
+                      <i class="fas fa-star mr-1"></i>おすすめ
+                    </span>
+                  ` : ''}
+                </div>
+                <div class="absolute bottom-4 left-4 right-4">
+                  <h3 class="text-xl font-bold text-white mb-1 line-clamp-2">${series.title}</h3>
+                  ${series.subtitle ? `<p class="text-white/80 text-sm line-clamp-1">${series.subtitle}</p>` : ''}
+                </div>
+              </div>
+              
+              <!-- コンテンツ -->
+              <div class="p-6">
+                <div class="flex items-center gap-4 text-sm text-future-textLight mb-4">
+                  <span><i class="fas fa-clock mr-1 text-ai-blue"></i>${series.duration_minutes}分/回</span>
+                  <span><i class="fas fa-calendar-alt mr-1 text-ai-purple"></i>全${series.total_sessions}回</span>
+                </div>
+                
+                ${series.description ? `<p class="text-future-textLight text-sm mb-4 line-clamp-2">${series.description}</p>` : ''}
+                
+                <!-- 価格情報 -->
+                <div class="bg-future-light rounded-xl p-4 mb-4">
+                  <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span class="text-future-textLight">単発参加</span>
+                      <div class="font-bold text-future-text">¥${series.calc_single_price_incl.toLocaleString()}<span class="text-xs font-normal text-future-textLight">/回(税込)</span></div>
+                    </div>
+                    <div>
+                      <span class="text-future-textLight">コース一括</span>
+                      <div class="font-bold text-ai-blue">¥${series.calc_course_price_incl.toLocaleString()}<span class="text-xs font-normal text-future-textLight">(税込)</span></div>
+                      <span class="text-xs text-nature-forest">¥${series.calc_savings_course.toLocaleString()}お得</span>
+                    </div>
+                    ${series.early_bird_deadline && new Date(series.early_bird_deadline) > new Date() ? `
+                    <div class="col-span-2 border-t border-future-sky pt-3 mt-1">
+                      <span class="text-orange-600 text-xs font-medium">
+                        <i class="fas fa-clock mr-1"></i>早期申込 〜${new Date(series.early_bird_deadline).toLocaleDateString('ja-JP', {month: 'numeric', day: 'numeric'})}まで
+                      </span>
+                      <div class="flex items-baseline gap-2">
+                        <span class="font-bold text-ai-purple text-lg">¥${series.calc_early_price_incl.toLocaleString()}<span class="text-xs font-normal text-future-textLight">(税込)</span></span>
+                        <span class="text-xs text-nature-forest">¥${series.calc_savings_early.toLocaleString()}お得</span>
+                      </div>
+                    </div>
+                    ` : ''}
+                  </div>
+                </div>
+                
+                <!-- アクション -->
+                <div class="flex gap-3">
+                  <a href="/series/${series.id}" class="flex-1 btn-ai gradient-ai text-white text-center py-3 rounded-xl font-bold hover:opacity-90 transition">
+                    <i class="fas fa-list-ul mr-2"></i>全${series.total_sessions}回の内容を見る
+                  </a>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </section>
+    ` : ''}
+
+    <!-- Standalone Courses Grid -->
     <section class="py-16 bg-future-light">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        ${courses.length > 0 || !courseSeriesList?.length ? `
+        <div class="text-center mb-12">
+          <span class="inline-flex items-center gradient-ai text-white font-medium px-4 py-2 rounded-full text-sm mb-4">
+            <i class="fas fa-book mr-2"></i>SINGLE COURSES
+          </span>
+          <h2 class="text-3xl font-bold text-future-text mb-4">単発講座</h2>
+          <p class="text-future-textLight">1回完結型の講座です。気軽にご参加ください。</p>
+        </div>
+        ` : ''}
+        
         <!-- No Results Message -->
         <div id="no-results" class="hidden text-center py-16">
           <div class="w-20 h-20 gradient-ai rounded-2xl flex items-center justify-center mx-auto mb-6 opacity-50">
@@ -219,6 +384,11 @@ export const renderCoursesPage = (courses: Course[]) => {
                 <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                 <div class="absolute top-4 left-4 flex gap-2">
                   <span class="gradient-ai text-white text-xs font-bold px-3 py-1 rounded-full shadow">${course.level}</span>
+                  ${seriesMap && seriesMap[course.id] ? `
+                  <span class="bg-ai-purple text-white text-xs font-bold px-3 py-1 rounded-full shadow">
+                    <i class="fas fa-layer-group mr-1"></i>第${seriesMap[course.id].sessionNumber}/${seriesMap[course.id].totalSessions}回
+                  </span>
+                  ` : ''}
                 </div>
                 <div class="absolute top-4 right-4">
                   <span class="glass text-future-text text-xs font-bold px-3 py-1 rounded-full">
@@ -243,7 +413,10 @@ export const renderCoursesPage = (courses: Course[]) => {
                 </div>
                 
                 <div class="flex items-center justify-between pt-4 border-t border-future-sky">
-                  <span class="text-2xl font-bold gradient-ai-text">¥${course.price.toLocaleString()}</span>
+                  <div>
+                    <span class="text-2xl font-bold gradient-ai-text">¥${course.price.toLocaleString()}</span>
+                    <span class="text-xs text-future-textLight ml-1">(税込)</span>
+                  </div>
                   <div class="flex gap-2">
                     <span class="btn-ai glass text-future-text px-4 py-2 rounded-full text-sm font-medium border border-ai-blue/30 hover:border-ai-blue course-detail-btn" onclick="event.stopPropagation(); window.location.href='/courses/${course.id}'">
                       詳細
@@ -828,7 +1001,7 @@ export const renderCoursesPage = (courses: Course[]) => {
 }
 
 // 講座詳細ページ（完全リニューアル版）
-export const renderCourseDetailPage = (course: Course, schedules: Schedule[], allCourses: Course[]) => {
+export const renderCourseDetailPage = (course: Course, schedules: Schedule[], allCourses: Course[], seriesInfo?: SeriesInfo | null) => {
   // 関連講座（同じカテゴリで自分以外、最大3件）
   const relatedCourses = allCourses
     .filter(c => c.id !== course.id && c.category === course.category)
@@ -1196,7 +1369,7 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
                     <div class="p-4">
                       <span class="text-xs text-ai-blue font-medium">${related.category}</span>
                       <h3 class="font-bold text-future-text mt-1 line-clamp-2">${related.title}</h3>
-                      <p class="text-sm gradient-ai-text font-bold mt-2">¥${related.price.toLocaleString()}</p>
+                      <p class="text-sm gradient-ai-text font-bold mt-2">¥${related.price.toLocaleString()}<span class="text-xs font-normal text-future-textLight">(税込)</span></p>
                     </div>
                   </a>
                 `).join('')}
@@ -1223,11 +1396,116 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
               </div>
 
               <!-- 価格 -->
+              ${seriesInfo ? `
+              <!-- シリーズ講座：価格選択UI -->
+              <div class="mb-6" id="pricing-selector">
+                <div class="text-center mb-4">
+                  <span class="inline-flex items-center text-xs font-medium px-3 py-1 rounded-full bg-ai-purple/10 text-ai-purple">
+                    <i class="fas fa-layer-group mr-1"></i>全${seriesInfo.total_sessions}回コース
+                  </span>
+                  <p class="text-sm text-future-textLight mt-1">${seriesInfo.title}</p>
+                </div>
+                
+                <!-- 価格オプション -->
+                <div class="space-y-2">
+                  <!-- 単発受講 -->
+                  <label class="pricing-option block cursor-pointer">
+                    <input type="radio" name="pricing_type" value="single" class="hidden" checked>
+                    <div class="border-2 border-future-sky rounded-xl p-3 hover:border-ai-blue transition-all pricing-card">
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                          <div class="w-5 h-5 border-2 border-future-sky rounded-full mr-3 flex items-center justify-center pricing-radio">
+                            <div class="w-2.5 h-2.5 bg-ai-blue rounded-full opacity-0 pricing-dot"></div>
+                          </div>
+                          <div>
+                            <span class="font-medium text-future-text text-sm">単発受講</span>
+                            <span class="text-xs text-future-textLight ml-1">（第${seriesInfo.currentSessionNumber || 1}回のみ）</span>
+                          </div>
+                        </div>
+                        <span class="font-bold text-future-text">¥${seriesInfo.calc_single_price_incl.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </label>
+                  
+                  <!-- コース一括 -->
+                  <label class="pricing-option block cursor-pointer">
+                    <input type="radio" name="pricing_type" value="course" class="hidden">
+                    <div class="border-2 border-future-sky rounded-xl p-3 hover:border-ai-blue transition-all pricing-card relative">
+                      <div class="absolute -top-2 -right-2 bg-ai-blue text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                        ${Math.round((seriesInfo.course_discount_rate || 0.1) * 100)}%OFF
+                      </div>
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                          <div class="w-5 h-5 border-2 border-future-sky rounded-full mr-3 flex items-center justify-center pricing-radio">
+                            <div class="w-2.5 h-2.5 bg-ai-blue rounded-full opacity-0 pricing-dot"></div>
+                          </div>
+                          <div>
+                            <span class="font-medium text-future-text text-sm">コース一括</span>
+                            <span class="text-xs text-future-textLight ml-1">（全${seriesInfo.total_sessions}回）</span>
+                          </div>
+                        </div>
+                        <div class="text-right">
+                          <span class="font-bold text-ai-blue">¥${seriesInfo.calc_course_price_incl.toLocaleString()}</span>
+                          <p class="text-xs text-nature-forest">¥${seriesInfo.calc_savings_course.toLocaleString()}お得</p>
+                        </div>
+                      </div>
+                    </div>
+                  </label>
+                  
+                  <!-- 早期申込 -->
+                  ${seriesInfo.early_bird_deadline ? `
+                  <label class="pricing-option block cursor-pointer">
+                    <input type="radio" name="pricing_type" value="early" class="hidden">
+                    <div class="border-2 border-future-sky rounded-xl p-3 hover:border-ai-blue transition-all pricing-card relative">
+                      <div class="absolute -top-2 -right-2 bg-gradient-to-r from-ai-purple to-ai-pink text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                        ${Math.round((seriesInfo.early_bird_discount_rate || 0.17) * 100)}%OFF
+                      </div>
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                          <div class="w-5 h-5 border-2 border-future-sky rounded-full mr-3 flex items-center justify-center pricing-radio">
+                            <div class="w-2.5 h-2.5 bg-ai-blue rounded-full opacity-0 pricing-dot"></div>
+                          </div>
+                          <div>
+                            <span class="font-medium text-future-text text-sm">早期申込</span>
+                            <span class="text-xs text-red-500 ml-1">〜${new Date(seriesInfo.early_bird_deadline).toLocaleDateString('ja-JP', {month: 'numeric', day: 'numeric'})}まで</span>
+                          </div>
+                        </div>
+                        <div class="text-right">
+                          <span class="font-bold text-ai-purple">¥${seriesInfo.calc_early_price_incl.toLocaleString()}</span>
+                          <p class="text-xs text-nature-forest">¥${seriesInfo.calc_savings_early.toLocaleString()}お得</p>
+                        </div>
+                      </div>
+                    </div>
+                  </label>
+                  ` : ''}
+                  
+                  <!-- 月額払い（現在は無効化 - Subscription実装が必要） -->
+                  <!-- 月額払いは一括決済ではなく定期課金（Subscription）の実装が必要なため、現在は非表示 -->
+                </div>
+                
+                <p class="text-xs text-future-textLight text-center mt-3">※すべて税込価格です</p>
+              </div>
+              
+              <style>
+                .pricing-option input:checked + .pricing-card {
+                  border-color: #3B82F6;
+                  background: rgba(59, 130, 246, 0.05);
+                }
+                .pricing-option input:checked + .pricing-card .pricing-radio {
+                  border-color: #3B82F6;
+                }
+                .pricing-option input:checked + .pricing-card .pricing-dot {
+                  opacity: 1;
+                }
+              </style>
+              ` : `
+              <!-- 単発講座：通常の価格表示 -->
               <div class="text-center mb-6">
                 <span class="text-sm text-future-textLight">受講料</span>
                 <p class="text-4xl font-bold gradient-ai-text">¥${course.price.toLocaleString()}</p>
                 <span class="text-sm text-future-textLight">（税込）</span>
               </div>
+              `}
 
               <!-- 講座情報 -->
               <div class="space-y-3 mb-6">
@@ -1237,7 +1515,7 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
                 </div>
                 <div class="flex items-center text-future-text bg-future-light rounded-xl p-3">
                   <i class="fas fa-laptop w-8 text-ai-blue"></i>
-                  <span class="text-sm">オンライン開催（Zoom）</span>
+                  <span class="text-sm">オンライン開催（Google Meet）</span>
                 </div>
                 <div class="flex items-center text-future-text bg-future-light rounded-xl p-3">
                   <i class="fas fa-users w-8 text-ai-purple"></i>
@@ -1262,9 +1540,23 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
               ` : ''}
 
               <!-- CTAボタン -->
+              ${seriesInfo ? `
+              <button id="reserve-btn" onclick="goToReservation()" class="btn-ai block w-full text-white text-center py-4 rounded-full font-bold shadow-lg mb-3" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
+                <i class="fas fa-calendar-check mr-2"></i>日程を選んで予約
+              </button>
+              <script>
+                function goToReservation() {
+                  var pricingType = document.querySelector('input[name="pricing_type"]:checked');
+                  var type = pricingType ? pricingType.value : 'single';
+                  // 単発の場合はシリーズのセッション選択へ、それ以外はシリーズ予約へ
+                  window.location.href = '/reservation?series=${seriesInfo.id}&pricing=' + type;
+                }
+              </script>
+              ` : `
               <a href="/reservation?course=${course.id}" class="btn-ai block w-full text-white text-center py-4 rounded-full font-bold shadow-lg mb-3" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
                 <i class="fas fa-calendar-check mr-2"></i>日程を選んで予約
               </a>
+              `}
 
               <!-- 日程セクションへスクロール -->
               ${courseSchedules.length > 0 ? `
@@ -1626,4 +1918,361 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
   `
 
   return renderLayout(course.title, content, 'courses')
+}
+
+// コースシリーズ詳細ページ
+interface SeriesDetail {
+  id: string
+  title: string
+  subtitle?: string
+  description?: string
+  image?: string
+  total_sessions: number
+  duration_minutes: number
+  calc_single_price_incl: number
+  calc_course_price_incl: number
+  calc_early_price_incl: number
+  calc_monthly_price_incl: number
+  calc_savings_course: number
+  calc_savings_early: number
+  early_bird_deadline?: string
+  course_discount_rate?: number
+  early_bird_discount_rate?: number
+}
+
+interface LinkedCourse {
+  id: string
+  title: string
+  description?: string
+  image?: string
+  session_number: number
+  next_schedule_date?: string
+  start_time?: string
+  end_time?: string
+}
+
+export const renderSeriesDetailPage = (
+  series: SeriesDetail, 
+  linkedCourses: LinkedCourse[], 
+  isInProgress: boolean,
+  currentSession: number
+) => {
+  const now = new Date()
+  const earlyBirdActive = series.early_bird_deadline && new Date(series.early_bird_deadline) > now
+  
+  const content = `
+    <!-- Hero Section -->
+    <section class="relative py-16 overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-br from-ai-purple/10 via-ai-blue/5 to-nature-mint/10"></div>
+      ${series.image ? `
+        <div class="absolute inset-0">
+          <img src="${series.image}" alt="" class="w-full h-full object-cover opacity-20">
+          <div class="absolute inset-0 bg-gradient-to-t from-white via-white/80 to-white/60"></div>
+        </div>
+      ` : ''}
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col lg:flex-row gap-8 items-start">
+          <!-- 左側: コース情報 -->
+          <div class="flex-1">
+            <div class="flex flex-wrap gap-2 mb-4">
+              <span class="bg-ai-purple text-white text-sm font-bold px-4 py-1 rounded-full">
+                <i class="fas fa-layer-group mr-1"></i>全${series.total_sessions}回コース
+              </span>
+              ${isInProgress ? `
+                <span class="bg-orange-500 text-white text-sm font-bold px-4 py-1 rounded-full">
+                  <i class="fas fa-play-circle mr-1"></i>開講中（第${currentSession}回〜）
+                </span>
+              ` : `
+                <span class="bg-nature-forest text-white text-sm font-bold px-4 py-1 rounded-full">
+                  <i class="fas fa-calendar-check mr-1"></i>次回開講予定
+                </span>
+              `}
+            </div>
+            
+            <h1 class="text-3xl lg:text-4xl font-bold text-future-text mb-4 leading-tight">${series.title}</h1>
+            ${series.subtitle ? `<p class="text-lg text-future-textLight mb-4">${series.subtitle}</p>` : ''}
+            ${series.description ? `<p class="text-future-textLight leading-relaxed">${series.description}</p>` : ''}
+            
+            <div class="flex flex-wrap items-center gap-6 mt-6 text-sm text-future-textLight">
+              <span><i class="fas fa-clock text-ai-blue mr-2"></i>${series.duration_minutes}分/回</span>
+              <span><i class="fas fa-calendar-alt text-ai-purple mr-2"></i>全${series.total_sessions}回</span>
+              <span><i class="fas fa-video text-nature-forest mr-2"></i>オンライン（Google Meet）</span>
+            </div>
+          </div>
+          
+          <!-- 右側: 価格・申込カード -->
+          <div class="w-full lg:w-96 bg-white rounded-2xl shadow-xl border border-future-sky/50 overflow-hidden">
+            <div class="bg-gradient-to-r from-ai-purple to-ai-blue p-4 text-white text-center">
+              <span class="text-sm font-medium">受講プランを選択</span>
+            </div>
+            <div class="p-6 space-y-4">
+              <!-- 単発参加 -->
+              <div class="border border-future-sky rounded-xl p-4 hover:border-ai-blue transition cursor-pointer" onclick="selectPlan('single')">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <span class="font-bold text-future-text">単発参加</span>
+                    <p class="text-xs text-future-textLight">1回ずつ参加</p>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-xl font-bold text-future-text">¥${series.calc_single_price_incl.toLocaleString()}</span>
+                    <span class="text-sm text-future-textLight">/回(税込)</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- コース一括 -->
+              <div class="border-2 border-ai-blue rounded-xl p-4 bg-ai-blue/5 hover:bg-ai-blue/10 transition cursor-pointer relative" onclick="selectPlan('course')">
+                <span class="absolute -top-3 left-4 bg-ai-blue text-white text-xs font-bold px-2 py-1 rounded">おすすめ</span>
+                <div class="flex justify-between items-center">
+                  <div>
+                    <span class="font-bold text-ai-blue">コース一括</span>
+                    <p class="text-xs text-future-textLight">全${series.total_sessions}回セット</p>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-xl font-bold text-ai-blue">¥${series.calc_course_price_incl.toLocaleString()}<span class="text-sm font-normal text-future-textLight">(税込)</span></span>
+                    <p class="text-xs text-nature-forest font-medium">¥${series.calc_savings_course.toLocaleString()}お得</p>
+                  </div>
+                </div>
+              </div>
+              
+              ${earlyBirdActive ? `
+              <!-- 早期申込 -->
+              <div class="border-2 border-ai-purple rounded-xl p-4 bg-ai-purple/5 hover:bg-ai-purple/10 transition cursor-pointer relative" onclick="selectPlan('early')">
+                <span class="absolute -top-3 left-4 bg-gradient-to-r from-orange-400 to-red-400 text-white text-xs font-bold px-2 py-1 rounded">
+                  <i class="fas fa-clock mr-1"></i>〜${new Date(series.early_bird_deadline!).toLocaleDateString('ja-JP', {month: 'numeric', day: 'numeric'})}
+                </span>
+                <div class="flex justify-between items-center">
+                  <div>
+                    <span class="font-bold text-ai-purple">早期申込</span>
+                    <p class="text-xs text-future-textLight">全${series.total_sessions}回セット</p>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-xl font-bold text-ai-purple">¥${series.calc_early_price_incl.toLocaleString()}<span class="text-sm font-normal text-future-textLight">(税込)</span></span>
+                    <p class="text-xs text-nature-forest font-medium">¥${series.calc_savings_early.toLocaleString()}お得</p>
+                  </div>
+                </div>
+              </div>
+              ` : ''}
+              
+              <!-- 月額払い（現在は無効化 - Subscription実装が必要なため非表示） -->
+              
+              ${isInProgress ? `
+              <!-- 途中参加の注意 -->
+              <div class="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm">
+                <p class="text-orange-700 font-medium mb-2">
+                  <i class="fas fa-info-circle mr-1"></i>現在第${currentSession}回目以降の参加となります
+                </p>
+                <p class="text-orange-600 text-xs">
+                  途中からの参加は<strong>単発参加</strong>のみとなります。<br>
+                  コース一括・早期割引をご希望の方は、次回コース開催をお待ちください。
+                </p>
+                <a href="/contact?subject=次回コース開催通知希望" class="inline-block mt-3 text-ai-blue hover:text-ai-purple font-medium text-xs">
+                  <i class="fas fa-bell mr-1"></i>次回開催の通知を受け取る →
+                </a>
+              </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 全回の日程一覧 -->
+    <section class="py-16 bg-future-light">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+          <h2 class="text-2xl font-bold text-future-text mb-4">
+            <i class="fas fa-calendar-alt text-ai-purple mr-2"></i>全${series.total_sessions}回の日程
+          </h2>
+          <p class="text-future-textLight">各回の日程と内容をご確認ください</p>
+        </div>
+        
+        <!-- 日程サマリー -->
+        <div class="bg-white rounded-2xl shadow-lg border border-future-sky/50 overflow-hidden mb-8">
+          <div class="bg-gradient-to-r from-ai-purple to-ai-blue p-4 text-white">
+            <div class="flex items-center">
+              <span class="font-bold"><i class="fas fa-list-check mr-2"></i>講座スケジュール</span>
+            </div>
+          </div>
+          
+          <div class="divide-y divide-future-sky/30">
+            ${linkedCourses.map((course, index) => {
+              const isPast = course.next_schedule_date && new Date(course.next_schedule_date) < now
+              const isCurrent = index + 1 === currentSession && isInProgress
+              const hasSchedule = course.next_schedule_date && course.start_time
+              
+              const bgClass = isPast ? 'bg-gray-50 opacity-60' : isCurrent ? 'bg-ai-purple/5' : 'hover:bg-future-light'
+              const badgeClass = isPast ? 'bg-gray-400' : isCurrent ? 'bg-ai-purple' : 'bg-ai-blue'
+              const dateStr = hasSchedule ? new Date(course.next_schedule_date!).toLocaleDateString('ja-JP', {year: 'numeric', month: 'long', day: 'numeric', weekday: 'short'}) : ''
+              const timeStr = hasSchedule ? (course.start_time + (course.end_time ? ' - ' + course.end_time : '')) : ''
+              
+              return `
+              <div class="flex items-center p-4 ${bgClass} transition">
+                <!-- 回数 -->
+                <div class="w-16 flex-shrink-0">
+                  <span class="${badgeClass} text-white text-sm font-bold px-3 py-1 rounded-full">
+                    第${index + 1}回
+                  </span>
+                </div>
+                
+                <!-- 日時 -->
+                <div class="flex-1 min-w-0 px-4">
+                  <div class="flex flex-wrap items-center gap-2">
+                    ${hasSchedule ? `
+                      <span class="font-bold text-future-text">${dateStr}</span>
+                      <span class="text-ai-blue font-medium">${timeStr}</span>
+                    ` : `
+                      <span class="text-future-textLight">日程調整中</span>
+                    `}
+                    ${isPast ? '<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">終了</span>' : ''}
+                    ${isCurrent ? '<span class="text-xs bg-ai-purple text-white px-2 py-0.5 rounded">次回</span>' : ''}
+                  </div>
+                  <p class="text-sm text-future-textLight mt-1 truncate">${course.title}</p>
+                </div>
+                
+                <!-- アクション -->
+                <div class="flex items-center gap-2 flex-shrink-0">
+                  <a href="/courses/${course.id}" class="text-sm text-ai-blue hover:text-ai-purple font-medium px-3 py-2 rounded-lg hover:bg-ai-blue/10 transition">
+                    詳細 <i class="fas fa-chevron-right ml-1"></i>
+                  </a>
+                </div>
+              </div>
+            `}).join('')}
+          </div>
+        </div>
+        
+        <!-- 講座内容カード -->
+        <h3 class="text-xl font-bold text-future-text mb-6 text-center">
+          <i class="fas fa-book-open text-ai-blue mr-2"></i>各回の学習内容
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          ${linkedCourses.map((course, index) => {
+            const isPast = course.next_schedule_date && new Date(course.next_schedule_date) < now
+            const isCurrent = index + 1 === currentSession && isInProgress
+            const borderClass = isCurrent ? 'border-ai-purple border-2' : 'border-future-sky/50'
+            const badgeClass = isPast ? 'bg-gray-400' : isCurrent ? 'bg-ai-purple' : 'bg-ai-blue'
+            
+            return `
+            <a href="/courses/${course.id}" class="bg-white rounded-xl shadow-sm border ${borderClass} overflow-hidden hover:shadow-lg transition group">
+              <div class="flex">
+                <!-- サムネイル -->
+                <div class="w-24 sm:w-32 flex-shrink-0 relative overflow-hidden bg-gradient-to-br from-ai-purple/10 to-ai-blue/10">
+                  ${course.image ? `
+                    <img src="${course.image}" alt="" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                  ` : `
+                    <div class="w-full h-full flex items-center justify-center min-h-[100px]">
+                      <span class="text-3xl font-bold text-ai-purple/30">${index + 1}</span>
+                    </div>
+                  `}
+                  <div class="absolute top-2 left-2">
+                    <span class="${badgeClass} text-white text-xs font-bold px-2 py-1 rounded">
+                      第${index + 1}回
+                    </span>
+                  </div>
+                  ${isPast ? `
+                    <div class="absolute inset-0 bg-black/40 flex items-center justify-center">
+                      <span class="text-white text-xs font-bold">終了</span>
+                    </div>
+                  ` : ''}
+                </div>
+                
+                <!-- コンテンツ -->
+                <div class="flex-1 p-4">
+                  <h4 class="font-bold text-future-text mb-2 group-hover:text-ai-blue transition line-clamp-2 text-sm">${course.title}</h4>
+                  ${course.description ? `<p class="text-xs text-future-textLight line-clamp-2">${course.description}</p>` : ''}
+                </div>
+              </div>
+            </a>
+          `}).join('')}
+        </div>
+      </div>
+    </section>
+    
+    <!-- CTA Section -->
+    <section class="py-16 bg-gradient-to-br from-ai-purple/10 via-ai-blue/5 to-nature-mint/10">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 class="text-2xl font-bold text-future-text mb-4">このコースで学びを始めましょう</h2>
+        <p class="text-future-textLight mb-8">
+          ${isInProgress 
+            ? `現在開講中のため、第${currentSession}回目からの単発参加が可能です。` 
+            : 'コース一括申込なら、単発参加よりもお得に全回受講できます。'}
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          ${isInProgress ? `
+            <a href="/courses/${linkedCourses[currentSession - 1]?.id || linkedCourses[0].id}" class="btn-ai gradient-ai text-white px-8 py-4 rounded-xl font-bold text-lg">
+              <i class="fas fa-play-circle mr-2"></i>第${currentSession}回から参加する
+            </a>
+          ` : `
+            <a href="/reservation?series=${series.id}&pricing=course" class="btn-ai gradient-ai text-white px-8 py-4 rounded-xl font-bold text-lg">
+              <i class="fas fa-shopping-cart mr-2"></i>コース一括で申し込む
+            </a>
+          `}
+          <a href="/contact" class="border-2 border-ai-blue text-ai-blue px-8 py-4 rounded-xl font-bold text-lg hover:bg-ai-blue hover:text-white transition">
+            <i class="fas fa-question-circle mr-2"></i>質問・相談する
+          </a>
+        </div>
+      </div>
+    </section>
+    
+    <script>
+      function selectPlan(planType) {
+        const isInProgress = ${isInProgress ? 'true' : 'false'};
+        const currentSession = ${currentSession};
+        const seriesId = '${series.id}';
+        const firstCourseId = '${linkedCourses[0]?.id || ''}';
+        const currentCourseId = '${linkedCourses[currentSession - 1]?.id || linkedCourses[0]?.id || ''}';
+        
+        if (isInProgress && planType !== 'single') {
+          alert('現在開講中のため、途中参加は単発のみとなります。\\nコース一括・早期割引は次回開催をお待ちください。');
+          return;
+        }
+        
+        if (planType === 'single') {
+          // 単発もシリーズの予約ページから選択
+          window.location.href = '/reservation?series=' + seriesId + '&pricing=single';
+        } else {
+          // コース/早期/月額はシリーズとして予約
+          window.location.href = '/reservation?series=' + seriesId + '&pricing=' + planType;
+        }
+      }
+      
+      // 全日程をGoogleカレンダーに追加
+      function addAllToCalendar() {
+        const schedules = ${JSON.stringify(linkedCourses.filter(c => c.next_schedule_date && c.start_time).map((c, i) => ({
+          title: c.title,
+          date: c.next_schedule_date,
+          start: c.start_time,
+          end: c.end_time,
+          index: i + 1,
+          id: c.id
+        })))};
+        
+        if (schedules.length === 0) {
+          alert('追加できる日程がありません');
+          return;
+        }
+        
+        const seriesTitle = '${series.title.replace(/'/g, "\\'")}';
+        const totalSessions = ${series.total_sessions};
+        const durationMinutes = ${series.duration_minutes};
+        
+        // 各日程のカレンダーリンクを開く
+        schedules.forEach((s, i) => {
+          setTimeout(() => {
+            const startDate = new Date(s.date + 'T' + s.start + ':00');
+            const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+            const formatDate = (d) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+            const title = encodeURIComponent('【mirAIcafe】' + s.title);
+            const details = encodeURIComponent('第' + s.index + '回/全' + totalSessions + '回\\n\\nコース: ' + seriesTitle + '\\n\\n詳細: https://miraicafe.work/courses/' + s.id);
+            const url = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + title + '&dates=' + formatDate(startDate) + '/' + formatDate(endDate) + '&details=' + details + '&location=Google+Meet';
+            window.open(url, '_blank');
+          }, i * 500); // 500ms間隔で開く
+        });
+        
+        alert(schedules.length + '件の日程をカレンダーに追加します。\\nポップアップブロックが有効な場合は許可してください。');
+      }
+    </script>
+  `
+  
+  return renderLayout(series.title, content, 'courses')
 }

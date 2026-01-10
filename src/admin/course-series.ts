@@ -43,6 +43,15 @@ interface Course {
   series_id: string
 }
 
+interface CourseTerm {
+  id: string
+  series_id: string
+  name: string
+  start_date: string
+  end_date: string
+  status: string
+}
+
 // コース一覧
 export const renderCourseSeriesList = (series: CourseSeries[], patterns: PricingPattern[]) => {
   const patternMap = new Map(patterns.map(p => [p.id, p]))
@@ -201,7 +210,8 @@ export const renderCourseSeriesForm = (
   patterns: PricingPattern[],
   courses: Course[],
   series?: CourseSeries,
-  linkedCourses?: Course[]
+  linkedCourses?: Course[],
+  terms?: CourseTerm[]
 ) => {
   const isEdit = !!series
   
@@ -245,6 +255,34 @@ export const renderCourseSeriesForm = (
               <textarea name="description" rows="3"
                 class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 placeholder="コースの概要を入力">${escapeHtml(series?.description || '')}</textarea>
+            </div>
+            
+            <!-- コース画像 -->
+            <div class="col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">コース画像</label>
+              <div class="flex items-start gap-4">
+                <div id="image-preview" class="w-32 h-20 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                  ${series?.image ? `<img src="${series.image}" alt="" class="w-full h-full object-cover">` : `<i class="fas fa-image text-2xl text-gray-300"></i>`}
+                </div>
+                <div class="flex-1">
+                  <input type="hidden" name="image" id="image-url" value="${escapeHtml(series?.image || '')}">
+                  <div class="flex gap-2">
+                    <label class="cursor-pointer px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition text-sm">
+                      <i class="fas fa-upload mr-1"></i>画像をアップロード
+                      <input type="file" id="image-upload" accept="image/*" class="hidden">
+                    </label>
+                    <button type="button" id="remove-image" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm ${series?.image ? '' : 'hidden'}">
+                      <i class="fas fa-times mr-1"></i>削除
+                    </button>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-2">推奨サイズ: 800×500px、最大10MB</p>
+                  <div id="upload-progress" class="hidden mt-2">
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                      <div id="progress-bar" class="bg-purple-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             
             <div>
@@ -314,6 +352,66 @@ export const renderCourseSeriesForm = (
             <input type="date" name="early_bird_deadline" value="${series?.early_bird_deadline || ''}"
               class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
             <p class="text-xs text-gray-500 mt-1">この日までの申込に早期割引を適用（空欄の場合は料金パターンの日数で自動計算）</p>
+          </div>
+        </div>
+
+        <!-- 開催期設定 -->
+        <div class="bg-white rounded-xl shadow-sm border p-6 space-y-4">
+          <h3 class="font-bold text-gray-800 border-b pb-2">
+            <i class="fas fa-calendar-alt mr-2 text-green-500"></i>開催期設定
+          </h3>
+          
+          <p class="text-sm text-gray-600">
+            コース予約を受け付けるには開催期を設定してください。開催期ごとに受講生を募集できます。
+          </p>
+          
+          <div id="termsList" class="space-y-3">
+            ${(terms || []).map((t, i) => `
+              <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg term-item" data-term-id="${t.id}">
+                <span class="bg-green-500 text-white px-2 py-1 rounded text-sm">${t.name}</span>
+                <span class="text-sm text-gray-600">${t.start_date} 〜 ${t.end_date}</span>
+                <span class="text-xs px-2 py-1 rounded ${t.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">${t.status === 'active' ? '募集中' : '終了'}</span>
+                <button type="button" onclick="deleteTerm('${t.id}')" class="ml-auto text-red-500 hover:text-red-700">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            `).join('')}
+            ${(!terms || terms.length === 0) ? `
+              <div class="text-center py-4 text-gray-500 bg-yellow-50 rounded-lg border border-yellow-200">
+                <i class="fas fa-exclamation-triangle text-yellow-500 mr-2"></i>
+                開催期が設定されていません。コース予約を受け付けるには開催期を追加してください。
+              </div>
+            ` : ''}
+          </div>
+          
+          <div class="border-t pt-4 mt-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-3">新しい開催期を追加</h4>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">開催期名</label>
+                <input type="text" id="newTermName" placeholder="例: 第1期（2026年2月〜3月）"
+                  class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500">
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">開始日</label>
+                <input type="date" id="newTermStartDate"
+                  class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500">
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">終了日</label>
+                <input type="date" id="newTermEndDate"
+                  class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500">
+              </div>
+              <div class="flex items-end">
+                <button type="button" onclick="addTerm()" class="w-full bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition text-sm">
+                  <i class="fas fa-plus mr-1"></i>追加
+                </button>
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">
+              <i class="fas fa-info-circle mr-1"></i>
+              開催期を追加すると、紐付けた講座のスケジュールが自動的にこの開催期に関連付けられます。
+            </p>
           </div>
         </div>
 
@@ -464,6 +562,205 @@ export const renderCourseSeriesForm = (
       // 初期表示
       updatePricePreview();
       
+      // 画像アップロード処理
+      const imageUpload = document.getElementById('image-upload');
+      const imageUrl = document.getElementById('image-url');
+      const imagePreview = document.getElementById('image-preview');
+      const removeImageBtn = document.getElementById('remove-image');
+      const uploadProgress = document.getElementById('upload-progress');
+      const progressBar = document.getElementById('progress-bar');
+      
+      imageUpload.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // バリデーション
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+          alert('対応していないファイル形式です。JPG, PNG, GIF, WebPのみ対応しています。');
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          alert('ファイルサイズは10MB以下にしてください。');
+          return;
+        }
+        
+        // アップロード開始
+        uploadProgress.classList.remove('hidden');
+        progressBar.style.width = '30%';
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        try {
+          progressBar.style.width = '60%';
+          const res = await fetch('/admin/api/upload', {
+            method: 'POST',
+            body: formData
+          });
+          
+          progressBar.style.width = '90%';
+          const result = await res.json();
+          
+          if (result.success && result.url) {
+            progressBar.style.width = '100%';
+            imageUrl.value = result.url;
+            imagePreview.innerHTML = '<img src="' + result.url + '" alt="" class="w-full h-full object-cover">';
+            removeImageBtn.classList.remove('hidden');
+            setTimeout(() => uploadProgress.classList.add('hidden'), 500);
+          } else {
+            throw new Error(result.error || 'アップロードに失敗しました');
+          }
+        } catch (err) {
+          console.error(err);
+          alert('画像のアップロードに失敗しました: ' + err.message);
+          uploadProgress.classList.add('hidden');
+        }
+        
+        imageUpload.value = '';
+      });
+      
+      removeImageBtn.addEventListener('click', () => {
+        imageUrl.value = '';
+        imagePreview.innerHTML = '<i class="fas fa-image text-2xl text-gray-300"></i>';
+        removeImageBtn.classList.add('hidden');
+      });
+      
+      // 開催期管理
+      let pendingTerms = []; // 新規追加予定の開催期
+      let deletedTermIds = []; // 削除予定の開催期ID
+      
+      async function addTerm() {
+        const name = document.getElementById('newTermName').value.trim();
+        const startDate = document.getElementById('newTermStartDate').value;
+        const endDate = document.getElementById('newTermEndDate').value;
+        
+        if (!name || !startDate || !endDate) {
+          alert('開催期名、開始日、終了日をすべて入力してください。');
+          return;
+        }
+        
+        if (new Date(startDate) > new Date(endDate)) {
+          alert('開始日は終了日より前の日付を指定してください。');
+          return;
+        }
+        
+        const seriesId = '${isEdit ? series?.id : ''}';
+        
+        if (seriesId) {
+          // 編集モード：即座にAPIで保存
+          try {
+            const res = await fetch('/admin/api/course-terms', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                series_id: seriesId,
+                name: name,
+                start_date: startDate,
+                end_date: endDate,
+                status: 'active'
+              })
+            });
+            
+            const result = await res.json();
+            if (result.success) {
+              // UIに追加
+              const container = document.getElementById('termsList');
+              const warningEl = container.querySelector('.bg-yellow-50');
+              if (warningEl) warningEl.remove();
+              
+              container.innerHTML += \`
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg term-item" data-term-id="\${result.term.id}">
+                  <span class="bg-green-500 text-white px-2 py-1 rounded text-sm">\${name}</span>
+                  <span class="text-sm text-gray-600">\${startDate} 〜 \${endDate}</span>
+                  <span class="text-xs px-2 py-1 rounded bg-green-100 text-green-700">募集中</span>
+                  <button type="button" onclick="deleteTerm('\${result.term.id}')" class="ml-auto text-red-500 hover:text-red-700">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              \`;
+              
+              // フォームをクリア
+              document.getElementById('newTermName').value = '';
+              document.getElementById('newTermStartDate').value = '';
+              document.getElementById('newTermEndDate').value = '';
+            } else {
+              alert('開催期の追加に失敗しました: ' + (result.error || '不明なエラー'));
+            }
+          } catch (err) {
+            console.error(err);
+            alert('開催期の追加に失敗しました');
+          }
+        } else {
+          // 新規作成モード：保留してフォーム送信時に一緒に保存
+          const tempId = 'temp_' + Date.now();
+          pendingTerms.push({ id: tempId, name, start_date: startDate, end_date: endDate, status: 'active' });
+          
+          const container = document.getElementById('termsList');
+          const warningEl = container.querySelector('.bg-yellow-50');
+          if (warningEl) warningEl.remove();
+          
+          container.innerHTML += \`
+            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg term-item" data-term-id="\${tempId}">
+              <span class="bg-green-500 text-white px-2 py-1 rounded text-sm">\${name}</span>
+              <span class="text-sm text-gray-600">\${startDate} 〜 \${endDate}</span>
+              <span class="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700">保存待ち</span>
+              <button type="button" onclick="deleteTerm('\${tempId}')" class="ml-auto text-red-500 hover:text-red-700">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          \`;
+          
+          document.getElementById('newTermName').value = '';
+          document.getElementById('newTermStartDate').value = '';
+          document.getElementById('newTermEndDate').value = '';
+        }
+      }
+      
+      async function deleteTerm(termId) {
+        if (!confirm('この開催期を削除しますか？')) return;
+        
+        if (termId.startsWith('temp_')) {
+          // 保留中の開催期を削除
+          pendingTerms = pendingTerms.filter(t => t.id !== termId);
+        } else {
+          // 既存の開催期を削除
+          try {
+            const res = await fetch('/admin/api/course-terms/' + termId, {
+              method: 'DELETE'
+            });
+            
+            const result = await res.json();
+            if (!result.success) {
+              alert('開催期の削除に失敗しました: ' + (result.error || '不明なエラー'));
+              return;
+            }
+          } catch (err) {
+            console.error(err);
+            alert('開催期の削除に失敗しました');
+            return;
+          }
+        }
+        
+        const el = document.querySelector('.term-item[data-term-id="' + termId + '"]');
+        if (el) el.remove();
+        
+        // 空の場合は警告を表示
+        const container = document.getElementById('termsList');
+        if (container.querySelectorAll('.term-item').length === 0) {
+          container.innerHTML = \`
+            <div class="text-center py-4 text-gray-500 bg-yellow-50 rounded-lg border border-yellow-200">
+              <i class="fas fa-exclamation-triangle text-yellow-500 mr-2"></i>
+              開催期が設定されていません。コース予約を受け付けるには開催期を追加してください。
+            </div>
+          \`;
+        }
+      }
+      
+      // グローバルスコープに登録
+      window.addTerm = addTerm;
+      window.deleteTerm = deleteTerm;
+      
       // 講座の紐付け
       function linkCourse() {
         const select = document.getElementById('courseToLink');
@@ -531,6 +828,7 @@ export const renderCourseSeriesForm = (
           title: form.title.value,
           subtitle: form.subtitle.value,
           description: form.description.value,
+          image: document.getElementById('image-url').value || null,
           total_sessions: sessions,
           duration_minutes: parseInt(form.duration_minutes.value),
           base_price_per_session: basePrice,
@@ -545,7 +843,8 @@ export const renderCourseSeriesForm = (
           early_bird_deadline: form.early_bird_deadline.value || null,
           is_featured: form.is_featured.checked ? 1 : 0,
           status: form.querySelector('input[name="status"]:checked').value,
-          linked_courses: linkedCourseIds
+          linked_courses: linkedCourseIds,
+          pending_terms: pendingTerms
         };
         
         try {

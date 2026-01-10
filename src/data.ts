@@ -51,7 +51,7 @@ export interface Course {
   includes?: string[]  // 含まれるもの
   cancellationPolicy?: string  // キャンセルポリシー
   // オンライン設定
-  online_url?: string  // Zoom/Google Meet URL
+  online_url?: string  // Google Meet URL
   meeting_type?: 'online' | 'offline' | 'hybrid'  // 開催形式
   // SEO
   meta_description?: string
@@ -80,14 +80,15 @@ export interface Schedule {
 export const schedules: Schedule[] = []
 
 // Blog data
-// カテゴリ定義: '開発日誌' | 'AI情報・ニュース' | 'お役立ち情報' | 'お知らせ'
-export type BlogCategory = '開発日誌' | 'AI情報・ニュース' | 'お役立ち情報' | 'お知らせ'
+// カテゴリ定義: '開発日誌' | 'AI情報・ニュース' | 'お役立ち情報' | 'お知らせ' | 'mionのひとりごと'
+export type BlogCategory = '開発日誌' | 'AI情報・ニュース' | 'お役立ち情報' | 'お知らせ' | 'mionのひとりごと'
 
 export const blogCategories: { name: BlogCategory; color: string; bgColor: string }[] = [
   { name: '開発日誌', color: 'text-blue-600', bgColor: 'bg-blue-100' },
   { name: 'AI情報・ニュース', color: 'text-green-600', bgColor: 'bg-green-100' },
   { name: 'お役立ち情報', color: 'text-purple-600', bgColor: 'bg-purple-100' },
-  { name: 'お知らせ', color: 'text-orange-600', bgColor: 'bg-orange-100' }
+  { name: 'お知らせ', color: 'text-orange-600', bgColor: 'bg-orange-100' },
+  { name: 'mionのひとりごと', color: 'text-pink-600', bgColor: 'bg-pink-100' }
 ]
 
 export interface BlogPost {

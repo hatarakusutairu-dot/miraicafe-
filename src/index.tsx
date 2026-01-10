@@ -3,9 +3,12 @@ import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/cloudflare-pages'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 
+// Layout
+import { renderLayout } from './components/layout'
+
 // Pages
 import { renderHomePage } from './pages/home'
-import { renderCoursesPage, renderCourseDetailPage } from './pages/courses'
+import { renderCoursesPage, renderCourseDetailPage, renderSeriesDetailPage } from './pages/courses'
 import { renderReservationPage } from './pages/reservation'
 import { renderBlogPage, renderBlogPostPage } from './pages/blog'
 import { renderContactPage } from './pages/contact'
@@ -14,6 +17,9 @@ import { renderAINewsPage } from './pages/ai-news'
 import { renderPortfolioListPage, renderPortfolioDetailPage } from './pages/portfolio'
 import { renderTokushohoPage } from './pages/tokushoho'
 import { render404Page } from './pages/not-found'
+import { renderPaymentCompletePage } from './pages/payment-complete'
+import { renderCalendarPage } from './pages/calendar'
+import { renderConsultationPage } from './pages/consultation'
 
 // Admin Pages
 import { renderAdminLayout, renderLoginPage } from './admin/layout'
@@ -36,13 +42,18 @@ import { renderSurveyPage } from './pages/survey'
 import { renderPaymentsList, type Payment } from './admin/payments'
 import { renderPricingPatternsList, renderPricingPatternForm } from './admin/pricing-patterns'
 import { renderCourseSeriesList, renderCourseSeriesForm } from './admin/course-series'
+import { renderWorkspaceAdmin } from './admin/workspace'
+import { renderConsultationAdmin } from './admin/consultations'
 
 // Services
 import { 
   sendContactNotificationToAdmin,
   sendReservationNotificationToAdmin,
   sendReservationConfirmationToCustomer,
-  sendReviewNotificationToAdmin
+  sendReviewNotificationToAdmin,
+  sendBookingConfirmationEmail,
+  sendWorkspaceConfirmationEmail,
+  sendReminderEmail
 } from './services/email'
 import { 
   generateSEOSuggestions, 
@@ -60,6 +71,7 @@ import {
   archiveStripeProduct
 } from './stripe'
 import { generateAllCalendarLinks, generateEventDescription, type CalendarEvent } from './services/calendar'
+import { getAvailableDates, calculatePrice, formatDateJa } from './services/google-calendar'
 import { uploadToSupabase, deleteFromSupabase, type SupabaseConfig } from './services/supabase-storage'
 
 // Data
@@ -76,9 +88,20 @@ type Bindings = {
   STRIPE_WEBHOOK_SECRET?: string
   SUPABASE_URL?: string
   SUPABASE_ANON_KEY?: string
+  GOOGLE_CALENDAR_API_KEY?: string
+  GOOGLE_CALENDAR_ID?: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
+
+// グローバルエラーハンドラー - すべての未処理エラーをキャッチ
+app.onError((err, c) => {
+  console.error('Unhandled error:', err)
+  return c.json({ 
+    error: 'サーバーエラーが発生しました', 
+    message: err.message || 'Unknown error'
+  }, 500)
+})
 
 // CORS for API
 app.use('/api/*', cors())
@@ -215,7 +238,42 @@ app.get('/', async (c) => {
 // Courses（DBと静的データをマージ）
 app.get('/courses', async (c) => {
   const allCourses = await getAllCoursesForFront(c.env.DB)
-  return c.html(renderCoursesPage(allCourses))
+  
+  // 各コースのシリーズ情報を取得
+  let seriesMap: Record<string, any> = {}
+  let courseSeriesList: any[] = []
+  try {
+    const seriesResult = await c.env.DB.prepare(`
+      SELECT c.id as course_id, cs.id as series_id, cs.title as series_title, 
+             cs.total_sessions, c.session_number
+      FROM courses c
+      INNER JOIN course_series cs ON c.series_id = cs.id
+      WHERE cs.status = 'published'
+    `).all()
+    
+    for (const row of seriesResult.results || []) {
+      seriesMap[row.course_id as string] = {
+        seriesId: row.series_id,
+        seriesTitle: row.series_title,
+        totalSessions: row.total_sessions,
+        sessionNumber: row.session_number
+      }
+    }
+    
+    // 公開中のコースシリーズを取得
+    const seriesListResult = await c.env.DB.prepare(`
+      SELECT cs.*, pp.course_discount_rate, pp.early_bird_discount_rate
+      FROM course_series cs
+      LEFT JOIN pricing_patterns pp ON cs.pricing_pattern_id = pp.id
+      WHERE cs.status = 'published'
+      ORDER BY cs.is_featured DESC, cs.created_at DESC
+    `).all()
+    courseSeriesList = seriesListResult.results || []
+  } catch (e) {
+    console.error('Series map fetch error:', e)
+  }
+  
+  return c.html(renderCoursesPage(allCourses, seriesMap, courseSeriesList))
 })
 
 app.get('/courses/:id', async (c) => {
@@ -244,12 +302,114 @@ app.get('/courses/:id', async (c) => {
     console.error('Schedule fetch error:', e)
   }
   
-  return c.html(renderCourseDetailPage(course, courseSchedules, allCourses))
+  // コースシリーズ情報を取得（このコースがシリーズに属しているか確認）
+  let seriesInfo: any = null
+  try {
+    // まずコースのseries_idを確認
+    const courseResult = await c.env.DB.prepare(`
+      SELECT series_id, session_number FROM courses WHERE id = ?
+    `).bind(id).first()
+    
+    if (courseResult && courseResult.series_id) {
+      // シリーズ情報を取得
+      const seriesResult = await c.env.DB.prepare(`
+        SELECT cs.*, pp.name as pattern_name, pp.course_discount_rate, pp.early_bird_discount_rate, 
+               pp.early_bird_days, pp.has_monthly_option, pp.tax_rate
+        FROM course_series cs
+        LEFT JOIN pricing_patterns pp ON cs.pricing_pattern_id = pp.id
+        WHERE cs.id = ? AND cs.status = 'published'
+      `).bind(courseResult.series_id).first()
+      
+      if (seriesResult) {
+        // シリーズに属する全講座を取得
+        const linkedCourses = await c.env.DB.prepare(`
+          SELECT id, title, session_number FROM courses 
+          WHERE series_id = ? ORDER BY session_number ASC
+        `).bind(courseResult.series_id).all()
+        
+        seriesInfo = {
+          ...seriesResult,
+          currentSessionNumber: courseResult.session_number,
+          linkedCourses: linkedCourses.results || []
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Series info fetch error:', e)
+  }
+  
+  return c.html(renderCourseDetailPage(course, courseSchedules, allCourses, seriesInfo))
+})
+
+// Course Series Detail Page
+app.get('/series/:id', async (c) => {
+  const id = c.req.param('id')
+  
+  try {
+    // シリーズ情報を取得
+    const seriesResult = await c.env.DB.prepare(`
+      SELECT cs.*, pp.name as pattern_name, pp.course_discount_rate, pp.early_bird_discount_rate, 
+             pp.early_bird_days, pp.has_monthly_option, pp.tax_rate
+      FROM course_series cs
+      LEFT JOIN pricing_patterns pp ON cs.pricing_pattern_id = pp.id
+      WHERE cs.id = ? AND cs.status = 'published'
+    `).bind(id).first()
+    
+    if (!seriesResult) {
+      return c.notFound()
+    }
+    
+    // シリーズに属する講座を取得
+    const coursesResult = await c.env.DB.prepare(`
+      SELECT c.*, s.date as next_schedule_date, s.start_time, s.end_time
+      FROM courses c
+      LEFT JOIN (
+        SELECT course_id, date, start_time, end_time,
+               ROW_NUMBER() OVER (PARTITION BY course_id ORDER BY date ASC) as rn
+        FROM schedules
+        WHERE date >= date('now')
+      ) s ON c.id = s.course_id AND s.rn = 1
+      WHERE c.series_id = ?
+      ORDER BY c.session_number ASC
+    `).bind(id).all()
+    
+    const linkedCourses = coursesResult.results || []
+    
+    // 現在進行中かどうか判定（第1回のスケジュールが過去かどうか）
+    const firstCourse = linkedCourses[0]
+    let isInProgress = false
+    let currentSession = 1
+    
+    if (firstCourse && firstCourse.next_schedule_date) {
+      const firstDate = new Date(firstCourse.next_schedule_date as string)
+      isInProgress = firstDate < new Date()
+    }
+    
+    // 各講座の次回スケジュールを確認して現在のセッションを判定
+    for (let i = 0; i < linkedCourses.length; i++) {
+      const course = linkedCourses[i] as any
+      if (course.next_schedule_date) {
+        const scheduleDate = new Date(course.next_schedule_date)
+        if (scheduleDate >= new Date()) {
+          currentSession = i + 1
+          break
+        }
+      }
+    }
+    
+    return c.html(renderSeriesDetailPage(seriesResult as any, linkedCourses as any[], isInProgress, currentSession))
+  } catch (e) {
+    console.error('Series detail error:', e)
+    return c.notFound()
+  }
 })
 
 // Reservation（DBからデータを取得）
 app.get('/reservation', async (c) => {
   const courseId = c.req.query('course')
+  const seriesId = c.req.query('series')
+  const pricingType = c.req.query('pricing') || 'single' // single, course, early, monthly
+  
   const allCourses = await getAllCoursesForFront(c.env.DB)
   const course = courseId ? allCourses.find((co: any) => co.id === courseId) : null
   
@@ -273,7 +433,831 @@ app.get('/reservation', async (c) => {
     console.error('Schedule fetch error:', e)
   }
   
-  return c.html(renderReservationPage(allCourses, allSchedules, course))
+  // シリーズ情報を取得
+  let seriesInfo: any = null
+  if (seriesId) {
+    try {
+      const seriesResult = await c.env.DB.prepare(`
+        SELECT cs.*, pp.name as pattern_name, pp.course_discount_rate, pp.early_bird_discount_rate, 
+               pp.early_bird_days, pp.has_monthly_option, pp.tax_rate
+        FROM course_series cs
+        LEFT JOIN pricing_patterns pp ON cs.pricing_pattern_id = pp.id
+        WHERE cs.id = ? AND cs.status = 'published'
+      `).bind(seriesId).first()
+      
+      if (seriesResult) {
+        // リンクされた講座を取得
+        const linkedCourses = await c.env.DB.prepare(`
+          SELECT id, title, session_number FROM courses 
+          WHERE series_id = ? ORDER BY session_number ASC
+        `).bind(seriesId).all()
+        
+        // 開催期を取得
+        const termsResult = await c.env.DB.prepare(`
+          SELECT ct.*, 
+            (SELECT COUNT(*) FROM schedules s 
+             JOIN courses c ON s.course_id = c.id 
+             WHERE c.series_id = ct.series_id AND s.term_id = ct.id) as schedule_count
+          FROM course_terms ct
+          WHERE ct.series_id = ? AND ct.status IN ('upcoming', 'ongoing', 'active')
+          ORDER BY ct.start_date ASC
+        `).bind(seriesId).all()
+        
+        // 各開催期の日程詳細を取得
+        const terms = []
+        for (const term of (termsResult.results || [])) {
+          const termSchedules = await c.env.DB.prepare(`
+            SELECT s.*, c.title as course_title, c.session_number
+            FROM schedules s
+            JOIN courses c ON s.course_id = c.id
+            WHERE s.term_id = ? AND c.series_id = ?
+            ORDER BY c.session_number ASC
+          `).bind(term.id, seriesId).all()
+          
+          terms.push({
+            ...term,
+            schedules: termSchedules.results || []
+          })
+        }
+        
+        seriesInfo = {
+          ...seriesResult,
+          linkedCourses: linkedCourses.results || [],
+          terms: terms
+        }
+      }
+    } catch (e) {
+      console.error('Series info fetch error:', e)
+    }
+  }
+  
+  return c.html(renderReservationPage(allCourses, allSchedules, course, seriesInfo, pricingType))
+})
+
+// 重複予約チェックAPI
+app.post('/api/check-duplicate-booking', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { email, seriesId, termId, courseId, scheduleId, pricingType } = body
+    
+    if (!email) {
+      return c.json({ error: 'email required' }, 400)
+    }
+    
+    let existingBooking = null
+    let message = ''
+    
+    if (pricingType === 'single' && courseId) {
+      // 単発予約の重複チェック
+      let scheduleDate = null
+      if (scheduleId) {
+        const schedule = await c.env.DB.prepare(`
+          SELECT date FROM schedules WHERE id = ?
+        `).bind(scheduleId).first() as any
+        scheduleDate = schedule?.date
+      }
+      
+      existingBooking = await c.env.DB.prepare(`
+        SELECT id, course_name, preferred_date, created_at FROM bookings 
+        WHERE course_id = ? AND customer_email = ? AND payment_status = 'paid'
+        ${scheduleDate ? "AND preferred_date = ?" : ""}
+        ORDER BY id DESC LIMIT 1
+      `).bind(...(scheduleDate ? [courseId, email, scheduleDate] : [courseId, email])).first()
+      
+      if (existingBooking) {
+        message = `この講座は既に予約済みです（予約日: ${existingBooking.preferred_date || '未定'}）`
+      }
+    } else if (seriesId && termId) {
+      // シリーズ一括予約の重複チェック
+      existingBooking = await c.env.DB.prepare(`
+        SELECT series_booking_id, COUNT(*) as booking_count, MIN(created_at) as created_at
+        FROM bookings 
+        WHERE series_id = ? AND term_id = ? AND customer_email = ? AND payment_status = 'paid'
+        GROUP BY series_booking_id
+        LIMIT 1
+      `).bind(seriesId, termId, email).first()
+      
+      if (existingBooking) {
+        message = `このコースは既に全${existingBooking.booking_count}回分を予約済みです`
+      }
+    }
+    
+    return c.json({
+      isDuplicate: !!existingBooking,
+      existingBooking: existingBooking ? {
+        id: existingBooking.id || existingBooking.series_booking_id,
+        createdAt: existingBooking.created_at,
+        message
+      } : null
+    })
+  } catch (error: any) {
+    console.error('Check duplicate booking error:', error)
+    return c.json({ error: error.message || 'Unknown error' }, 500)
+  }
+})
+
+// デバッグ用：Stripeセッション確認エンドポイント
+app.get('/api/debug/stripe-session', async (c) => {
+  const sessionId = c.req.query('session_id')
+  if (!sessionId) {
+    return c.json({ error: 'session_id required' })
+  }
+  
+  try {
+    if (!c.env.STRIPE_SECRET_KEY) {
+      return c.json({ error: 'Stripe not configured' })
+    }
+    
+    const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY)
+    const session = await stripe.checkout.sessions.retrieve(sessionId)
+    
+    return c.json({
+      id: session.id,
+      payment_status: session.payment_status,
+      status: session.status,
+      metadata: session.metadata,
+      customer_email: session.customer_email,
+      amount_total: session.amount_total
+    })
+  } catch (error: any) {
+    return c.json({ error: error?.message || 'Unknown error' })
+  }
+})
+
+// デバッグ用：決済完了処理テストエンドポイント
+app.get('/api/debug/test-payment-complete', async (c) => {
+  const sessionId = c.req.query('session_id')
+  if (!sessionId) {
+    return c.json({ error: 'session_id required' })
+  }
+  
+  const debugInfo: any = {
+    sessionId,
+    steps: [],
+    result: null
+  }
+  
+  try {
+    if (!c.env.STRIPE_SECRET_KEY) {
+      debugInfo.steps.push({ step: 'stripe_check', error: 'Stripe not configured' })
+      return c.json(debugInfo)
+    }
+    
+    const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY)
+    let session: any
+    
+    try {
+      session = await stripe.checkout.sessions.retrieve(sessionId)
+      debugInfo.steps.push({ step: 'stripe_retrieve', success: true, payment_status: session.payment_status })
+    } catch (stripeError: any) {
+      debugInfo.steps.push({ step: 'stripe_retrieve', error: stripeError?.message })
+      return c.json(debugInfo)
+    }
+    
+    if (session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required' && session.status !== 'complete') {
+      debugInfo.steps.push({ step: 'payment_check', status: 'not_paid', payment_status: session.payment_status })
+      return c.json(debugInfo)
+    }
+    
+    const metadata = session.metadata || {}
+    debugInfo.metadata = metadata
+    
+    const isSeriesBooking = metadata.series_id && metadata.term_id && metadata.pricing_type !== 'single'
+    const isSeriesSingleBooking = metadata.series_id && metadata.pricing_type === 'single'
+    
+    debugInfo.steps.push({ 
+      step: 'booking_type_check', 
+      isSeriesBooking, 
+      isSeriesSingleBooking,
+      series_id: metadata.series_id,
+      term_id: metadata.term_id,
+      pricing_type: metadata.pricing_type
+    })
+    
+    if (isSeriesSingleBooking && metadata.course_id) {
+      debugInfo.steps.push({ step: 'series_single_booking_start' })
+      
+      // スケジュール情報を取得
+      let scheduleResult: any = null
+      if (metadata.schedule_id) {
+        scheduleResult = await c.env.DB.prepare(`
+          SELECT * FROM schedules WHERE id = ?
+        `).bind(metadata.schedule_id).first()
+        debugInfo.steps.push({ step: 'schedule_fetch', method: 'schedule_id', found: !!scheduleResult, schedule: scheduleResult })
+      }
+      
+      if (!scheduleResult) {
+        debugInfo.steps.push({ step: 'schedule_fetch', error: 'No schedule found' })
+      }
+      
+      // 既存予約を確認
+      const customerEmail = session.customer_email || metadata.customer_email || ''
+      const existingBooking = await c.env.DB.prepare(`
+        SELECT id, course_id, customer_email, preferred_date, payment_status FROM bookings 
+        WHERE course_id = ? AND customer_email = ? AND payment_status = 'paid'
+        AND preferred_date = ?
+        ORDER BY id DESC LIMIT 1
+      `).bind(metadata.course_id, customerEmail, scheduleResult?.date || null).first() as any
+      
+      debugInfo.steps.push({ 
+        step: 'existing_booking_check', 
+        query: {
+          course_id: metadata.course_id,
+          customer_email: customerEmail,
+          preferred_date: scheduleResult?.date || null
+        },
+        found: !!existingBooking,
+        existingBooking
+      })
+      
+      if (existingBooking?.id) {
+        debugInfo.result = { action: 'existing_booking_found', bookingId: existingBooking.id }
+      } else {
+        debugInfo.result = { action: 'new_booking_needed', scheduleResult }
+      }
+    } else {
+      debugInfo.steps.push({ step: 'not_series_single_booking' })
+      debugInfo.result = { action: 'not_series_single_booking', isSeriesBooking }
+    }
+    
+    return c.json(debugInfo)
+  } catch (error: any) {
+    debugInfo.error = error?.message || 'Unknown error'
+    return c.json(debugInfo)
+  }
+})
+
+// 決済完了ページ
+app.get('/payment-complete', async (c) => {
+  const sessionId = c.req.query('session_id')
+  
+  if (!sessionId) {
+    return c.html(renderPaymentCompletePage({
+      success: false,
+      error: 'セッション情報が見つかりません。'
+    }))
+  }
+  
+  try {
+    // Stripe APIを使用して決済を取得（環境変数があれば）
+    if (c.env.STRIPE_SECRET_KEY) {
+      const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY)
+      
+      let session: any
+      try {
+        session = await stripe.checkout.sessions.retrieve(sessionId)
+      } catch (stripeError: any) {
+        console.error('Stripe session retrieve error:', stripeError?.message || stripeError)
+        
+        // DBのpaymentsテーブルからセッション情報を探す
+        const paymentRecord = await c.env.DB.prepare(`
+          SELECT * FROM payments WHERE stripe_checkout_session_id = ?
+        `).bind(sessionId).first() as any
+        
+        if (paymentRecord && paymentRecord.status === 'succeeded') {
+          // 決済成功レコードがある場合
+          const metadata = paymentRecord.metadata ? JSON.parse(paymentRecord.metadata) : {}
+          const seriesBookingId = metadata.series_booking_id || `sb_${Date.now()}`
+          const isSeriesBooking = metadata.series_id && metadata.term_id
+          
+          let courseName = paymentRecord.course_title || ''
+          if (metadata.series_id) {
+            const seriesResult = await c.env.DB.prepare(`
+              SELECT title FROM course_series WHERE id = ?
+            `).bind(metadata.series_id).first() as any
+            courseName = seriesResult?.title || courseName
+          }
+          
+          return c.html(renderPaymentCompletePage({
+            success: true,
+            bookingId: seriesBookingId,
+            seriesBookingId: seriesBookingId,
+            isSeriesBooking: isSeriesBooking,
+            customerName: paymentRecord.customer_name || metadata.customer_name || '',
+            customerEmail: paymentRecord.customer_email || '',
+            courseName: courseName,
+            totalPrice: paymentRecord.amount || 0
+          }))
+        }
+        
+        // セッションが見つからない場合でも、URLパラメータから復元を試みる
+        const urlSeriesId = c.req.query('series_id')
+        const urlTermId = c.req.query('term_id')
+        
+        if (urlSeriesId && urlTermId) {
+          const seriesResult = await c.env.DB.prepare(`
+            SELECT title FROM course_series WHERE id = ?
+          `).bind(urlSeriesId).first() as any
+          
+          if (seriesResult) {
+            // 最新の予約を探す
+            const recentBooking = await c.env.DB.prepare(`
+              SELECT series_booking_id, customer_name, customer_email 
+              FROM bookings 
+              WHERE series_id = ? AND term_id = ? AND payment_status = 'paid'
+              ORDER BY id DESC LIMIT 1
+            `).bind(urlSeriesId, urlTermId).first() as any
+            
+            return c.html(renderPaymentCompletePage({
+              success: true,
+              bookingId: recentBooking?.series_booking_id || `pending_${Date.now()}`,
+              seriesBookingId: recentBooking?.series_booking_id || `pending_${Date.now()}`,
+              isSeriesBooking: true,
+              customerName: recentBooking?.customer_name || '',
+              customerEmail: recentBooking?.customer_email || '',
+              courseName: seriesResult.title,
+              totalPrice: 0
+            }))
+          }
+        }
+        
+        return c.html(renderPaymentCompletePage({
+          success: false,
+          error: 'セッション情報の取得に失敗しました。決済が完了している場合は確認メールをご確認ください。'
+        }))
+      }
+      
+      // payment_statusをチェック（'paid' または 'no_payment_required'）
+      console.log('Session payment_status:', session.payment_status, 'status:', session.status)
+      if (session.payment_status === 'paid' || session.payment_status === 'no_payment_required' || session.status === 'complete') {
+        const metadata = session.metadata || {}
+        console.log('Payment complete - Session metadata:', JSON.stringify(metadata))
+        console.log('Payment complete - pricing_type:', metadata.pricing_type, 'series_id:', metadata.series_id, 'course_id:', metadata.course_id)
+        
+        const isSeriesBooking = metadata.series_id && metadata.term_id && metadata.pricing_type !== 'single'
+        const isSeriesSingleBooking = metadata.series_id && metadata.pricing_type === 'single'
+        console.log('isSeriesBooking:', isSeriesBooking, 'isSeriesSingleBooking:', isSeriesSingleBooking)
+        const customerEmail = session.customer_email || metadata.customer_email || ''
+        const customerName = metadata.customer_name || ''
+        const customerPhone = metadata.customer_phone || ''
+        
+        // シリーズ予約の場合、予約情報を取得
+        let courseName = metadata.course_title || ''
+        let seriesBookingId = `sb_${Date.now()}_${Math.random().toString(36).substring(7)}`
+        let singleBookingId: number | null = null
+        
+        // シリーズ単発参加の場合（schedule_idがない場合でもcourse_idがあれば処理）
+        console.log('Checking isSeriesSingleBooking:', isSeriesSingleBooking, 'course_id:', metadata.course_id)
+        if (isSeriesSingleBooking && metadata.course_id) {
+          console.log('Processing series single booking...')
+          // シリーズタイトルを取得
+          const seriesResult = await c.env.DB.prepare(`
+            SELECT title FROM course_series WHERE id = ?
+          `).bind(metadata.series_id).first() as any
+          
+          // コース情報を取得
+          const courseResult = await c.env.DB.prepare(`
+            SELECT * FROM courses WHERE id = ?
+          `).bind(metadata.course_id).first() as any
+          
+          // スケジュール情報を取得（schedule_idがあれば使用、なければcourse_id + term_idで検索）
+          let scheduleResult: any = null
+          if (metadata.schedule_id) {
+            scheduleResult = await c.env.DB.prepare(`
+              SELECT * FROM schedules WHERE id = ?
+            `).bind(metadata.schedule_id).first()
+          } else if (metadata.term_id) {
+            scheduleResult = await c.env.DB.prepare(`
+              SELECT * FROM schedules WHERE course_id = ? AND term_id = ?
+            `).bind(metadata.course_id, metadata.term_id).first()
+          } else {
+            // term_idがない場合は最初のスケジュールを取得
+            scheduleResult = await c.env.DB.prepare(`
+              SELECT * FROM schedules WHERE course_id = ? ORDER BY date ASC LIMIT 1
+            `).bind(metadata.course_id).first()
+          }
+          
+          courseName = courseResult?.title || metadata.course_title
+          
+          // 既存の予約を確認
+          const existingBooking = await c.env.DB.prepare(`
+            SELECT id FROM bookings 
+            WHERE course_id = ? AND customer_email = ? AND payment_status = 'paid'
+            AND preferred_date = ?
+            ORDER BY id DESC LIMIT 1
+          `).bind(metadata.course_id, customerEmail, scheduleResult?.date || null).first() as any
+          
+          if (existingBooking?.id) {
+            singleBookingId = existingBooking.id
+          } else {
+            // 単発予約を作成
+            console.log('Creating single booking from payment-complete page')
+            
+            try {
+              const result = await c.env.DB.prepare(`
+                INSERT INTO bookings (
+                  course_id, course_name, customer_name, customer_email, customer_phone,
+                  preferred_date, preferred_time, status, payment_status, amount,
+                  payment_type, series_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, 'single', ?)
+              `).bind(
+                metadata.course_id,
+                courseResult?.title || metadata.course_title,
+                customerName,
+                customerEmail,
+                customerPhone || null,
+                scheduleResult?.date || null,
+                scheduleResult ? `${scheduleResult.start_time} - ${scheduleResult.end_time || ''}` : null,
+                session.amount_total || 0,
+                metadata.series_id || null
+              ).run()
+              
+              singleBookingId = result.meta.last_row_id as number
+              console.log(`Created single booking with id: ${singleBookingId}`)
+              
+              // paymentsテーブルのステータスを更新
+              await c.env.DB.prepare(`
+                UPDATE payments SET status = 'succeeded', booking_id = ?, updated_at = datetime('now')
+                WHERE stripe_checkout_session_id = ?
+              `).bind(singleBookingId, sessionId).run()
+              console.log('Updated payment status to succeeded')
+            } catch (dbError: any) {
+              console.error('Failed to create single booking:', dbError)
+              // エラーをpaymentsテーブルに記録
+              try {
+                await c.env.DB.prepare(`
+                  UPDATE payments SET error_message = ?, updated_at = datetime('now')
+                  WHERE stripe_checkout_session_id = ?
+                `).bind(`booking_error: ${dbError?.message || 'Unknown error'}`, sessionId).run()
+              } catch (e) {
+                console.error('Failed to log error:', e)
+              }
+            }
+          }
+          
+          // 予約完了メール送信（単発講座）
+          console.log('Sending booking confirmation email - singleBookingId:', singleBookingId, 'customerEmail:', customerEmail)
+          if (singleBookingId && customerEmail) {
+            try {
+              await sendBookingConfirmationEmail(c.env, {
+                customerName: customerName,
+                customerEmail: customerEmail,
+                courseName: courseName,
+                scheduleDate: scheduleResult?.date || undefined,
+                scheduleTime: scheduleResult ? `${scheduleResult.start_time} - ${scheduleResult.end_time || ''}` : undefined,
+                amount: session.amount_total || 0,
+                bookingId: singleBookingId,
+                isSeriesBooking: false,
+                meetUrl: courseResult?.online_url || undefined
+              })
+              console.log('Booking confirmation email sent successfully to:', customerEmail)
+            } catch (emailErr) {
+              console.error('Failed to send booking confirmation email:', emailErr)
+            }
+          } else {
+            console.log('Skipping email - missing singleBookingId or customerEmail')
+          }
+          
+          return c.html(renderPaymentCompletePage({
+            success: true,
+            bookingId: singleBookingId?.toString() || '',
+            seriesBookingId: null,
+            isSeriesBooking: false,
+            customerName: customerName,
+            customerEmail: customerEmail,
+            courseName: courseName,
+            totalPrice: session.amount_total || 0
+          }))
+        }
+        
+        if (isSeriesBooking && metadata.series_id && metadata.term_id) {
+          // シリーズの詳細を取得
+          const seriesResult = await c.env.DB.prepare(`
+            SELECT title FROM course_series WHERE id = ?
+          `).bind(metadata.series_id).first() as any
+          
+          courseName = seriesResult?.title || metadata.course_title
+          
+          // 既存の予約を確認（重複防止）
+          const existingBooking = await c.env.DB.prepare(`
+            SELECT series_booking_id FROM bookings 
+            WHERE series_id = ? AND term_id = ? AND customer_email = ? AND payment_status = 'paid'
+            ORDER BY id DESC LIMIT 1
+          `).bind(metadata.series_id, metadata.term_id, customerEmail).first() as any
+          
+          if (existingBooking?.series_booking_id) {
+            // 既存の予約がある場合はそれを使用
+            seriesBookingId = existingBooking.series_booking_id
+          } else {
+            // Webhookが到着していない場合、ここで予約を作成
+            console.log('Creating booking from payment-complete page (Webhook may be delayed)')
+            
+            // 該当開催期の全講座と日程を取得
+            const linkedCoursesResult = await c.env.DB.prepare(`
+              SELECT c.*, s.id as schedule_id, s.date, s.start_time, s.end_time
+              FROM courses c
+              LEFT JOIN schedules s ON c.id = s.course_id AND s.term_id = ?
+              WHERE c.series_id = ?
+              ORDER BY c.session_number ASC
+            `).bind(metadata.term_id, metadata.series_id).all()
+            
+            const linkedCourses = linkedCoursesResult.results || []
+            const totalSessions = linkedCourses.length
+            const totalPrice = session.amount_total || 0
+            
+            // 全回分の予約を一括登録
+            for (const lc of linkedCourses as any[]) {
+              try {
+                await c.env.DB.prepare(`
+                  INSERT INTO bookings (
+                    course_id, course_name, customer_name, customer_email, customer_phone,
+                    preferred_date, preferred_time, status, payment_status, amount,
+                    payment_type, series_booking_id, series_id, term_id
+                  ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, ?, ?, ?, ?)
+                `).bind(
+                  lc.id,
+                  lc.title,
+                  customerName,
+                  customerEmail,
+                  customerPhone || null,
+                  lc.date || null,
+                  lc.start_time && lc.end_time ? `${lc.start_time} - ${lc.end_time}` : null,
+                  Math.round(totalPrice / totalSessions),
+                  metadata.pricing_type || 'course',
+                  seriesBookingId,
+                  metadata.series_id,
+                  metadata.term_id
+                ).run()
+              } catch (dbError) {
+                console.error(`Failed to save booking for course ${lc.id}:`, dbError)
+              }
+            }
+            
+            console.log(`Created ${linkedCourses.length} bookings with series_booking_id: ${seriesBookingId}`)
+            
+            // paymentsテーブルも更新
+            await c.env.DB.prepare(`
+              UPDATE payments SET 
+                status = 'succeeded',
+                stripe_payment_intent_id = ?,
+                metadata = ?
+              WHERE stripe_checkout_session_id = ?
+            `).bind(
+              session.payment_intent || null,
+              JSON.stringify({ ...metadata, series_booking_id: seriesBookingId }),
+              sessionId
+            ).run()
+            
+            // シリーズ予約完了メール送信
+            console.log('Sending series booking confirmation email to:', customerEmail)
+            if (customerEmail) {
+              const seriesSchedules = (linkedCourses as any[]).map((lc: any) => ({
+                courseTitle: lc.title,
+                date: lc.date || '未定',
+                startTime: lc.start_time || '--:--',
+                endTime: lc.end_time || '--:--'
+              }))
+              
+              try {
+                await sendBookingConfirmationEmail(c.env, {
+                  customerName,
+                  customerEmail,
+                  courseName,
+                  amount: session.amount_total || 0,
+                  bookingId: seriesBookingId,
+                  isSeriesBooking: true,
+                  seriesSchedules
+                })
+                console.log('Series booking confirmation email sent successfully')
+              } catch (emailErr) {
+                console.error('Failed to send series confirmation email:', emailErr)
+              }
+            }
+          }
+        }
+        
+        // シリーズに属さない単独講座の単発予約（course_idがあってseries_idがない場合）
+        if (!isSeriesBooking && !isSeriesSingleBooking && metadata.course_id) {
+          console.log('Processing standalone course single booking...')
+          
+          // スケジュール情報を取得
+          let scheduleResult: any = null
+          if (metadata.schedule_id) {
+            scheduleResult = await c.env.DB.prepare(`
+              SELECT * FROM schedules WHERE id = ?
+            `).bind(metadata.schedule_id).first()
+          } else {
+            // schedule_idがない場合は最初のスケジュールを取得
+            scheduleResult = await c.env.DB.prepare(`
+              SELECT * FROM schedules WHERE course_id = ? ORDER BY date ASC LIMIT 1
+            `).bind(metadata.course_id).first()
+          }
+          
+          // コース情報を取得
+          const courseResult = await c.env.DB.prepare(`
+            SELECT * FROM courses WHERE id = ?
+          `).bind(metadata.course_id).first() as any
+          
+          courseName = courseResult?.title || metadata.course_title
+          
+          // 既存の予約を確認
+          const existingBooking = await c.env.DB.prepare(`
+            SELECT id FROM bookings 
+            WHERE course_id = ? AND customer_email = ? AND payment_status = 'paid'
+            AND preferred_date = ?
+            ORDER BY id DESC LIMIT 1
+          `).bind(metadata.course_id, customerEmail, scheduleResult?.date || null).first() as any
+          
+          if (existingBooking?.id) {
+            singleBookingId = existingBooking.id
+          } else {
+            // 単発予約を作成
+            console.log('Creating standalone single booking from payment-complete page')
+            
+            try {
+              const result = await c.env.DB.prepare(`
+                INSERT INTO bookings (
+                  course_id, course_name, customer_name, customer_email, customer_phone,
+                  preferred_date, preferred_time, status, payment_status, amount,
+                  payment_type
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, 'single')
+              `).bind(
+                metadata.course_id,
+                courseResult?.title || metadata.course_title,
+                customerName,
+                customerEmail,
+                customerPhone || null,
+                scheduleResult?.date || null,
+                scheduleResult ? `${scheduleResult.start_time} - ${scheduleResult.end_time || ''}` : null,
+                session.amount_total || 0
+              ).run()
+              
+              singleBookingId = result.meta.last_row_id as number
+              console.log(`Created standalone single booking with id: ${singleBookingId}`)
+              
+              // paymentsテーブルのステータスを更新
+              await c.env.DB.prepare(`
+                UPDATE payments SET status = 'succeeded', booking_id = ?, updated_at = datetime('now')
+                WHERE stripe_checkout_session_id = ?
+              `).bind(singleBookingId, sessionId).run()
+              console.log('Updated payment status to succeeded')
+              
+              // 予約完了メール送信
+              console.log('Sending standalone booking confirmation email to:', customerEmail)
+              if (customerEmail) {
+                try {
+                  await sendBookingConfirmationEmail(c.env, {
+                    customerName,
+                    customerEmail,
+                    courseName,
+                    scheduleDate: scheduleResult?.date,
+                    scheduleTime: scheduleResult ? `${scheduleResult.start_time}〜${scheduleResult.end_time || ''}` : undefined,
+                    amount: session.amount_total || 0,
+                    bookingId: singleBookingId,
+                    isSeriesBooking: false,
+                    meetUrl: scheduleResult?.online_url
+                  })
+                  console.log('Standalone booking confirmation email sent successfully')
+                } catch (emailErr) {
+                  console.error('Failed to send confirmation email:', emailErr)
+                }
+              }
+            } catch (dbError: any) {
+              console.error('Failed to create standalone single booking:', dbError)
+            }
+          }
+          
+          return c.html(renderPaymentCompletePage({
+            success: true,
+            bookingId: singleBookingId?.toString() || '',
+            seriesBookingId: null,
+            isSeriesBooking: false,
+            customerName: customerName,
+            customerEmail: customerEmail,
+            courseName: courseName,
+            totalPrice: session.amount_total || 0
+          }))
+        }
+        
+        return c.html(renderPaymentCompletePage({
+          success: true,
+          bookingId: seriesBookingId,
+          seriesBookingId: seriesBookingId,
+          isSeriesBooking: isSeriesBooking,
+          customerName: customerName,
+          customerEmail: customerEmail,
+          courseName: courseName,
+          totalPrice: session.amount_total || 0
+        }))
+      } else {
+        return c.html(renderPaymentCompletePage({
+          success: false,
+          error: `決済が完了していません（状態: ${session.payment_status}）。お支払い状態をご確認ください。`
+        }))
+      }
+    }
+    
+    // Stripe APIがない場合はエラー
+    return c.html(renderPaymentCompletePage({
+      success: false,
+      error: '決済情報の確認に失敗しました（Stripe未設定）。'
+    }))
+  } catch (error: any) {
+    console.error('Payment complete page error:', error?.message || error)
+    return c.html(renderPaymentCompletePage({
+      success: false,
+      error: '決済情報の取得中にエラーが発生しました。決済が完了している場合は確認メールをご確認ください。'
+    }))
+  }
+})
+
+// カレンダー追加ページ（決済完了者のみ）
+app.get('/calendar/:bookingId', async (c) => {
+  const bookingId = c.req.param('bookingId')
+  
+  try {
+    // シリーズ予約IDで検索
+    const booking = await c.env.DB.prepare(`
+      SELECT b.*, cs.title as series_title, ct.name as term_name
+      FROM bookings b
+      LEFT JOIN course_series cs ON b.series_id = cs.id
+      LEFT JOIN course_terms ct ON b.term_id = ct.id
+      WHERE b.series_booking_id = ? AND b.payment_status = 'paid'
+      LIMIT 1
+    `).bind(bookingId).first() as any
+    
+    if (!booking) {
+      // 単発予約を検索
+      const singleBooking = await c.env.DB.prepare(`
+        SELECT * FROM bookings WHERE id = ? AND payment_status = 'paid'
+      `).bind(bookingId).first() as any
+      
+      if (singleBooking) {
+        // 単発予約のスケジュールを取得（courses.online_urlを含める）
+        const schedule = await c.env.DB.prepare(`
+          SELECT s.*, c.title as course_title, c.online_url
+          FROM schedules s
+          JOIN courses c ON s.course_id = c.id
+          WHERE s.course_id = ? AND s.date = ?
+        `).bind(singleBooking.course_id, singleBooking.preferred_date).first() as any
+        
+        return c.html(renderCalendarPage({
+          success: true,
+          bookingId: bookingId,
+          isSeriesBooking: false,
+          customerName: singleBooking.customer_name,
+          courseName: singleBooking.course_name,
+          schedules: schedule ? [{
+            session_number: 1,
+            course_title: schedule.course_title,
+            date: schedule.date,
+            start_time: schedule.start_time,
+            end_time: schedule.end_time,
+            online_url: schedule.online_url // courses.online_urlを使用
+          }] : []
+        }))
+      }
+      
+      // 予約が見つからない場合
+      return c.html(renderCalendarPage({
+        success: false,
+        bookingId: bookingId,
+        isSeriesBooking: false,
+        customerName: '',
+        courseName: '',
+        schedules: [],
+        error: '予約情報が見つかりません。支払いが完了していない可能性があります。'
+      }))
+    }
+    
+    // シリーズ予約のスケジュール一覧を取得（courses.online_urlを含める）
+    const schedulesResult = await c.env.DB.prepare(`
+      SELECT c.title as course_title, c.session_number, c.online_url, s.date, s.start_time, s.end_time, s.location
+      FROM courses c
+      LEFT JOIN schedules s ON c.id = s.course_id AND s.term_id = ?
+      WHERE c.series_id = ?
+      ORDER BY c.session_number ASC
+    `).bind(booking.term_id, booking.series_id).all()
+    
+    return c.html(renderCalendarPage({
+      success: true,
+      bookingId: bookingId,
+      isSeriesBooking: true,
+      customerName: booking.customer_name,
+      courseName: booking.course_name,
+      seriesTitle: booking.series_title,
+      termName: booking.term_name,
+      schedules: (schedulesResult.results || []).map((s: any) => ({
+        session_number: s.session_number,
+        course_title: s.course_title,
+        date: s.date,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        online_url: s.online_url // courses.online_urlを使用
+      }))
+    }))
+  } catch (error: any) {
+    console.error('Calendar page error:', error?.message || error, error?.stack)
+    return c.html(renderCalendarPage({
+      success: false,
+      bookingId: bookingId,
+      isSeriesBooking: false,
+      customerName: '',
+      courseName: '',
+      schedules: [],
+      error: `カレンダー情報の取得中にエラーが発生しました: ${error?.message || 'Unknown error'}`
+    }))
+  }
 })
 
 // Blog（DBと静的データをマージ）
@@ -308,6 +1292,498 @@ app.get('/blog/:id', async (c) => {
 // Contact
 app.get('/contact', (c) => {
   return c.html(renderContactPage())
+})
+
+// Consultation (個別相談予約)
+app.get('/consultation', (c) => {
+  const type = c.req.query('type') as 'ai' | 'mental' | undefined;
+  return c.html(renderConsultationPage({ type }))
+})
+
+// API: 予約可能日時を取得
+app.get('/api/consultation/available-dates', async (c) => {
+  const { GOOGLE_CALENDAR_API_KEY, GOOGLE_CALENDAR_ID } = c.env;
+  
+  if (!GOOGLE_CALENDAR_API_KEY || !GOOGLE_CALENDAR_ID) {
+    // デモモード（API設定なしの場合）
+    const today = new Date();
+    const dates = [];
+    for (let i = 1; i <= 30; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() + i);
+      const dayOfWeek = date.getDay();
+      if (dayOfWeek === 0) continue; // 日曜スキップ
+      
+      const dateStr = date.toISOString().split('T')[0];
+      const slots = [];
+      for (let hour = 10; hour < 20; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+          slots.push({
+            time: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+            available: Math.random() > 0.3 // デモ用ランダム
+          });
+        }
+      }
+      dates.push({
+        date: dateStr,
+        dayOfWeek,
+        hasSlots: slots.some(s => s.available),
+        slots
+      });
+    }
+    return c.json({ dates, demo: true });
+  }
+  
+  try {
+    const duration = parseInt(c.req.query('duration') || '30');
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    
+    const dates = await getAvailableDates(
+      GOOGLE_CALENDAR_API_KEY,
+      GOOGLE_CALENDAR_ID,
+      startDate,
+      60, // 60日分
+      duration
+    );
+    
+    return c.json({ dates });
+  } catch (error) {
+    console.error('Calendar API error:', error);
+    return c.json({ error: 'カレンダーの取得に失敗しました' }, 500);
+  }
+})
+
+// API: 個別相談の予約（Stripe決済へ）
+// 個別相談の予約申請（承認制：決済は承認後）
+app.post('/api/consultation/apply', async (c) => {
+  const { DB, RESEND_API_KEY } = c.env;
+  
+  const body = await c.req.json();
+  const { type, duration, date, time, customerName, customerEmail, customerPhone, message, agreedToTerms } = body;
+  
+  if (!type || !duration || !date || !time || !customerName || !customerEmail) {
+    return c.json({ error: '必須項目が不足しています' }, 400);
+  }
+  
+  if (!agreedToTerms) {
+    return c.json({ error: '利用規約への同意が必要です' }, 400);
+  }
+  
+  const price = calculatePrice(duration);
+  const typeLabel = type === 'ai' ? 'AI活用相談' : 'キャリア・メンタル相談';
+  const dateLabel = formatDateJa(date);
+  
+  // 予約IDを生成
+  const consultationId = `cons_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  
+  try {
+    // 予約申請をDBに保存（ステータス: pending_approval = 承認待ち）
+    await DB.prepare(`
+      INSERT INTO consultation_bookings (
+        id, type, duration, date, time, customer_name, customer_email, customer_phone, message, 
+        amount, status, payment_status, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_approval', 'pending', datetime('now'))
+    `).bind(
+      consultationId, type, duration, date, time,
+      customerName, customerEmail, customerPhone || null, message || null,
+      price
+    ).run();
+    
+    // 管理者に通知メール
+    if (RESEND_API_KEY) {
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'mirAIcafe System <noreply@miraicafe.work>',
+            to: 'hatarakusutairu@gmail.com',
+            subject: `【要承認】個別相談の予約申請 - ${dateLabel} ${time}〜`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 20px; text-align: center; border-radius: 12px 12px 0 0;">
+                  <h1 style="color: white; margin: 0; font-size: 20px;">⏳ 新しい予約申請があります</h1>
+                </div>
+                <div style="padding: 24px; background: #fff; border: 1px solid #fde68a; border-top: none;">
+                  <div style="background: #fffbeb; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                    <p style="margin: 0; color: #92400e; font-weight: bold;">承認が必要です</p>
+                    <p style="margin: 8px 0 0 0; color: #92400e; font-size: 14px;">管理画面から承認すると、お客様に決済URLが送信されます。</p>
+                  </div>
+                  
+                  <h2 style="color: #d97706; font-size: 16px; margin-bottom: 16px;">📋 申請内容</h2>
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr><td style="padding: 8px 0; color: #6b7280;">お客様</td><td style="padding: 8px 0; font-weight: bold;">${customerName}</td></tr>
+                    <tr><td style="padding: 8px 0; color: #6b7280;">メール</td><td style="padding: 8px 0;">${customerEmail}</td></tr>
+                    <tr><td style="padding: 8px 0; color: #6b7280;">相談タイプ</td><td style="padding: 8px 0; font-weight: bold;">${typeLabel}</td></tr>
+                    <tr><td style="padding: 8px 0; color: #6b7280;">日時</td><td style="padding: 8px 0; font-weight: bold;">${dateLabel} ${time}〜</td></tr>
+                    <tr><td style="padding: 8px 0; color: #6b7280;">時間</td><td style="padding: 8px 0;">${duration}分</td></tr>
+                    <tr><td style="padding: 8px 0; color: #6b7280;">金額</td><td style="padding: 8px 0; font-weight: bold; color: #059669;">¥${price.toLocaleString()}</td></tr>
+                    ${message ? `<tr><td style="padding: 8px 0; color: #6b7280;">メッセージ</td><td style="padding: 8px 0;">${message}</td></tr>` : ''}
+                  </table>
+                  
+                  <div style="margin-top: 24px; text-align: center;">
+                    <a href="https://miraicafe.work/admin/consultations" 
+                       style="display: inline-block; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+                      管理画面で確認・承認する
+                    </a>
+                  </div>
+                </div>
+              </div>
+            `
+          })
+        });
+      } catch (emailError) {
+        console.error('Admin notification email error:', emailError);
+      }
+    }
+    
+    // お客様に申請受付メール
+    if (RESEND_API_KEY) {
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'mirAIcafe <noreply@miraicafe.work>',
+            to: customerEmail,
+            subject: `【mirAIcafe】個別相談の予約申請を受け付けました`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #ec4899, #f43f5e); padding: 24px; text-align: center; border-radius: 12px 12px 0 0;">
+                  <h1 style="color: white; margin: 0; font-size: 24px;">予約申請を受け付けました</h1>
+                </div>
+                <div style="padding: 24px; background: #fff; border: 1px solid #fce7f3; border-top: none;">
+                  <p>${customerName} 様</p>
+                  <p>個別相談の予約申請をいただきありがとうございます。</p>
+                  
+                  <div style="background: #fef3c7; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                    <p style="margin: 0; color: #92400e; font-size: 14px;">
+                      <strong>⏳ 現在、承認待ちの状態です</strong><br>
+                      担当者が確認後、決済用のリンクをお送りいたします。<br>
+                      通常1〜2営業日以内にご連絡いたします。
+                    </p>
+                  </div>
+                  
+                  <div style="background: #fdf2f8; border-radius: 12px; padding: 20px; margin: 20px 0;">
+                    <h2 style="margin: 0 0 16px 0; color: #be185d; font-size: 18px;">📅 申請内容</h2>
+                    <table style="width: 100%;">
+                      <tr><td style="padding: 8px 0; color: #6b7280;">相談タイプ</td><td style="padding: 8px 0; font-weight: bold;">${typeLabel}</td></tr>
+                      <tr><td style="padding: 8px 0; color: #6b7280;">希望日時</td><td style="padding: 8px 0; font-weight: bold;">${dateLabel} ${time}〜</td></tr>
+                      <tr><td style="padding: 8px 0; color: #6b7280;">時間</td><td style="padding: 8px 0;">${duration}分</td></tr>
+                      <tr><td style="padding: 8px 0; color: #6b7280;">料金</td><td style="padding: 8px 0; font-weight: bold; color: #ec4899;">¥${price.toLocaleString()}</td></tr>
+                    </table>
+                  </div>
+                  
+                  <p style="color: #6b7280; font-size: 14px;">
+                    ご不明な点がございましたら、お気軽にお問い合わせください。
+                  </p>
+                </div>
+                <div style="background: #f3f4f6; padding: 16px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 12px 12px;">
+                  mirAIcafe - AI活用とキャリア支援<br>
+                  <a href="https://miraicafe.work" style="color: #ec4899;">https://miraicafe.work</a>
+                </div>
+              </div>
+            `
+          })
+        });
+      } catch (emailError) {
+        console.error('Customer notification email error:', emailError);
+      }
+    }
+    
+    return c.json({ 
+      success: true, 
+      consultationId,
+      message: '予約申請を受け付けました。承認後に決済URLをお送りします。'
+    });
+  } catch (error) {
+    console.error('Apply error:', error);
+    return c.json({ error: '予約申請に失敗しました' }, 500);
+  }
+})
+
+// 個別相談 申請完了ページ
+app.get('/consultation/applied', (c) => {
+  return c.html(renderLayout('申請完了', `
+    <div class="min-h-screen bg-gradient-to-b from-amber-50 to-white flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+        <div class="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <i class="fas fa-clock text-4xl text-amber-500"></i>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">予約申請を受け付けました</h1>
+        <p class="text-gray-600 mb-6">
+          ご申請ありがとうございます。<br>
+          担当者が確認後、承認いたします。
+        </p>
+        
+        <div class="bg-amber-50 rounded-xl p-5 text-left mb-6">
+          <h3 class="font-bold text-amber-800 mb-3"><i class="fas fa-info-circle mr-2"></i>今後の流れ</h3>
+          <ol class="space-y-3 text-sm text-amber-700">
+            <li class="flex items-start">
+              <span class="w-6 h-6 rounded-full bg-amber-200 text-amber-800 flex items-center justify-center mr-3 flex-shrink-0 text-xs font-bold">1</span>
+              <span>担当者が予約内容を確認します（通常1〜2営業日）</span>
+            </li>
+            <li class="flex items-start">
+              <span class="w-6 h-6 rounded-full bg-amber-200 text-amber-800 flex items-center justify-center mr-3 flex-shrink-0 text-xs font-bold">2</span>
+              <span>承認後、決済用URLをメールでお送りします</span>
+            </li>
+            <li class="flex items-start">
+              <span class="w-6 h-6 rounded-full bg-amber-200 text-amber-800 flex items-center justify-center mr-3 flex-shrink-0 text-xs font-bold">3</span>
+              <span>決済完了で予約が確定します</span>
+            </li>
+          </ol>
+        </div>
+        
+        <p class="text-sm text-gray-500 mb-6">
+          確認メールをお送りしました。<br>
+          届かない場合は迷惑メールフォルダをご確認ください。
+        </p>
+        
+        <a href="/" class="inline-block px-6 py-3 bg-pink-500 text-white rounded-lg font-medium hover:bg-pink-600 transition-colors">
+          トップに戻る
+        </a>
+      </div>
+    </div>
+  `, ''));
+})
+
+// 個別相談 完了ページ
+app.get('/consultation/complete', async (c) => {
+  const sessionId = c.req.query('session_id');
+  const demo = c.req.query('demo');
+  
+  if (demo) {
+    return c.html(renderLayout('予約完了', `
+        <div class="min-h-screen bg-gradient-to-b from-pink-50 to-white flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <i class="fas fa-check text-4xl text-green-500"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-4">予約完了（デモ）</h1>
+            <p class="text-gray-600 mb-6">これはデモモードです。実際の予約は行われていません。</p>
+            <a href="/" class="inline-block px-6 py-3 bg-pink-500 text-white rounded-lg font-medium hover:bg-pink-600">
+              トップに戻る
+            </a>
+          </div>
+        </div>
+      `, ''));
+  }
+  
+  const { STRIPE_SECRET_KEY, DB, RESEND_API_KEY } = c.env;
+  
+  if (!sessionId || !STRIPE_SECRET_KEY) {
+    return c.redirect('/consultation?error=true');
+  }
+  
+  try {
+    const stripe = createStripeClient(STRIPE_SECRET_KEY);
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    
+    if (session.payment_status !== 'paid') {
+      return c.redirect('/consultation?error=payment');
+    }
+    
+    const metadata = session.metadata || {};
+    const consultationId = metadata.consultation_id;
+    
+    // DBの予約ステータスを更新
+    await DB.prepare(`
+      UPDATE consultation_bookings 
+      SET status = 'confirmed', payment_status = 'paid', stripe_payment_intent = ?
+      WHERE id = ?
+    `).bind(session.payment_intent, consultationId).run();
+    
+    // 確認メール送信（日程・Meet URL含む）
+    const MEET_URL = 'https://meet.google.com/hsd-xuri-hiu';
+    
+    if (RESEND_API_KEY && metadata.customer_name) {
+      try {
+        const typeLabel = metadata.type === 'ai' ? 'AI活用相談' : 'キャリア・メンタル相談';
+        const dateLabel = formatDateJa(metadata.date);
+        
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'mirAIcafe <noreply@miraicafe.work>',
+            to: session.customer_email,
+            subject: `【mirAIcafe】${dateLabel} ${metadata.time}〜 個別相談のご予約確認`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #ec4899, #f43f5e); padding: 24px; text-align: center; border-radius: 12px 12px 0 0;">
+                  <h1 style="color: white; margin: 0; font-size: 24px;">✨ ご予約ありがとうございます</h1>
+                </div>
+                <div style="padding: 24px; background: #fff; border: 1px solid #fce7f3; border-top: none;">
+                  <p style="font-size: 16px;">${metadata.customer_name} 様</p>
+                  <p>個別相談のご予約を承りました。以下の内容をご確認ください。</p>
+                  
+                  <div style="background: #fdf2f8; border-radius: 12px; padding: 20px; margin: 20px 0;">
+                    <h2 style="margin: 0 0 16px 0; color: #be185d; font-size: 18px;">📅 ご予約内容</h2>
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #fbcfe8;">相談タイプ</td>
+                        <td style="padding: 10px 0; font-weight: bold; border-bottom: 1px solid #fbcfe8;">${typeLabel}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #fbcfe8;">日時</td>
+                        <td style="padding: 10px 0; font-weight: bold; border-bottom: 1px solid #fbcfe8;">${dateLabel} ${metadata.time}〜</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #fbcfe8;">所要時間</td>
+                        <td style="padding: 10px 0; font-weight: bold; border-bottom: 1px solid #fbcfe8;">${metadata.duration}分</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px 0; color: #6b7280;">お支払い金額</td>
+                        <td style="padding: 10px 0; font-weight: bold; color: #ec4899; font-size: 18px;">¥${session.amount_total?.toLocaleString()}</td>
+                      </tr>
+                    </table>
+                  </div>
+                  
+                  <div style="background: #ecfdf5; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
+                    <h2 style="margin: 0 0 12px 0; color: #059669; font-size: 18px;">🎥 オンラインミーティング</h2>
+                    <p style="margin: 0 0 16px 0; color: #374151;">当日は以下のリンクからご参加ください。</p>
+                    <a href="${MEET_URL}" 
+                       style="display: inline-block; background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">
+                      Google Meet に参加する
+                    </a>
+                    <p style="margin: 16px 0 0 0; font-size: 13px; color: #6b7280;">URL: ${MEET_URL}</p>
+                  </div>
+                  
+                  <div style="background: #fef3c7; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                    <p style="margin: 0; color: #92400e; font-size: 14px;">
+                      <strong>⏰ ご注意</strong><br>
+                      開始時刻の5分前にはミーティングルームにお入りいただけます。<br>
+                      万が一接続に問題がある場合は、お気軽にご連絡ください。
+                    </p>
+                  </div>
+                  
+                  <p style="color: #6b7280; font-size: 14px;">
+                    ご不明な点がございましたら、お気軽にお問い合わせください。<br>
+                    当日お会いできることを楽しみにしております！
+                  </p>
+                </div>
+                <div style="background: #f3f4f6; padding: 16px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 12px 12px;">
+                  mirAIcafe - AI活用とキャリア支援<br>
+                  <a href="https://miraicafe.work" style="color: #ec4899;">https://miraicafe.work</a>
+                </div>
+              </div>
+            `
+          })
+        });
+        console.log('Consultation confirmation email sent');
+      } catch (emailError) {
+        console.error('Email error:', emailError);
+      }
+    }
+    
+    // 管理者にも通知
+    if (RESEND_API_KEY) {
+      try {
+        const typeLabel = metadata.type === 'ai' ? 'AI活用相談' : 'キャリア・メンタル相談';
+        const dateLabel = formatDateJa(metadata.date);
+        
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'mirAIcafe System <noreply@miraicafe.work>',
+            to: 'hatarakusutairu@gmail.com',
+            subject: `【新規予約】${dateLabel} ${metadata.time}〜 ${typeLabel}`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #ec4899;">新しい個別相談の予約が入りました</h2>
+                <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <p><strong>お客様:</strong> ${metadata.customer_name}</p>
+                  <p><strong>メール:</strong> ${session.customer_email}</p>
+                  <p><strong>相談タイプ:</strong> ${typeLabel}</p>
+                  <p><strong>日時:</strong> ${dateLabel} ${metadata.time}〜 (${metadata.duration}分)</p>
+                  <p><strong>金額:</strong> ¥${session.amount_total?.toLocaleString()}</p>
+                </div>
+                <p>
+                  <a href="https://miraicafe.work/admin/consultations" style="display: inline-block; background: #ec4899; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none;">
+                    管理画面で確認
+                  </a>
+                </p>
+                <p>
+                  <a href="${MEET_URL}" style="color: #10b981;">Google Meet: ${MEET_URL}</a>
+                </p>
+              </div>
+            `
+          })
+        });
+        console.log('Admin notification email sent');
+      } catch (emailError) {
+        console.error('Admin email error:', emailError);
+      }
+    }
+    
+    const typeLabel = metadata.type === 'ai' ? 'AI活用相談' : 'キャリア・メンタル相談';
+    const dateLabel = formatDateJa(metadata.date);
+    
+    return c.html(renderLayout('予約完了', `
+        <div class="min-h-screen bg-gradient-to-b from-pink-50 to-white flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <i class="fas fa-check text-4xl text-green-500"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-4">予約完了！</h1>
+            <p class="text-gray-600 mb-6">ご予約ありがとうございます。<br>確認メールをお送りしました。</p>
+            
+            <div class="bg-pink-50 rounded-xl p-5 text-left mb-6">
+              <h3 class="font-bold text-gray-800 mb-3"><i class="fas fa-clipboard-check mr-2 text-pink-500"></i>予約内容</h3>
+              <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">相談タイプ</span>
+                  <span class="font-medium text-gray-800">${typeLabel}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">日時</span>
+                  <span class="font-medium text-gray-800">${dateLabel} ${metadata.time}〜</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">時間</span>
+                  <span class="font-medium text-gray-800">${metadata.duration}分</span>
+                </div>
+                <div class="flex justify-between border-t border-pink-200 pt-2 mt-2">
+                  <span class="text-gray-800 font-bold">お支払い金額</span>
+                  <span class="font-bold text-pink-600">¥${session.amount_total?.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="bg-green-50 rounded-xl p-4 text-left mb-6">
+              <h4 class="font-bold text-green-800 mb-2"><i class="fas fa-video mr-2"></i>オンラインミーティング</h4>
+              <p class="text-sm text-green-700 mb-3">当日は以下のリンクからご参加ください。</p>
+              <a href="${MEET_URL}" target="_blank" rel="noopener noreferrer"
+                 class="block w-full text-center py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors">
+                Google Meet に参加
+              </a>
+              <p class="text-xs text-green-600 mt-2 text-center break-all">${MEET_URL}</p>
+            </div>
+            
+            <a href="/" class="inline-block px-6 py-3 bg-pink-500 text-white rounded-lg font-medium hover:bg-pink-600">
+              トップに戻る
+            </a>
+          </div>
+        </div>
+      `, ''));
+  } catch (error) {
+    console.error('Consultation complete error:', error);
+    return c.redirect('/consultation?error=true');
+  }
 })
 
 // Policy Pages (Terms, Privacy, Cancellation)
@@ -860,13 +2336,174 @@ app.get('/api/schedules', async (c) => {
 // Create reservation
 app.post('/api/reservations', async (c) => {
   const body = await c.req.json()
-  const { courseId, scheduleId, name, email, phone } = body
+  const { courseId, scheduleId, name, email, phone, seriesId, termId, pricingType } = body
   
-  // Validate
-  if (!courseId || !scheduleId || !name || !email) {
+  // Validate - シリーズ予約の場合はscheduleIdは不要
+  const isSeriesBooking = seriesId && termId && pricingType !== 'single'
+  if (!name || !email) {
     return c.json({ error: 'Missing required fields' }, 400)
   }
+  if (!isSeriesBooking && !courseId) {
+    return c.json({ error: 'Missing course ID' }, 400)
+  }
   
+  // シリーズ一括予約の場合
+  if (isSeriesBooking) {
+    // シリーズ情報を取得
+    const seriesResult = await c.env.DB.prepare(`
+      SELECT cs.*, pp.course_discount_rate, pp.early_bird_discount_rate, pp.tax_rate
+      FROM course_series cs
+      LEFT JOIN pricing_patterns pp ON cs.pricing_pattern_id = pp.id
+      WHERE cs.id = ?
+    `).bind(seriesId).first() as any
+    
+    if (!seriesResult) {
+      return c.json({ error: 'コースが見つかりません' }, 404)
+    }
+    
+    // 開催期情報を取得
+    const termResult = await c.env.DB.prepare(`
+      SELECT * FROM course_terms WHERE id = ?
+    `).bind(termId).first() as any
+    
+    if (!termResult) {
+      return c.json({ error: '開催期が見つかりません' }, 404)
+    }
+    
+    // 該当開催期の全講座と日程を取得
+    const linkedCoursesResult = await c.env.DB.prepare(`
+      SELECT c.*, s.id as schedule_id, s.date, s.start_time, s.end_time
+      FROM courses c
+      LEFT JOIN schedules s ON c.id = s.course_id AND s.term_id = ?
+      WHERE c.series_id = ?
+      ORDER BY c.session_number ASC
+    `).bind(termId, seriesId).all()
+    
+    const linkedCourses = linkedCoursesResult.results || []
+    
+    // 料金計算（事前計算済みの値を使用）
+    const totalSessions = seriesResult.total_sessions || linkedCourses.length
+    
+    let totalPrice = 0
+    let priceLabel = ''
+    
+    if (pricingType === 'early') {
+      totalPrice = seriesResult.calc_early_price_incl || 0
+      priceLabel = `早期申込（全${totalSessions}回）`
+    } else if (pricingType === 'course') {
+      totalPrice = seriesResult.calc_course_price_incl || 0
+      priceLabel = `コース一括（全${totalSessions}回）`
+    } else if (pricingType === 'monthly') {
+      totalPrice = seriesResult.calc_monthly_price_incl || 0
+      priceLabel = `月額払い（${totalSessions}回分割）`
+    }
+    
+    console.log(`Series booking: pricingType=${pricingType}, totalPrice=${totalPrice}, totalSessions=${totalSessions}`)
+    
+    // 有料の場合は予約を登録せず、決済フローへ誘導
+    // （予約はWebhookで決済完了後に登録される）
+    if (totalPrice > 0) {
+      return c.json({ 
+        error: '有料講座は決済フローからお申し込みください',
+        requiresPayment: true,
+        totalPrice,
+        priceLabel
+      }, 400)
+    }
+    
+    // 無料の場合のみ予約を登録
+    // 予約IDを生成
+    const seriesBookingId = `sb_${Date.now()}_${Math.random().toString(36).substring(7)}`
+    
+    // 全回分の予約を一括登録
+    const bookingIds: number[] = []
+    for (const lc of linkedCourses as any[]) {
+      try {
+        const result = await c.env.DB.prepare(`
+          INSERT INTO bookings (
+            course_id, course_name, customer_name, customer_email, customer_phone,
+            preferred_date, preferred_time, status, payment_status, amount,
+            payment_type, series_booking_id, series_id, term_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', 0, ?, ?, ?, ?)
+        `).bind(
+          lc.id,
+          lc.title,
+          name,
+          email,
+          phone || null,
+          lc.date || null,
+          lc.start_time && lc.end_time ? `${lc.start_time} - ${lc.end_time}` : null,
+          pricingType,
+          seriesBookingId,
+          seriesId,
+          termId
+        ).run()
+        
+        if (result.meta?.last_row_id) {
+          bookingIds.push(result.meta.last_row_id as number)
+        }
+      } catch (dbError) {
+        console.error(`Failed to save booking for course ${lc.id}:`, dbError)
+      }
+    }
+    
+    console.log(`Free series booking saved with ${bookingIds.length} courses, ID: ${seriesBookingId}`)
+    
+    // 日程一覧を作成
+    const scheduleList = (linkedCourses as any[]).map((lc, idx) => ({
+      session: idx + 1,
+      title: lc.title,
+      date: lc.date,
+      time: lc.start_time && lc.end_time ? `${lc.start_time} - ${lc.end_time}` : null
+    }))
+    
+    const reservation = {
+      id: seriesBookingId,
+      seriesId,
+      termId,
+      pricingType,
+      totalSessions,
+      totalPrice,
+      priceLabel,
+      name,
+      email,
+      phone,
+      schedules: scheduleList,
+      status: totalPrice === 0 ? 'confirmed' : 'pending_payment',
+      createdAt: new Date().toISOString()
+    }
+    
+    // シリーズ予約の通知メール
+    const firstCourse = linkedCourses[0] as any
+    const seriesEmailData = {
+      name,
+      email,
+      phone,
+      courseName: `${seriesResult.title}（${priceLabel}）`,
+      courseId: seriesId,
+      scheduleDate: termResult.name,
+      scheduleTime: `全${totalSessions}回`,
+      location: 'Google Meet（オンライン）',
+      price: totalPrice,
+      reservationId: seriesBookingId,
+      isSeriesBooking: true,
+      seriesTitle: seriesResult.title,
+      termName: termResult.name,
+      schedules: scheduleList
+    }
+    
+    // 管理者への通知
+    sendReservationNotificationToAdmin(c.env, seriesEmailData)
+      .catch(err => console.error('Failed to send series reservation notification to admin:', err))
+    
+    // 予約者への確認メール
+    sendReservationConfirmationToCustomer(c.env, seriesEmailData)
+      .catch(err => console.error('Failed to send series reservation confirmation to customer:', err))
+    
+    return c.json({ success: true, reservation, isSeriesBooking: true })
+  }
+  
+  // 単発予約の場合（従来の処理）
   // 講座情報をDBから取得
   const courseResult = await c.env.DB.prepare('SELECT * FROM courses WHERE id = ?').bind(courseId).first()
   const scheduleResult = await c.env.DB.prepare('SELECT * FROM schedules WHERE id = ?').bind(scheduleId).first()
@@ -884,14 +2521,24 @@ app.post('/api/reservations', async (c) => {
     return c.json({ error: '講座が見つかりません' }, 404)
   }
   
-  // bookingsテーブルに保存
+  // 有料の場合は予約を登録せず、決済フローへ誘導
+  // （予約はWebhookで決済完了後に登録される）
+  if (course.price > 0) {
+    return c.json({ 
+      error: '有料講座は決済フローからお申し込みください',
+      requiresPayment: true,
+      price: course.price
+    }, 400)
+  }
+  
+  // 無料の場合のみbookingsテーブルに保存
   let bookingId: number | null = null
   try {
     const result = await c.env.DB.prepare(`
       INSERT INTO bookings (
         course_id, course_name, customer_name, customer_email, customer_phone,
         preferred_date, preferred_time, status, payment_status, amount
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', 0)
     `).bind(
       courseId,
       course.title,
@@ -899,14 +2546,11 @@ app.post('/api/reservations', async (c) => {
       email,
       phone || null,
       schedule?.date || null,
-      schedule ? `${schedule.startTime} - ${schedule.endTime}` : null,
-      course.price === 0 ? 'confirmed' : 'pending',
-      course.price === 0 ? 'paid' : 'unpaid',
-      course.price || 0
+      schedule ? `${schedule.startTime} - ${schedule.endTime}` : null
     ).run()
     
     bookingId = result.meta?.last_row_id as number
-    console.log('Booking saved to DB with ID:', bookingId)
+    console.log('Free booking saved to DB with ID:', bookingId)
   } catch (dbError) {
     console.error('Failed to save booking to DB:', dbError)
     // DBエラーでも続行（メール通知は送る）
@@ -950,24 +2594,418 @@ app.post('/api/reservations', async (c) => {
   return c.json({ success: true, reservation })
 })
 
+// ===== ワークスペースAPI =====
+// ワークスペーススケジュール一覧取得
+app.get('/api/workspace/schedules', async (c) => {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const schedules = await c.env.DB.prepare(`
+      SELECT * FROM workspace_schedules 
+      WHERE status = 'active' AND date >= ?
+      ORDER BY date ASC, start_time ASC
+    `).bind(today).all()
+    
+    return c.json({ schedules: schedules.results })
+  } catch (error) {
+    console.error('Workspace schedules error:', error)
+    return c.json({ schedules: [] })
+  }
+})
+
+// ワークスペース予約・Stripe決済
+app.post('/api/workspace/checkout', async (c) => {
+  try {
+    const { scheduleId, customerName, customerEmail, customerPhone } = await c.req.json()
+    
+    if (!scheduleId || !customerName || !customerEmail) {
+      return c.json({ error: '必須項目が入力されていません' }, 400)
+    }
+    
+    // スケジュール情報を取得
+    const schedule = await c.env.DB.prepare(`
+      SELECT * FROM workspace_schedules WHERE id = ? AND status = 'active'
+    `).bind(scheduleId).first() as any
+    
+    if (!schedule) {
+      return c.json({ error: '指定された日程が見つかりません' }, 404)
+    }
+    
+    // 満席チェック
+    const remaining = schedule.capacity - schedule.enrolled
+    if (remaining <= 0) {
+      return c.json({ error: 'この日程は満席です' }, 400)
+    }
+    
+    // 重複予約チェック
+    const existingBooking = await c.env.DB.prepare(`
+      SELECT id FROM workspace_bookings 
+      WHERE workspace_schedule_id = ? AND customer_email = ? AND status != 'cancelled'
+    `).bind(scheduleId, customerEmail).first()
+    
+    if (existingBooking) {
+      return c.json({ error: 'この日程は既に予約済みです' }, 400)
+    }
+    
+    // Stripe Checkout Session作成
+    if (!c.env.STRIPE_SECRET_KEY) {
+      return c.json({ error: 'Stripe設定がありません' }, 500)
+    }
+    
+    const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY)
+    const dateObj = new Date(schedule.date)
+    const dateStr = dateObj.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' })
+    
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: 'jpy',
+          unit_amount: schedule.price,
+          product_data: {
+            name: schedule.title || 'mirAIcafe ワークスペース',
+            description: `${dateStr} ${schedule.start_time}〜${schedule.end_time}`
+          }
+        },
+        quantity: 1
+      }],
+      mode: 'payment',
+      success_url: `${c.req.header('origin')}/workspace/complete?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${c.req.header('origin')}/?workspace_canceled=true`,
+      customer_email: customerEmail,
+      metadata: {
+        type: 'workspace',
+        schedule_id: scheduleId,
+        customer_name: customerName,
+        customer_phone: customerPhone || '',
+        schedule_date: schedule.date,
+        schedule_time: `${schedule.start_time}-${schedule.end_time}`
+      },
+      locale: 'ja'
+    })
+    
+    return c.json({ url: session.url })
+  } catch (error: any) {
+    console.error('Workspace checkout error:', error)
+    return c.json({ error: error?.message || '決済処理に失敗しました' }, 500)
+  }
+})
+
+// ワークスペース予約完了ページ
+app.get('/workspace/complete', async (c) => {
+  const sessionId = c.req.query('session_id')
+  
+  if (!sessionId || !c.env.STRIPE_SECRET_KEY) {
+    return c.redirect('/?workspace_error=true')
+  }
+  
+  try {
+    const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY)
+    const session = await stripe.checkout.sessions.retrieve(sessionId)
+    
+    if (session.payment_status !== 'paid') {
+      return c.redirect('/?workspace_error=payment')
+    }
+    
+    const metadata = session.metadata || {}
+    
+    // 予約を作成（まだ作成されていない場合）
+    const existingBooking = await c.env.DB.prepare(`
+      SELECT id FROM workspace_bookings WHERE stripe_session_id = ?
+    `).bind(sessionId).first()
+    
+    let bookingId: number
+    
+    if (!existingBooking) {
+      // 予約を作成
+      const result = await c.env.DB.prepare(`
+        INSERT INTO workspace_bookings (workspace_schedule_id, customer_name, customer_email, customer_phone, status, payment_status, amount, stripe_session_id)
+        VALUES (?, ?, ?, ?, 'confirmed', 'paid', ?, ?)
+      `).bind(
+        metadata.schedule_id,
+        metadata.customer_name,
+        session.customer_email,
+        metadata.customer_phone || null,
+        session.amount_total || 500,
+        sessionId
+      ).run()
+      
+      bookingId = result.meta.last_row_id as number
+      
+      // enrolled数を更新
+      await c.env.DB.prepare(`
+        UPDATE workspace_schedules SET enrolled = enrolled + 1 WHERE id = ?
+      `).bind(metadata.schedule_id).run()
+      
+      // スケジュール情報を取得してメール送信
+      const scheduleForEmail = await c.env.DB.prepare(`
+        SELECT * FROM workspace_schedules WHERE id = ?
+      `).bind(metadata.schedule_id).first() as any
+      
+      // ワークスペース予約完了メール送信
+      console.log('Sending workspace confirmation email to:', session.customer_email)
+      if (session.customer_email) {
+        const dateObj = scheduleForEmail ? new Date(scheduleForEmail.date) : new Date()
+        const dateStr = dateObj.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })
+        
+        try {
+          await sendWorkspaceConfirmationEmail(c.env, {
+            customerName: metadata.customer_name || '',
+            customerEmail: session.customer_email,
+            scheduleDate: dateStr,
+            scheduleTime: `${scheduleForEmail?.start_time || ''}〜${scheduleForEmail?.end_time || ''}`,
+            amount: session.amount_total || 500,
+            bookingId,
+            meetUrl: scheduleForEmail?.meet_url
+          })
+          console.log('Workspace confirmation email sent successfully')
+        } catch (emailErr) {
+          console.error('Failed to send workspace confirmation email:', emailErr)
+        }
+      }
+    } else {
+      bookingId = (existingBooking as any).id
+    }
+    
+    // スケジュール情報を取得
+    const schedule = await c.env.DB.prepare(`
+      SELECT * FROM workspace_schedules WHERE id = ?
+    `).bind(metadata.schedule_id).first() as any
+    
+    const dateObj = schedule ? new Date(schedule.date) : new Date()
+    const dateStr = dateObj.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })
+    
+    // 完了ページを表示
+    const meetUrlSection = schedule?.meet_url 
+      ? `<div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+          <p class="text-sm text-green-800 mb-2"><i class="fas fa-video mr-2"></i>参加URL</p>
+          <a href="${schedule.meet_url}" target="_blank" class="text-green-600 hover:text-green-700 font-medium break-all">${schedule.meet_url}</a>
+        </div>`
+      : `<div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+          <p class="text-sm text-blue-800"><i class="fas fa-info-circle mr-2"></i>参加URLは開催日までにメールでお送りします</p>
+        </div>`
+    
+    const content = `
+      <div class="min-h-screen bg-gradient-to-b from-amber-50 to-orange-50 py-16">
+        <div class="max-w-lg mx-auto px-4">
+          <div class="bg-white rounded-3xl shadow-2xl overflow-hidden">
+            <div class="bg-gradient-to-r from-amber-500 to-orange-500 p-8 text-center text-white">
+              <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check text-4xl"></i>
+              </div>
+              <h1 class="text-2xl font-bold">予約完了！</h1>
+              <p class="opacity-90 mt-2">ワークスペースのご予約ありがとうございます</p>
+            </div>
+            
+            <div class="p-8">
+              <div class="bg-amber-50 rounded-xl p-6 mb-6">
+                <h2 class="font-bold text-amber-900 mb-4 flex items-center">
+                  <i class="fas fa-coffee mr-2"></i>予約内容
+                </h2>
+                <div class="space-y-3 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">日時</span>
+                    <span class="font-medium">${dateStr} ${schedule?.start_time || ''} 〜 ${schedule?.end_time || ''}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">お名前</span>
+                    <span class="font-medium">${metadata.customer_name}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">金額</span>
+                    <span class="font-medium">¥${(session.amount_total || 500).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+              
+              ${meetUrlSection}
+              
+              <a href="/workspace/calendar/${bookingId}" class="block w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-center rounded-xl font-bold hover:shadow-lg transition-all mb-3">
+                <i class="fas fa-calendar-plus mr-2"></i>カレンダーに追加
+              </a>
+              <a href="/" class="block w-full py-3 border-2 border-amber-500 text-amber-600 text-center rounded-xl font-bold hover:bg-amber-50 transition-all">
+                トップページに戻る
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+    
+    return c.html(renderLayout('予約完了', content, 'workspace'))
+  } catch (error: any) {
+    console.error('Workspace complete error:', error)
+    // エラーページを表示
+    const content = `
+      <div class="min-h-screen bg-gradient-to-b from-red-50 to-orange-50 py-16">
+        <div class="max-w-lg mx-auto px-4">
+          <div class="bg-white rounded-3xl shadow-2xl overflow-hidden">
+            <div class="bg-gradient-to-r from-red-500 to-orange-500 p-8 text-center text-white">
+              <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-times text-4xl"></i>
+              </div>
+              <h1 class="text-2xl font-bold">エラーが発生しました</h1>
+              <p class="opacity-90 mt-2">セッション情報の取得に失敗しました。決済が完了している場合は確認メールをご確認ください。</p>
+            </div>
+            <div class="p-8">
+              <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+                <p class="text-sm text-yellow-800"><i class="fas fa-info-circle mr-2"></i>決済が完了している場合、確認メールが届いていないか確認してください。問題が解決しない場合は、お問い合わせください。</p>
+              </div>
+              <div class="flex gap-4">
+                <a href="/" class="flex-1 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold text-center">
+                  <i class="fas fa-redo mr-2"></i>再予約
+                </a>
+                <a href="/contact" class="flex-1 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-bold text-center">
+                  <i class="fas fa-envelope mr-2"></i>お問い合わせ
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+    return c.html(renderLayout('エラー', content, 'workspace'))
+  }
+})
+
+// ワークスペースカレンダーページ
+app.get('/workspace/calendar/:bookingId', async (c) => {
+  const bookingId = c.req.param('bookingId')
+  
+  try {
+    const booking = await c.env.DB.prepare(`
+      SELECT b.*, s.date, s.start_time, s.end_time, s.title as schedule_title, s.meet_url
+      FROM workspace_bookings b
+      JOIN workspace_schedules s ON b.workspace_schedule_id = s.id
+      WHERE b.id = ? AND b.payment_status = 'paid'
+    `).bind(bookingId).first() as any
+    
+    if (!booking) {
+      return c.html(renderLayout('エラー', `
+        <div class="min-h-screen bg-gradient-to-b from-amber-50 to-orange-50 py-16">
+          <div class="max-w-lg mx-auto px-4 text-center">
+            <i class="fas fa-exclamation-circle text-6xl text-red-400 mb-4"></i>
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">予約が見つかりません</h1>
+            <p class="text-gray-600 mb-6">お支払いが完了していないか、予約IDが正しくありません。</p>
+            <a href="/" class="text-amber-600 hover:text-amber-700 font-medium">トップページに戻る</a>
+          </div>
+        </div>
+      `, 'workspace'))
+    }
+    
+    const dateObj = new Date(booking.date)
+    const dateStr = dateObj.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })
+    
+    // Googleカレンダー用URL
+    const startDateTime = new Date(`${booking.date}T${booking.start_time}:00`)
+    const endDateTime = new Date(`${booking.date}T${booking.end_time}:00`)
+    const detailsText = `参加URL: ${booking.meet_url || '後日メールでお知らせします'}`
+    const googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('mirAIcafe ワークスペース')}&dates=${startDateTime.toISOString().replace(/[-:]/g, '').split('.')[0]}Z/${endDateTime.toISOString().replace(/[-:]/g, '').split('.')[0]}Z&details=${encodeURIComponent(detailsText)}`
+    
+    const meetUrlSection = booking.meet_url 
+      ? `<div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+          <p class="text-sm text-green-800 mb-2"><i class="fas fa-video mr-2"></i>参加URL</p>
+          <a href="${booking.meet_url}" target="_blank" class="text-green-600 hover:text-green-700 font-medium break-all">${booking.meet_url}</a>
+        </div>`
+      : `<div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+          <p class="text-sm text-blue-800"><i class="fas fa-info-circle mr-2"></i>参加URLは開催日までにメールでお送りします</p>
+        </div>`
+    
+    const content = `
+      <div class="min-h-screen bg-gradient-to-b from-amber-50 to-orange-50 py-16">
+        <div class="max-w-lg mx-auto px-4">
+          <div class="bg-white rounded-3xl shadow-2xl overflow-hidden">
+            <div class="bg-gradient-to-r from-green-500 to-emerald-500 p-8 text-center text-white">
+              <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-calendar-check text-4xl"></i>
+              </div>
+              <h1 class="text-2xl font-bold">カレンダーに追加</h1>
+              <p class="opacity-90 mt-2">ワークスペースの予定を忘れないように！</p>
+            </div>
+            
+            <div class="p-8">
+              <div class="bg-amber-50 rounded-xl p-6 mb-6">
+                <h2 class="font-bold text-amber-900 mb-4 flex items-center">
+                  <i class="fas fa-coffee mr-2"></i>mirAIcafe ワークスペース
+                </h2>
+                <div class="space-y-3 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-gray-600"><i class="fas fa-calendar mr-2"></i>日付</span>
+                    <span class="font-medium">${dateStr}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600"><i class="fas fa-clock mr-2"></i>時間</span>
+                    <span class="font-medium">${booking.start_time} 〜 ${booking.end_time}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600"><i class="fas fa-user mr-2"></i>お名前</span>
+                    <span class="font-medium">${booking.customer_name}</span>
+                  </div>
+                </div>
+              </div>
+              
+              ${meetUrlSection}
+              
+              <a href="${googleCalUrl}" target="_blank" class="flex items-center justify-center w-full py-4 bg-white border-2 border-gray-200 rounded-xl font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all mb-3">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg" alt="Google Calendar" class="w-6 h-6 mr-3">
+                Googleカレンダーに追加
+              </a>
+              
+              <a href="/" class="block w-full py-3 text-center text-amber-600 hover:text-amber-700 font-medium">
+                トップページに戻る
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+    
+    return c.html(renderLayout('カレンダー追加', content, 'workspace'))
+  } catch (error) {
+    console.error('Workspace calendar error:', error)
+    return c.redirect('/?workspace_error=true')
+  }
+})
+
 // Stripe Checkout Session
 app.post('/api/create-checkout-session', async (c) => {
   try {
     const body = await c.req.json()
-    let { courseId, courseTitle, price, customerEmail, customerName, scheduleDate, scheduleTime, successUrl, cancelUrl, bookingId, reservationId } = body
+    let { courseId, courseTitle, price, customerEmail, customerName, customerPhone, scheduleId, scheduleDate, scheduleTime, successUrl, cancelUrl, bookingId, reservationId, seriesId, pricingType, termId } = body
 
-    // courseIdから講座情報を取得（courseTitle/priceが未指定の場合）
-    if (courseId && (!courseTitle || !price)) {
-      const course = await getCourseById(c.env.DB, courseId)
-      if (course) {
-        courseTitle = courseTitle || course.title
-        price = price || course.price
+    // シリーズ予約の場合
+    const isSeriesBooking = seriesId && termId && pricingType !== 'single'
+    
+    if (isSeriesBooking) {
+      // シリーズ情報を取得
+      const seriesResult = await c.env.DB.prepare(`
+        SELECT cs.*, pp.course_discount_rate, pp.early_bird_discount_rate, pp.tax_rate
+        FROM course_series cs
+        LEFT JOIN pricing_patterns pp ON cs.pricing_pattern_id = pp.id
+        WHERE cs.id = ?
+      `).bind(seriesId).first() as any
+      
+      if (seriesResult) {
+        courseTitle = courseTitle || seriesResult.title
+        // priceは既にフロントから渡されている
+      }
+    } else {
+      // courseIdから講座情報を取得（courseTitle/priceが未指定の場合）
+      if (courseId && (!courseTitle || !price)) {
+        const course = await getCourseById(c.env.DB, courseId)
+        if (course) {
+          courseTitle = courseTitle || course.title
+          price = price || course.price
+        }
       }
     }
 
     // Validate required fields
-    if (!courseId || !courseTitle || !price || !successUrl || !cancelUrl) {
-      return c.json({ error: '必須項目が不足しています' }, 400)
+    // シリーズ予約の場合はcourseIdがなくてもOK
+    if (!isSeriesBooking && !courseId) {
+      return c.json({ error: '講座IDが必要です' }, 400)
+    }
+    if (!courseTitle || !price || !successUrl || !cancelUrl) {
+      return c.json({ error: '必須項目が不足しています', details: { courseTitle: !!courseTitle, price: !!price, successUrl: !!successUrl, cancelUrl: !!cancelUrl } }, 400)
     }
     
     // bookingIdがなければreservationIdを使用
@@ -990,17 +3028,28 @@ app.post('/api/create-checkout-session', async (c) => {
 
     // Create real Stripe session
     const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY)
+    
+    // successUrlにsession_idが既に含まれているかチェック
+    const finalSuccessUrl = successUrl.includes('{CHECKOUT_SESSION_ID}') 
+      ? successUrl 
+      : `${successUrl}${successUrl.includes('?') ? '&' : '?'}session_id={CHECKOUT_SESSION_ID}`
+    
     const session = await createCheckoutSession(stripe, {
-      courseId,
+      courseId: courseId || undefined,
       courseTitle,
       price,
       customerEmail,
       customerName: customerName || '',
+      customerPhone: customerPhone || '',
+      scheduleId: scheduleId || undefined,
       scheduleDate,
       scheduleTime,
-      successUrl: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`,
+      successUrl: finalSuccessUrl,
       cancelUrl,
-      bookingId
+      bookingId,
+      seriesId: seriesId || undefined,
+      termId: termId || undefined,
+      pricingType: pricingType || 'single'
     })
 
     // Save payment record to database (booking_idは使用しない - FK制約回避)
@@ -1017,10 +3066,17 @@ app.post('/api/create-checkout-session', async (c) => {
         'pending',
         customerEmail,
         customerName || null,
-        courseId,
+        courseId || null,
         courseTitle,
         scheduleDate || null,
-        JSON.stringify({ reservationId: bookingId }) // booking_idはmetadataに保存
+        JSON.stringify({ 
+          reservationId: bookingId,
+          seriesId: seriesId || null,
+          termId: termId || null,
+          courseId: courseId || null,
+          scheduleId: scheduleId || null,
+          pricingType: pricingType || 'single'
+        })
       ).run()
     } catch (dbError) {
       console.error('Failed to save payment record:', dbError)
@@ -1034,9 +3090,15 @@ app.post('/api/create-checkout-session', async (c) => {
       currency: 'jpy',
       course: courseTitle
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Checkout session creation error:', error)
-    return c.json({ error: '決済セッションの作成に失敗しました' }, 500)
+    const errorMessage = error?.message || error?.toString() || '不明なエラー'
+    const errorCode = error?.code || error?.type || 'unknown'
+    return c.json({ 
+      error: '決済セッションの作成に失敗しました',
+      details: errorMessage,
+      code: errorCode
+    }, 500)
   }
 })
 
@@ -1071,41 +3133,179 @@ app.post('/api/stripe/webhook', async (c) => {
         console.log('Webhook received: checkout.session.completed', session.id)
         console.log('Session metadata:', session.metadata)
         
-        // Update payment record
+        const metadata = session.metadata || {}
+        const customerEmail = session.customer_email || metadata.customer_email
+        const customerName = metadata.customer_name || ''
+        const customerPhone = metadata.customer_phone || ''
+        const seriesId = metadata.series_id
+        const termId = metadata.term_id
+        const pricingType = metadata.pricing_type || 'single'
+        const courseId = metadata.course_id
+        const scheduleId = metadata.schedule_id
+        const isSeriesBooking = seriesId && termId && pricingType !== 'single'
+        
+        let seriesBookingId = null
+        let bookingId = null
+        
+        // 予約を作成（決済完了後）
+        if (isSeriesBooking) {
+          // シリーズ一括予約
+          console.log('Creating series booking from webhook:', { seriesId, termId, pricingType })
+          
+          const seriesResult = await c.env.DB.prepare(`
+            SELECT * FROM course_series WHERE id = ?
+          `).bind(seriesId).first() as any
+          
+          const termResult = await c.env.DB.prepare(`
+            SELECT * FROM course_terms WHERE id = ?
+          `).bind(termId).first() as any
+          
+          const linkedCoursesResult = await c.env.DB.prepare(`
+            SELECT c.*, s.id as schedule_id, s.date, s.start_time, s.end_time
+            FROM courses c
+            LEFT JOIN schedules s ON c.id = s.course_id AND s.term_id = ?
+            WHERE c.series_id = ?
+            ORDER BY c.session_number ASC
+          `).bind(termId, seriesId).all()
+          
+          const linkedCourses = linkedCoursesResult.results || []
+          const totalSessions = linkedCourses.length
+          const totalPrice = session.amount_total || 0
+          
+          seriesBookingId = `sb_${Date.now()}_${Math.random().toString(36).substring(7)}`
+          
+          // 全回分の予約を一括登録
+          for (const lc of linkedCourses as any[]) {
+            try {
+              const result = await c.env.DB.prepare(`
+                INSERT INTO bookings (
+                  course_id, course_name, customer_name, customer_email, customer_phone,
+                  preferred_date, preferred_time, status, payment_status, amount,
+                  payment_type, series_booking_id, series_id, term_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, ?, ?, ?, ?)
+              `).bind(
+                lc.id,
+                lc.title,
+                customerName,
+                customerEmail,
+                customerPhone || null,
+                lc.date || null,
+                lc.start_time && lc.end_time ? `${lc.start_time} - ${lc.end_time}` : null,
+                Math.round(totalPrice / totalSessions),
+                pricingType,
+                seriesBookingId,
+                seriesId,
+                termId
+              ).run()
+              
+              if (!bookingId && result.meta?.last_row_id) {
+                bookingId = result.meta.last_row_id
+              }
+            } catch (dbError) {
+              console.error(`Failed to save booking for course ${lc.id}:`, dbError)
+            }
+          }
+          
+          console.log(`Series booking created: ${seriesBookingId} with ${linkedCourses.length} courses`)
+          
+          // メール通知
+          const scheduleList = (linkedCourses as any[]).map((lc, idx) => ({
+            session: idx + 1,
+            title: lc.title,
+            date: lc.date,
+            time: lc.start_time && lc.end_time ? `${lc.start_time} - ${lc.end_time}` : null
+          }))
+          
+          const priceLabel = pricingType === 'early' ? '早期申込' : pricingType === 'course' ? 'コース一括' : '月額払い'
+          
+          const seriesEmailData = {
+            name: customerName,
+            email: customerEmail,
+            phone: customerPhone,
+            courseName: `${seriesResult?.title || '講座'}（${priceLabel}）`,
+            courseId: seriesId,
+            scheduleDate: termResult?.name || '',
+            scheduleTime: `全${totalSessions}回`,
+            location: 'Google Meet（オンライン）',
+            price: totalPrice,
+            reservationId: seriesBookingId,
+            isSeriesBooking: true,
+            seriesTitle: seriesResult?.title,
+            termName: termResult?.name,
+            schedules: scheduleList
+          }
+          
+          sendReservationNotificationToAdmin(c.env, seriesEmailData)
+            .catch(err => console.error('Failed to send notification:', err))
+          sendReservationConfirmationToCustomer(c.env, seriesEmailData)
+            .catch(err => console.error('Failed to send confirmation:', err))
+            
+        } else if (courseId) {
+          // 単発予約
+          console.log('Creating single booking from webhook:', { courseId, scheduleId })
+          
+          const course = await c.env.DB.prepare('SELECT * FROM courses WHERE id = ?').bind(courseId).first() as any
+          const schedule = scheduleId ? await c.env.DB.prepare('SELECT * FROM schedules WHERE id = ?').bind(scheduleId).first() as any : null
+          
+          if (course) {
+            const result = await c.env.DB.prepare(`
+              INSERT INTO bookings (
+                course_id, course_name, customer_name, customer_email, customer_phone,
+                preferred_date, preferred_time, status, payment_status, amount
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?)
+            `).bind(
+              courseId,
+              course.title,
+              customerName,
+              customerEmail,
+              customerPhone || null,
+              schedule?.date || null,
+              schedule ? `${schedule.start_time} - ${schedule.end_time}` : null,
+              session.amount_total || course.price
+            ).run()
+            
+            bookingId = result.meta?.last_row_id
+            console.log('Single booking created:', bookingId)
+            
+            // メール通知
+            const emailData = {
+              name: customerName,
+              email: customerEmail,
+              phone: customerPhone,
+              courseName: course.title,
+              courseId: courseId,
+              scheduleDate: schedule?.date,
+              scheduleTime: schedule ? `${schedule.start_time} - ${schedule.end_time}` : null,
+              location: schedule?.location || 'オンライン',
+              price: session.amount_total || course.price,
+              reservationId: bookingId
+            }
+            
+            sendReservationNotificationToAdmin(c.env, emailData)
+              .catch(err => console.error('Failed to send notification:', err))
+            sendReservationConfirmationToCustomer(c.env, emailData)
+              .catch(err => console.error('Failed to send confirmation:', err))
+          }
+        }
+        
+        // Update payment record with booking reference
         await c.env.DB.prepare(`
           UPDATE payments SET
             stripe_payment_intent_id = ?,
             status = 'succeeded',
             payment_method = 'card',
+            metadata = ?,
             updated_at = CURRENT_TIMESTAMP
           WHERE stripe_checkout_session_id = ?
         `).bind(
           session.payment_intent,
+          JSON.stringify({ 
+            ...metadata,
+            booking_id: bookingId,
+            series_booking_id: seriesBookingId
+          }),
           session.id
         ).run()
-
-        // Update booking status and payment_status if linked
-        if (session.metadata?.booking_id) {
-          console.log('Updating booking:', session.metadata.booking_id)
-          await c.env.DB.prepare(`
-            UPDATE bookings SET 
-              status = 'confirmed', 
-              payment_status = 'paid',
-              updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-          `).bind(session.metadata.booking_id).run()
-        }
-        
-        // Also try to find booking by customer_email and update payment_status
-        if (session.customer_email) {
-          console.log('Also updating by email:', session.customer_email)
-          await c.env.DB.prepare(`
-            UPDATE bookings SET 
-              payment_status = 'paid',
-              updated_at = CURRENT_TIMESTAMP
-            WHERE customer_email = ? AND payment_status = 'unpaid'
-          `).bind(session.customer_email).run()
-        }
 
         console.log('Payment succeeded for session:', session.id)
         break
@@ -2156,13 +4356,16 @@ async function getCourseById(db: D1Database, id: string): Promise<any | null> {
 // 講座IDを生成（タイトルからスラッグ生成）
 function generateCourseId(title: string): string {
   const timestamp = Date.now().toString(36)
+  const randomStr = Math.random().toString(36).substring(2, 8)
+  // 英数字のみを残し、日本語は除外（URLエンコード問題を回避）
   const slug = title
     .toLowerCase()
-    .replace(/[^a-z0-9\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/g, '-')
+    .replace(/[^a-z0-9]/g, '-')  // 英数字以外はハイフンに
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
-    .substring(0, 30)
-  return `${slug || 'course'}-${timestamp}`
+    .substring(0, 20)
+  // slugが空の場合（日本語のみのタイトル）はランダム文字列を使用
+  return slug ? `${slug}-${randomStr}` : `course-${timestamp}-${randomStr}`
 }
 
 app.get('/admin/courses', async (c) => {
@@ -2822,6 +5025,606 @@ app.get('/admin/bookings/export', async (c) => {
   }
 })
 
+// ===== ワークスペース管理 =====
+app.get('/admin/workspace', async (c) => {
+  try {
+    const schedules = await c.env.DB.prepare(`
+      SELECT * FROM workspace_schedules ORDER BY date DESC, start_time DESC
+    `).all()
+    
+    const bookings = await c.env.DB.prepare(`
+      SELECT b.*, s.date as schedule_date, s.start_time || ' - ' || s.end_time as schedule_time
+      FROM workspace_bookings b
+      LEFT JOIN workspace_schedules s ON b.workspace_schedule_id = s.id
+      ORDER BY b.created_at DESC
+    `).all()
+    
+    return c.html(renderWorkspaceAdmin(schedules.results as any[], bookings.results as any[]))
+  } catch (error) {
+    console.error('Workspace admin error:', error)
+    return c.html(renderWorkspaceAdmin([], []))
+  }
+})
+
+// ワークスペーススケジュールAPI
+app.post('/admin/api/workspace/schedules', async (c) => {
+  try {
+    const data = await c.req.json()
+    const id = `ws_${Date.now()}_${Math.random().toString(36).substring(7)}`
+    
+    await c.env.DB.prepare(`
+      INSERT INTO workspace_schedules (id, title, description, date, start_time, end_time, capacity, price, meet_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id,
+      data.title || 'mirAIcafe ワークスペース',
+      data.description || null,
+      data.date,
+      data.start_time,
+      data.end_time,
+      data.capacity || 6,
+      data.price || 500,
+      data.meet_url || null
+    ).run()
+    
+    return c.json({ success: true, id })
+  } catch (error: any) {
+    console.error('Create workspace schedule error:', error)
+    return c.json({ error: error?.message || 'Failed to create schedule' }, 500)
+  }
+})
+
+app.put('/admin/api/workspace/schedules/:id', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const data = await c.req.json()
+    
+    await c.env.DB.prepare(`
+      UPDATE workspace_schedules 
+      SET title = ?, description = ?, date = ?, start_time = ?, end_time = ?, capacity = ?, price = ?, meet_url = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(
+      data.title,
+      data.description || null,
+      data.date,
+      data.start_time,
+      data.end_time,
+      data.capacity,
+      data.price,
+      data.meet_url || null,
+      id
+    ).run()
+    
+    return c.json({ success: true })
+  } catch (error: any) {
+    console.error('Update workspace schedule error:', error)
+    return c.json({ error: error?.message || 'Failed to update schedule' }, 500)
+  }
+})
+
+app.delete('/admin/api/workspace/schedules/:id', async (c) => {
+  try {
+    const id = c.req.param('id')
+    
+    // 予約がある場合は削除不可
+    const bookings = await c.env.DB.prepare(`
+      SELECT COUNT(*) as count FROM workspace_bookings WHERE workspace_schedule_id = ? AND status != 'cancelled'
+    `).bind(id).first() as any
+    
+    if (bookings?.count > 0) {
+      return c.json({ error: '予約がある日程は削除できません' }, 400)
+    }
+    
+    await c.env.DB.prepare('DELETE FROM workspace_schedules WHERE id = ?').bind(id).run()
+    return c.json({ success: true })
+  } catch (error: any) {
+    console.error('Delete workspace schedule error:', error)
+    return c.json({ error: error?.message || 'Failed to delete schedule' }, 500)
+  }
+})
+
+// ===== 個別相談管理 =====
+const CONSULTATION_MEET_URL = 'https://meet.google.com/hsd-xuri-hiu'
+
+app.get('/admin/consultations', async (c) => {
+  try {
+    const bookings = await c.env.DB.prepare(`
+      SELECT * FROM consultation_bookings ORDER BY date DESC, time DESC
+    `).all()
+    
+    return c.html(renderConsultationAdmin(bookings.results as any[]))
+  } catch (error) {
+    console.error('Consultation admin error:', error)
+    return c.html(renderConsultationAdmin([]))
+  }
+})
+
+// ステータス更新API
+app.put('/admin/api/consultations/:id/status', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const { status } = await c.req.json()
+    
+    await c.env.DB.prepare(`
+      UPDATE consultation_bookings 
+      SET status = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(status, id).run()
+    
+    return c.json({ success: true })
+  } catch (error: any) {
+    console.error('Update consultation status error:', error)
+    return c.json({ error: error?.message || 'Failed to update status' }, 500)
+  }
+})
+
+// リマインドメール送信API
+app.post('/admin/api/consultations/:id/reminder', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const { RESEND_API_KEY } = c.env
+    
+    if (!RESEND_API_KEY) {
+      return c.json({ error: 'メール設定がありません' }, 500)
+    }
+    
+    const booking = await c.env.DB.prepare(`
+      SELECT * FROM consultation_bookings WHERE id = ?
+    `).bind(id).first() as any
+    
+    if (!booking) {
+      return c.json({ error: '予約が見つかりません' }, 404)
+    }
+    
+    const typeLabel = booking.type === 'ai' ? 'AI活用相談' : 'キャリア・メンタル相談'
+    const [year, month, day] = booking.date.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土']
+    const dateStr = `${year}年${month}月${day}日(${weekdays[date.getDay()]})`
+    
+    // Resend APIでメール送信
+    const emailRes = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'mirAIcafe <noreply@miraicafe.work>',
+        to: booking.customer_email,
+        subject: `【リマインド】${dateStr} ${booking.time}〜 ${typeLabel}のご案内`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #ec4899, #f43f5e); padding: 24px; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">mirAIcafe 個別相談</h1>
+            </div>
+            <div style="padding: 24px; background: #fff;">
+              <p>${booking.customer_name} 様</p>
+              <p>ご予約いただいている個別相談のリマインドです。</p>
+              
+              <div style="background: #fdf2f8; border-radius: 12px; padding: 20px; margin: 20px 0;">
+                <h2 style="margin: 0 0 16px 0; color: #be185d; font-size: 18px;">📅 ご予約内容</h2>
+                <table style="width: 100%;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280;">日時</td>
+                    <td style="padding: 8px 0; font-weight: bold;">${dateStr} ${booking.time}〜</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280;">相談タイプ</td>
+                    <td style="padding: 8px 0; font-weight: bold;">${typeLabel}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280;">時間</td>
+                    <td style="padding: 8px 0; font-weight: bold;">${booking.duration}分</td>
+                  </tr>
+                </table>
+              </div>
+              
+              <div style="background: #ecfdf5; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
+                <h2 style="margin: 0 0 12px 0; color: #059669; font-size: 18px;">🎥 オンラインミーティング</h2>
+                <p style="margin: 0 0 16px 0;">開始時刻になりましたら、下記リンクからご参加ください。</p>
+                <a href="${CONSULTATION_MEET_URL}" 
+                   style="display: inline-block; background: #10b981; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+                  Google Meet に参加
+                </a>
+                <p style="margin: 16px 0 0 0; font-size: 12px; color: #6b7280;">${CONSULTATION_MEET_URL}</p>
+              </div>
+              
+              <p style="color: #6b7280; font-size: 14px;">
+                ご不明な点がございましたら、お気軽にご連絡ください。<br>
+                当日お会いできることを楽しみにしております。
+              </p>
+            </div>
+            <div style="background: #f3f4f6; padding: 16px; text-align: center; font-size: 12px; color: #6b7280;">
+              mirAIcafe - AI活用とキャリア支援<br>
+              <a href="https://miraicafe.work" style="color: #ec4899;">https://miraicafe.work</a>
+            </div>
+          </div>
+        `
+      })
+    })
+    
+    if (!emailRes.ok) {
+      const error = await emailRes.text()
+      console.error('Email send error:', error)
+      return c.json({ error: 'メール送信に失敗しました' }, 500)
+    }
+    
+    return c.json({ success: true })
+  } catch (error: any) {
+    console.error('Send reminder error:', error)
+    return c.json({ error: error?.message || 'Failed to send reminder' }, 500)
+  }
+})
+
+// カレンダー登録API（手動）
+app.post('/admin/api/consultations/:id/calendar', async (c) => {
+  try {
+    const id = c.req.param('id')
+    
+    const booking = await c.env.DB.prepare(`
+      SELECT * FROM consultation_bookings WHERE id = ?
+    `).bind(id).first() as any
+    
+    if (!booking) {
+      return c.json({ error: '予約が見つかりません' }, 404)
+    }
+    
+    // Note: Google Calendar APIへの書き込みにはOAuth認証が必要
+    // 現在の設定ではAPIキーのみなので、読み取り専用
+    // 手動でカレンダーに追加するためのリンクを生成
+    
+    const typeLabel = booking.type === 'ai' ? 'AI活用相談' : 'キャリア・メンタル相談'
+    const [year, month, day] = booking.date.split('-').map(Number)
+    const [hour, minute] = booking.time.split(':').map(Number)
+    
+    // JST時刻をUTCに変換（JST = UTC+9）
+    const startDateUTC = new Date(Date.UTC(year, month - 1, day, hour - 9, minute))
+    const endDateUTC = new Date(startDateUTC.getTime() + booking.duration * 60 * 1000)
+    
+    // Google Calendar URL形式（YYYYMMDDTHHmmssZ）
+    const formatGoogleDate = (d: Date) => {
+      return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+    }
+    
+    const details = `お客様: ${booking.customer_name}
+メール: ${booking.customer_email}
+電話: ${booking.customer_phone || '-'}
+
+Meet URL: ${CONSULTATION_MEET_URL}`
+    
+    const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`【個別相談】${booking.customer_name}様 - ${typeLabel}`)}&dates=${formatGoogleDate(startDateUTC)}/${formatGoogleDate(endDateUTC)}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(CONSULTATION_MEET_URL)}`
+    
+    return c.json({ 
+      success: true, 
+      calendarUrl,
+      message: 'カレンダーURLを生成しました。新しいタブで開いて登録してください。'
+    })
+  } catch (error: any) {
+    console.error('Calendar registration error:', error)
+    return c.json({ error: error?.message || 'Failed to register to calendar' }, 500)
+  }
+})
+
+// 承認API（決済URLをお客様に送信）
+app.post('/admin/api/consultations/:id/approve', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const STRIPE_SECRET_KEY = c.env.STRIPE_SECRET_KEY
+    const RESEND_API_KEY = c.env.RESEND_API_KEY
+    
+    if (!STRIPE_SECRET_KEY) {
+      return c.json({ error: 'Stripe設定がありません' }, 500)
+    }
+    
+    const booking = await c.env.DB.prepare(`
+      SELECT * FROM consultation_bookings WHERE id = ?
+    `).bind(id).first() as any
+    
+    if (!booking) {
+      return c.json({ error: '予約が見つかりません' }, 404)
+    }
+    
+    if (booking.status !== 'pending') {
+      return c.json({ error: 'この予約は既に処理済みです' }, 400)
+    }
+    
+    const typeLabel = booking.type === 'ai' ? 'AI活用相談' : 'キャリア・メンタル相談'
+    const [year, month, day] = booking.date.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土']
+    const dateLabel = `${year}年${month}月${day}日(${weekdays[date.getDay()]})`
+    
+    // Stripeチェックアウトセッションを作成
+    const stripe = new Stripe(STRIPE_SECRET_KEY, {
+      apiVersion: '2023-10-16',
+    })
+    
+    const origin = c.req.header('origin') || 'https://miraicafe.work'
+    
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'jpy',
+            product_data: {
+              name: `【${typeLabel}】${booking.duration}分`,
+              description: `日時: ${dateLabel} ${booking.time}〜`,
+            },
+            unit_amount: booking.amount,
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: `${origin}/consultation/complete?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/consultation?canceled=true`,
+      customer_email: booking.customer_email,
+      metadata: {
+        consultation_id: booking.id,
+        type: booking.type,
+        duration: booking.duration.toString(),
+        date: booking.date,
+        time: booking.time,
+        customer_name: booking.customer_name,
+        customer_phone: booking.customer_phone || '',
+        message: booking.message || '',
+      },
+      locale: 'ja',
+    })
+    
+    // DBを更新（approved状態に）
+    await c.env.DB.prepare(`
+      UPDATE consultation_bookings 
+      SET status = 'approved', stripe_session_id = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(session.id, id).run()
+    
+    // お客様に決済URLメールを送信
+    if (RESEND_API_KEY && session.url) {
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'mirAIcafe <noreply@miraicafe.work>',
+            to: booking.customer_email,
+            subject: `【予約承認】${typeLabel}のお支払いのご案内 | mirAIcafe`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #ec4899;">mirAIcafe - 個別相談予約承認</h2>
+                
+                <p>${booking.customer_name}様</p>
+                
+                <p>この度は個別相談のご予約をいただき、誠にありがとうございます。<br>
+                ご予約内容を確認し、承認いたしました。</p>
+                
+                <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <h3 style="margin-top: 0; color: #333;">ご予約内容</h3>
+                  <p><strong>相談タイプ:</strong> ${typeLabel}</p>
+                  <p><strong>日時:</strong> ${dateLabel} ${booking.time}〜</p>
+                  <p><strong>時間:</strong> ${booking.duration}分</p>
+                  <p><strong>料金:</strong> ¥${booking.amount.toLocaleString()}</p>
+                </div>
+                
+                <div style="background: #ec4899; color: white; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                  <p style="margin: 0 0 15px 0; font-weight: bold;">お支払いはこちらから</p>
+                  <a href="${session.url}" style="display: inline-block; background: white; color: #ec4899; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+                    決済ページへ進む
+                  </a>
+                </div>
+                
+                <p style="color: #666; font-size: 14px;">
+                  ※ 決済完了後、Google Meetの参加URLをお送りいたします。<br>
+                  ※ お支払いは予約日の前日までにお済ませください。
+                </p>
+                
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                
+                <p style="color: #666; font-size: 12px;">
+                  mirAIcafe<br>
+                  <a href="https://miraicafe.work">https://miraicafe.work</a>
+                </p>
+              </div>
+            `,
+          }),
+        })
+        
+        // 管理者にも通知
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'mirAIcafe <noreply@miraicafe.work>',
+            to: 'hatarakusutairu@gmail.com',
+            subject: `【承認完了】${booking.customer_name}様に決済URLを送信しました`,
+            html: `
+              <div style="font-family: sans-serif;">
+                <h2>承認・決済URL送信完了</h2>
+                <p>${booking.customer_name}様(${booking.customer_email})に決済URLを送信しました。</p>
+                <p><strong>予約内容:</strong> ${typeLabel} ${booking.duration}分</p>
+                <p><strong>日時:</strong> ${dateLabel} ${booking.time}〜</p>
+                <p><strong>金額:</strong> ¥${booking.amount.toLocaleString()}</p>
+                <p><a href="https://miraicafe.work/admin/consultations">管理画面で確認</a></p>
+              </div>
+            `,
+          }),
+        })
+      } catch (emailError) {
+        console.error('Email error:', emailError)
+      }
+    }
+    
+    return c.json({ 
+      success: true, 
+      message: '承認しました。お客様に決済URLを送信しました。',
+      paymentUrl: session.url
+    })
+  } catch (error: any) {
+    console.error('Approve error:', error)
+    return c.json({ error: error?.message || '承認処理に失敗しました' }, 500)
+  }
+})
+
+// 決済URL再送信API
+app.post('/admin/api/consultations/:id/resend-payment', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const STRIPE_SECRET_KEY = c.env.STRIPE_SECRET_KEY
+    const RESEND_API_KEY = c.env.RESEND_API_KEY
+    
+    if (!STRIPE_SECRET_KEY || !RESEND_API_KEY) {
+      return c.json({ error: '設定が不足しています' }, 500)
+    }
+    
+    const booking = await c.env.DB.prepare(`
+      SELECT * FROM consultation_bookings WHERE id = ?
+    `).bind(id).first() as any
+    
+    if (!booking) {
+      return c.json({ error: '予約が見つかりません' }, 404)
+    }
+    
+    if (booking.status !== 'approved') {
+      return c.json({ error: 'この予約は承認済みではありません' }, 400)
+    }
+    
+    const typeLabel = booking.type === 'ai' ? 'AI活用相談' : 'キャリア・メンタル相談'
+    const [year, month, day] = booking.date.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土']
+    const dateLabel = `${year}年${month}月${day}日(${weekdays[date.getDay()]})`
+    
+    // 既存のセッションを取得するか、新しく作成
+    const stripe = new Stripe(STRIPE_SECRET_KEY, {
+      apiVersion: '2023-10-16',
+    })
+    
+    let paymentUrl: string | null = null
+    
+    // 既存セッションがあれば確認
+    if (booking.stripe_session_id) {
+      try {
+        const existingSession = await stripe.checkout.sessions.retrieve(booking.stripe_session_id)
+        if (existingSession.status === 'open' && existingSession.url) {
+          paymentUrl = existingSession.url
+        }
+      } catch (e) {
+        // セッションが期限切れなど
+      }
+    }
+    
+    // 新しいセッションを作成
+    if (!paymentUrl) {
+      const origin = c.req.header('origin') || 'https://miraicafe.work'
+      
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'jpy',
+              product_data: {
+                name: `【${typeLabel}】${booking.duration}分`,
+                description: `日時: ${dateLabel} ${booking.time}〜`,
+              },
+              unit_amount: booking.amount,
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url: `${origin}/consultation/complete?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/consultation?canceled=true`,
+        customer_email: booking.customer_email,
+        metadata: {
+          consultation_id: booking.id,
+          type: booking.type,
+          duration: booking.duration.toString(),
+          date: booking.date,
+          time: booking.time,
+          customer_name: booking.customer_name,
+          customer_phone: booking.customer_phone || '',
+          message: booking.message || '',
+        },
+        locale: 'ja',
+      })
+      
+      paymentUrl = session.url
+      
+      // DBを更新
+      await c.env.DB.prepare(`
+        UPDATE consultation_bookings 
+        SET stripe_session_id = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(session.id, id).run()
+    }
+    
+    // メール送信
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'mirAIcafe <noreply@miraicafe.work>',
+        to: booking.customer_email,
+        subject: `【リマインド】${typeLabel}のお支払いのご案内 | mirAIcafe`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #ec4899;">mirAIcafe - お支払いのご案内（リマインド）</h2>
+            
+            <p>${booking.customer_name}様</p>
+            
+            <p>個別相談のご予約について、お支払いがまだ完了していないようです。<br>
+            お早めにお支払いをお願いいたします。</p>
+            
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #333;">ご予約内容</h3>
+              <p><strong>相談タイプ:</strong> ${typeLabel}</p>
+              <p><strong>日時:</strong> ${dateLabel} ${booking.time}〜</p>
+              <p><strong>時間:</strong> ${booking.duration}分</p>
+              <p><strong>料金:</strong> ¥${booking.amount.toLocaleString()}</p>
+            </div>
+            
+            <div style="background: #ec4899; color: white; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+              <p style="margin: 0 0 15px 0; font-weight: bold;">お支払いはこちらから</p>
+              <a href="${paymentUrl}" style="display: inline-block; background: white; color: #ec4899; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+                決済ページへ進む
+              </a>
+            </div>
+            
+            <p style="color: #666; font-size: 14px;">
+              ※ 決済完了後、Google Meetの参加URLをお送りいたします。<br>
+              ※ 期日までにお支払いがない場合、予約がキャンセルとなる場合があります。
+            </p>
+            
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+            
+            <p style="color: #666; font-size: 12px;">
+              mirAIcafe<br>
+              <a href="https://miraicafe.work">https://miraicafe.work</a>
+            </p>
+          </div>
+        `,
+      }),
+    })
+    
+    return c.json({ success: true, message: '決済URLを再送信しました' })
+  } catch (error: any) {
+    console.error('Resend payment error:', error)
+    return c.json({ error: error?.message || '送信に失敗しました' }, 500)
+  }
+})
+
 // ===== 決済管理 =====
 app.get('/admin/payments', async (c) => {
   try {
@@ -3093,11 +5896,16 @@ app.get('/admin/course-series/:id/edit', async (c) => {
       SELECT id, title, session_number FROM courses WHERE series_id = ? ORDER BY session_number ASC
     `).bind(id).all()
     
+    const terms = await c.env.DB.prepare(`
+      SELECT id, series_id, name, start_date, end_date, status FROM course_terms WHERE series_id = ? ORDER BY start_date ASC
+    `).bind(id).all()
+    
     return c.html(renderCourseSeriesForm(
       patterns.results as any[],
       courses.results as any[],
       series as any,
-      linkedCourses.results as any[]
+      linkedCourses.results as any[],
+      terms.results as any[]
     ))
   } catch (error) {
     console.error('Course series edit error:', error)
@@ -3150,18 +5958,19 @@ app.post('/admin/api/course-series', async (c) => {
     
     await c.env.DB.prepare(`
       INSERT INTO course_series (
-        id, title, subtitle, description, total_sessions, duration_minutes,
+        id, title, subtitle, description, image, total_sessions, duration_minutes,
         base_price_per_session, pricing_pattern_id,
         calc_single_price_incl, calc_single_total_incl, calc_course_price_incl,
         calc_early_price_incl, calc_monthly_price_incl, calc_savings_course, calc_savings_early,
         early_bird_deadline, is_featured, status,
         stripe_product_id, stripe_price_id_course, stripe_price_id_early, stripe_price_id_monthly
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       data.title,
       data.subtitle || '',
       data.description || '',
+      data.image || null,
       data.total_sessions,
       data.duration_minutes,
       data.base_price_per_session,
@@ -3188,6 +5997,17 @@ app.post('/admin/api/course-series', async (c) => {
         await c.env.DB.prepare(`
           UPDATE courses SET series_id = ?, session_number = ? WHERE id = ?
         `).bind(id, i + 1, data.linked_courses[i]).run()
+      }
+    }
+    
+    // 開催期の作成（新規作成時にpending_termsがある場合）
+    if (data.pending_terms && data.pending_terms.length > 0) {
+      for (const term of data.pending_terms) {
+        const termId = `term-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+        await c.env.DB.prepare(`
+          INSERT INTO course_terms (id, series_id, name, start_date, end_date, status)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).bind(termId, id, term.name, term.start_date, term.end_date, term.status || 'active').run()
       }
     }
     
@@ -3271,6 +6091,7 @@ app.put('/admin/api/course-series/:id', async (c) => {
         title = ?,
         subtitle = ?,
         description = ?,
+        image = ?,
         total_sessions = ?,
         duration_minutes = ?,
         base_price_per_session = ?,
@@ -3295,6 +6116,7 @@ app.put('/admin/api/course-series/:id', async (c) => {
       data.title,
       data.subtitle || '',
       data.description || '',
+      data.image || null,
       data.total_sessions,
       data.duration_minutes,
       data.base_price_per_session,
@@ -3373,6 +6195,73 @@ app.delete('/admin/api/course-series/:id', async (c) => {
   }
 })
 
+// ===== 開催期管理API =====
+app.post('/admin/api/course-terms', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { series_id, name, start_date, end_date, status } = body
+    
+    if (!series_id || !name || !start_date || !end_date) {
+      return c.json({ success: false, error: '必須項目が不足しています' }, 400)
+    }
+    
+    const termId = `term-${Date.now().toString(36).toUpperCase()}`
+    
+    await c.env.DB.prepare(`
+      INSERT INTO course_terms (id, series_id, name, start_date, end_date, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(termId, series_id, name, start_date, end_date, status || 'active').run()
+    
+    // このシリーズに紐づく講座のスケジュールをこの開催期に関連付け
+    await c.env.DB.prepare(`
+      UPDATE schedules SET term_id = ?
+      WHERE course_id IN (SELECT id FROM courses WHERE series_id = ?)
+      AND (term_id IS NULL OR term_id = '')
+    `).bind(termId, series_id).run()
+    
+    return c.json({ 
+      success: true, 
+      term: { id: termId, series_id, name, start_date, end_date, status: status || 'active' }
+    })
+  } catch (error) {
+    console.error('Create course term error:', error)
+    return c.json({ success: false, error: '開催期の作成に失敗しました' }, 500)
+  }
+})
+
+app.delete('/admin/api/course-terms/:id', async (c) => {
+  const termId = c.req.param('id')
+  
+  try {
+    // この開催期に紐づく予約がないか確認
+    const bookings = await c.env.DB.prepare(`
+      SELECT COUNT(*) as count FROM bookings WHERE term_id = ?
+    `).bind(termId).first() as { count: number }
+    
+    if (bookings && bookings.count > 0) {
+      return c.json({ 
+        success: false, 
+        error: `この開催期には${bookings.count}件の予約があるため削除できません` 
+      }, 400)
+    }
+    
+    // スケジュールの開催期紐づけを解除
+    await c.env.DB.prepare(`
+      UPDATE schedules SET term_id = NULL WHERE term_id = ?
+    `).bind(termId).run()
+    
+    // 開催期を削除
+    await c.env.DB.prepare(`
+      DELETE FROM course_terms WHERE id = ?
+    `).bind(termId).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Delete course term error:', error)
+    return c.json({ success: false, error: '開催期の削除に失敗しました' }, 500)
+  }
+})
+
 // ===== お問い合わせ管理 =====
 app.get('/admin/contacts', async (c) => {
   const tab = c.req.query('tab') || 'new'
@@ -3430,7 +6319,7 @@ app.post('/admin/contacts/:id/status', async (c) => {
 app.post('/admin/api/contacts/:id/reply', async (c) => {
   // 認証チェック
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSession(sessionId)) {
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
   
@@ -3514,6 +6403,16 @@ app.post('/admin/api/contacts/:id/reply', async (c) => {
 
 // ===== 画像アップロードAPI =====
 
+// デバッグ用エンドポイント（一時的）
+app.get('/admin/api/debug-env', async (c) => {
+  return c.json({
+    hasSupabaseUrl: !!c.env.SUPABASE_URL,
+    hasSupabaseKey: !!c.env.SUPABASE_ANON_KEY,
+    supabaseUrlPrefix: c.env.SUPABASE_URL ? c.env.SUPABASE_URL.substring(0, 30) + '...' : 'NOT SET',
+    envKeys: Object.keys(c.env)
+  })
+})
+
 // 許可されるMIMEタイプ
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -3530,19 +6429,38 @@ function generateFileName(originalName: string): string {
 
 // 画像アップロードエンドポイント（Supabase Storage）
 app.post('/admin/api/upload', async (c) => {
-  // 認証チェック
-  const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSession(sessionId)) {
-    return c.json({ error: '認証が必要です' }, 401)
-  }
-
   try {
-    const formData = await c.req.formData()
+    // 認証チェック
+    const sessionId = getCookie(c, 'admin_session')
+    if (!sessionId || !validateSessionToken(sessionId).valid) {
+      return c.json({ error: '認証が必要です' }, 401)
+    }
+
+    // Supabase設定チェック（先に確認）
+    if (!c.env.SUPABASE_URL || !c.env.SUPABASE_ANON_KEY) {
+      console.error('Supabase config missing:', { 
+        hasUrl: !!c.env.SUPABASE_URL, 
+        hasKey: !!c.env.SUPABASE_ANON_KEY 
+      })
+      return c.json({ error: 'ストレージが設定されていません。管理者に連絡してください。' }, 500)
+    }
+
+    // FormDataを取得
+    let formData: FormData
+    try {
+      formData = await c.req.formData()
+    } catch (formError) {
+      console.error('FormData parse error:', formError)
+      return c.json({ error: 'リクエストの解析に失敗しました' }, 400)
+    }
+
     const file = formData.get('file') as File | null
 
     if (!file) {
       return c.json({ error: 'ファイルが選択されていません' }, 400)
     }
+
+    console.log('File received:', { name: file.name, size: file.size, type: file.type })
 
     // MIMEタイプチェック
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
@@ -3556,22 +6474,26 @@ app.post('/admin/api/upload', async (c) => {
       return c.json({ error: `ファイルサイズが大きすぎます（${sizeMB}MB）。最大10MBまでです。` }, 400)
     }
 
-    // Supabase設定チェック
-    if (!c.env.SUPABASE_URL || !c.env.SUPABASE_ANON_KEY) {
-      return c.json({ error: 'ストレージが設定されていません' }, 500)
-    }
-
     const supabaseConfig: SupabaseConfig = {
       url: c.env.SUPABASE_URL,
       anonKey: c.env.SUPABASE_ANON_KEY
     }
 
+    console.log('Uploading to Supabase:', { 
+      fileName: file.name, 
+      size: file.size, 
+      type: file.type
+    })
+
     // Supabase Storageにアップロード
     const result = await uploadToSupabase(supabaseConfig, file)
 
     if (!result.success) {
+      console.error('Supabase upload failed:', result.error)
       return c.json({ error: result.error || 'アップロードに失敗しました' }, 500)
     }
+
+    console.log('Upload success:', result.url)
 
     return c.json({ 
       success: true, 
@@ -3581,9 +6503,9 @@ app.post('/admin/api/upload', async (c) => {
       type: result.type
     })
   } catch (error) {
-    console.error('Upload error:', error)
-    const errorMsg = error instanceof Error ? error.message : 'アップロードに失敗しました'
-    return c.json({ error: errorMsg }, 500)
+    console.error('Upload endpoint error:', error)
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    return c.json({ error: `アップロードエラー: ${errorMsg}` }, 500)
   }
 })
 
@@ -3591,7 +6513,7 @@ app.post('/admin/api/upload', async (c) => {
 app.post('/admin/api/upload-multiple', async (c) => {
   // 認証チェック
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSession(sessionId)) {
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
 
@@ -3660,7 +6582,7 @@ app.post('/admin/api/upload-multiple', async (c) => {
 app.post('/admin/api/upload-video', async (c) => {
   // 認証チェック
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSession(sessionId)) {
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
 
@@ -3739,7 +6661,7 @@ app.post('/admin/api/upload-video', async (c) => {
 app.delete('/admin/api/upload/:fileIdOrName', async (c) => {
   // 認証チェック
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSession(sessionId)) {
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
 
@@ -3762,7 +6684,7 @@ app.delete('/admin/api/upload/:fileIdOrName', async (c) => {
 app.get('/admin/api/ai/search-images', async (c) => {
   // 認証チェック
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSession(sessionId)) {
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
 
@@ -6241,6 +9163,221 @@ app.get('/admin/api/surveys/export', async (c) => {
     })
   } catch (error) {
     return c.json({ error: 'エクスポートに失敗しました' }, 500)
+  }
+})
+
+// ===== リマインドメール送信 =====
+
+// リマインドメール送信API（Cron/手動実行用）
+app.get('/api/cron/send-reminders', async (c) => {
+  // セキュリティ: 特定のヘッダーまたはシークレットで保護
+  const authHeader = c.req.header('X-Cron-Secret')
+  const cronSecret = c.env.STRIPE_WEBHOOK_SECRET // 既存のシークレットを流用
+  
+  // 管理者セッションまたはCronシークレットで認証
+  const sessionId = getCookie(c, 'admin_session')
+  const isAdmin = sessionId && validateSessionToken(sessionId).valid
+  const isCron = authHeader === cronSecret
+  
+  if (!isAdmin && !isCron) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+  
+  if (!c.env.RESEND_API_KEY) {
+    return c.json({ error: 'RESEND_API_KEY not configured' }, 500)
+  }
+  
+  const results = {
+    sent: 0,
+    failed: 0,
+    errors: [] as string[]
+  }
+  
+  try {
+    const today = new Date()
+    const todayStr = today.toISOString().split('T')[0]
+    
+    // 明日の日付
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowStr = tomorrow.toISOString().split('T')[0]
+    
+    // 3日後の日付
+    const threeDaysLater = new Date(today)
+    threeDaysLater.setDate(threeDaysLater.getDate() + 3)
+    const threeDaysStr = threeDaysLater.toISOString().split('T')[0]
+    
+    // 講座予約のリマインド（明日と3日後）
+    const bookings = await c.env.DB.prepare(`
+      SELECT b.*, c.online_url, s.start_time, s.end_time
+      FROM bookings b
+      LEFT JOIN courses c ON b.course_id = c.id
+      LEFT JOIN schedules s ON b.course_id = s.course_id AND b.preferred_date = s.date
+      WHERE b.payment_status = 'paid'
+      AND b.status != 'cancelled'
+      AND (b.preferred_date = ? OR b.preferred_date = ?)
+    `).bind(tomorrowStr, threeDaysStr).all()
+    
+    for (const booking of (bookings.results || []) as any[]) {
+      const daysUntil = booking.preferred_date === tomorrowStr ? 1 : 3
+      const dateObj = new Date(booking.preferred_date)
+      const dateStr = dateObj.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })
+      
+      try {
+        const result = await sendReminderEmail(c.env, {
+          customerName: booking.customer_name,
+          customerEmail: booking.customer_email,
+          courseName: booking.course_name,
+          scheduleDate: dateStr,
+          scheduleTime: booking.start_time && booking.end_time ? `${booking.start_time}〜${booking.end_time}` : booking.preferred_time || '',
+          meetUrl: booking.online_url,
+          daysUntil
+        })
+        
+        if (result.success) {
+          results.sent++
+        } else {
+          results.failed++
+          results.errors.push(`Booking ${booking.id}: ${result.error}`)
+        }
+      } catch (e) {
+        results.failed++
+        results.errors.push(`Booking ${booking.id}: ${String(e)}`)
+      }
+    }
+    
+    // ワークスペース予約のリマインド
+    const workspaceBookings = await c.env.DB.prepare(`
+      SELECT b.*, s.date, s.start_time, s.end_time, s.meet_url
+      FROM workspace_bookings b
+      JOIN workspace_schedules s ON b.workspace_schedule_id = s.id
+      WHERE b.payment_status = 'paid'
+      AND b.status != 'cancelled'
+      AND (s.date = ? OR s.date = ?)
+    `).bind(tomorrowStr, threeDaysStr).all()
+    
+    for (const booking of (workspaceBookings.results || []) as any[]) {
+      const daysUntil = booking.date === tomorrowStr ? 1 : 3
+      const dateObj = new Date(booking.date)
+      const dateStr = dateObj.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })
+      
+      try {
+        const result = await sendReminderEmail(c.env, {
+          customerName: booking.customer_name,
+          customerEmail: booking.customer_email,
+          courseName: 'mirAIcafe ワークスペース',
+          scheduleDate: dateStr,
+          scheduleTime: `${booking.start_time}〜${booking.end_time}`,
+          meetUrl: booking.meet_url,
+          daysUntil
+        })
+        
+        if (result.success) {
+          results.sent++
+        } else {
+          results.failed++
+          results.errors.push(`Workspace ${booking.id}: ${result.error}`)
+        }
+      } catch (e) {
+        results.failed++
+        results.errors.push(`Workspace ${booking.id}: ${String(e)}`)
+      }
+    }
+    
+    return c.json({
+      success: true,
+      message: `リマインドメール送信完了: ${results.sent}件成功, ${results.failed}件失敗`,
+      ...results
+    })
+  } catch (error) {
+    console.error('Reminder cron error:', error)
+    return c.json({ error: 'リマインドメール送信処理でエラーが発生しました', detail: String(error) }, 500)
+  }
+})
+
+// 管理画面からリマインドメール手動送信
+app.post('/admin/api/send-reminder', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+  
+  if (!c.env.RESEND_API_KEY) {
+    return c.json({ error: 'メール送信サービスが設定されていません' }, 500)
+  }
+  
+  try {
+    const { bookingId, type } = await c.req.json() // type: 'course' | 'workspace'
+    
+    if (type === 'workspace') {
+      const booking = await c.env.DB.prepare(`
+        SELECT b.*, s.date, s.start_time, s.end_time, s.meet_url
+        FROM workspace_bookings b
+        JOIN workspace_schedules s ON b.workspace_schedule_id = s.id
+        WHERE b.id = ?
+      `).bind(bookingId).first() as any
+      
+      if (!booking) {
+        return c.json({ error: '予約が見つかりません' }, 404)
+      }
+      
+      const dateObj = new Date(booking.date)
+      const dateStr = dateObj.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })
+      const today = new Date()
+      const diffDays = Math.ceil((dateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      
+      const result = await sendReminderEmail(c.env, {
+        customerName: booking.customer_name,
+        customerEmail: booking.customer_email,
+        courseName: 'mirAIcafe ワークスペース',
+        scheduleDate: dateStr,
+        scheduleTime: `${booking.start_time}〜${booking.end_time}`,
+        meetUrl: booking.meet_url,
+        daysUntil: diffDays
+      })
+      
+      if (result.success) {
+        return c.json({ success: true, message: 'リマインドメールを送信しました' })
+      } else {
+        return c.json({ error: result.error }, 500)
+      }
+    } else {
+      const booking = await c.env.DB.prepare(`
+        SELECT b.*, c.online_url, s.start_time, s.end_time
+        FROM bookings b
+        LEFT JOIN courses c ON b.course_id = c.id
+        LEFT JOIN schedules s ON b.course_id = s.course_id AND b.preferred_date = s.date
+        WHERE b.id = ?
+      `).bind(bookingId).first() as any
+      
+      if (!booking) {
+        return c.json({ error: '予約が見つかりません' }, 404)
+      }
+      
+      const dateObj = new Date(booking.preferred_date)
+      const dateStr = dateObj.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })
+      const today = new Date()
+      const diffDays = Math.ceil((dateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      
+      const result = await sendReminderEmail(c.env, {
+        customerName: booking.customer_name,
+        customerEmail: booking.customer_email,
+        courseName: booking.course_name,
+        scheduleDate: dateStr,
+        scheduleTime: booking.start_time && booking.end_time ? `${booking.start_time}〜${booking.end_time}` : booking.preferred_time || '',
+        meetUrl: booking.online_url,
+        daysUntil: diffDays
+      })
+      
+      if (result.success) {
+        return c.json({ success: true, message: 'リマインドメールを送信しました' })
+      } else {
+        return c.json({ error: result.error }, 500)
+      }
+    }
+  } catch (error) {
+    console.error('Send reminder error:', error)
+    return c.json({ error: 'リマインドメール送信に失敗しました' }, 500)
   }
 })
 

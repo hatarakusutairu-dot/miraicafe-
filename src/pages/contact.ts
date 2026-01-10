@@ -81,7 +81,7 @@ export const renderContactPage = () => {
                     <i class="fas fa-chevron-down text-ai-blue group-open:rotate-180 transition-transform"></i>
                   </summary>
                   <div class="px-4 pb-4">
-                    <p class="text-future-textLight text-sm">PCとインターネット環境があれば参加できます。Zoomを事前にインストールしてください。</p>
+                    <p class="text-future-textLight text-sm">PCとインターネット環境があれば参加できます。Google Meetを使用しますが、リンクをクリックするだけで参加できます（アカウント不要）。</p>
                   </div>
                 </details>
                 

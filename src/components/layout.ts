@@ -408,9 +408,10 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       100% { opacity: 1; transform: translateY(0); }
     }
     
-    /* Text glow effect */
-    .hero-text-glow {
-      animation: heroTextGlow 3s ease-in-out infinite;
+    /* Text glow effect - combined with slide-up */
+    .hero-slide-up.hero-text-glow {
+      animation: heroSlideUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+                 heroTextGlow 3s ease-in-out 0.9s infinite;
     }
     @keyframes heroTextGlow {
       0%, 100% { filter: drop-shadow(0 0 8px rgba(184, 149, 106, 0.3)); }

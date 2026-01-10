@@ -44,9 +44,9 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
             <span class="text-cafe-text text-sm font-medium">初心者大歓迎・少人数制で安心サポート</span>
           </div>
           
-          <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold text-cafe-text mb-6 leading-tight">
-            <span class="block hero-slide-up" style="animation-delay: 0.4s;">温かな空間で、</span>
-            <span class="text-wood-gradient hero-slide-up hero-text-glow" style="animation-delay: 0.6s;">AIを学ぼう。</span>
+          <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold text-cafe-text mb-6 leading-relaxed md:leading-snug">
+            <span class="block hero-slide-up mb-2 md:mb-3" style="animation-delay: 0.4s;">温かな空間で、</span>
+            <span class="block text-wood-gradient hero-slide-up hero-text-glow" style="animation-delay: 0.6s;">AIを学ぼう。</span>
           </h1>
           
           <p class="text-xl text-cafe-textLight mb-8 leading-relaxed hero-fade-in" style="animation-delay: 0.8s;">
@@ -353,10 +353,15 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           <h2 class="text-4xl font-bold text-cafe-text">講師紹介</h2>
         </div>
         
-        <div class="flex flex-col lg:flex-row gap-10 items-center">
+        <div class="flex flex-col lg:flex-row gap-10 items-center relative">
           <!-- 左側: プロフィール画像 -->
-          <div class="lg:w-72 flex-shrink-0 mx-auto lg:mx-0">
+          <div class="lg:w-72 flex-shrink-0 mx-auto lg:mx-0 relative">
             <img src="/static/mion-profile.png" alt="mion(ミオン)" class="w-full max-w-xs mx-auto rounded-2xl shadow-xl">
+            
+            <!-- 個別相談バナー（ふわふわアニメーション） -->
+            <div class="consultation-banner-wrapper absolute -bottom-12 -left-8 lg:-left-20 z-20 cursor-pointer" onclick="openConsultationModal()">
+              <img src="/static/consultation-btn.png?v=2" alt="個別相談はこちらから" class="consultation-banner w-44 md:w-52 lg:w-56 drop-shadow-lg hover:scale-110 transition-transform duration-300">
+            </div>
           </div>
           
           <!-- 右側: プロフィール本文（短縮版） -->
@@ -381,6 +386,34 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
             <a href="https://hatarakustyle.jp/" target="_blank" class="inline-flex items-center px-6 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition">
               <i class="fas fa-external-link-alt mr-2"></i>メンタルヘルス・キャリアコンサルタントとしての活動はこちら
             </a>
+          </div>
+          
+          <!-- ワークスペースへの入り口（カフェカップ） -->
+          <div class="absolute -right-4 top-0 lg:right-0 lg:top-4 z-10">
+            <div id="cafe-cup-wrapper" class="cafe-cup-container cursor-pointer" onclick="openWorkspaceModal()">
+              <!-- ふわふわ湯気のSVG -->
+              <svg class="steam-svg" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- 左の湯気（ふわふわ雲形） -->
+                <ellipse class="steam-cloud steam-1" cx="25" cy="55" rx="12" ry="8" fill="#f5d6a8" opacity="0.6"/>
+                <ellipse class="steam-cloud steam-1" cx="30" cy="40" rx="10" ry="7" fill="#f5d6a8" opacity="0.5"/>
+                <ellipse class="steam-cloud steam-1" cx="22" cy="25" rx="8" ry="6" fill="#f5d6a8" opacity="0.4"/>
+                <!-- 中央の湯気 -->
+                <ellipse class="steam-cloud steam-2" cx="60" cy="50" rx="14" ry="10" fill="#f5d6a8" opacity="0.6"/>
+                <ellipse class="steam-cloud steam-2" cx="55" cy="32" rx="11" ry="8" fill="#f5d6a8" opacity="0.5"/>
+                <ellipse class="steam-cloud steam-2" cx="62" cy="15" rx="9" ry="6" fill="#f5d6a8" opacity="0.4"/>
+                <!-- 右の湯気 -->
+                <ellipse class="steam-cloud steam-3" cx="95" cy="52" rx="11" ry="9" fill="#f5d6a8" opacity="0.6"/>
+                <ellipse class="steam-cloud steam-3" cx="90" cy="35" rx="9" ry="7" fill="#f5d6a8" opacity="0.5"/>
+                <ellipse class="steam-cloud steam-3" cx="98" cy="20" rx="7" ry="5" fill="#f5d6a8" opacity="0.4"/>
+              </svg>
+              <!-- カフェカップ画像 -->
+              <img src="/static/miraicafe-cup.png" alt="mirAIcafe ワークスペース" class="cafe-cup-image w-24 h-24 md:w-32 md:h-32 object-contain drop-shadow-lg">
+              <!-- ホバー時のツールチップ -->
+              <div class="cafe-tooltip">
+                <span class="text-sm font-medium">☕ ワークスペース</span>
+                <span class="text-xs opacity-80">みんなでAI触ろう！</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -763,6 +796,326 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         }
       });
     </script>
+    
+    <!-- ワークスペース予約モーダル -->
+    <div id="workspace-modal" class="workspace-modal-overlay" style="display:none;" onclick="if(event.target === this) closeWorkspaceModal()">
+      <div class="workspace-modal cafe-door-frame">
+        <div class="cafe-door-header">
+          <img src="/static/miraicafe-cup.png" alt="mirAIcafe" class="w-20 h-20 mx-auto mb-3 drop-shadow-md">
+          <h2 class="text-2xl font-bold text-amber-900">mirAIcafe ワークスペース</h2>
+          <p class="text-amber-700 mt-2">みんなでAIツールを触る時間☕</p>
+        </div>
+        <div class="cafe-door-content">
+          <div class="mb-6">
+            <p class="text-gray-600 text-sm leading-relaxed">
+              講座のアフターフォローとして、受講者の皆様と一緒にAIツールを触る時間です。
+              「ここどうやるの？」「こんな使い方あるよ！」など気軽に交流しましょう☕
+            </p>
+          </div>
+          
+          <div class="bg-amber-50 rounded-xl p-4 mb-6">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-amber-800"><i class="fas fa-clock mr-2"></i>約1時間</span>
+              <span class="text-amber-800"><i class="fas fa-users mr-2"></i>定員6名</span>
+              <span class="text-amber-800 font-bold"><i class="fas fa-yen-sign mr-1"></i>500円</span>
+            </div>
+          </div>
+          
+          <h3 class="font-bold text-gray-800 mb-3"><i class="fas fa-calendar-alt mr-2 text-amber-600"></i>開催日程</h3>
+          <div id="workspace-schedules" class="space-y-3 mb-6 max-h-64 overflow-y-auto">
+            <div class="text-center py-8 text-gray-400">
+              <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+              <p>読み込み中...</p>
+            </div>
+          </div>
+          
+          <div id="workspace-booking-form" class="hidden">
+            <div class="border-t pt-4 mb-4">
+              <h4 class="font-bold text-gray-800 mb-3"><i class="fas fa-user mr-2 text-amber-600"></i>お客様情報</h4>
+              <div class="space-y-3">
+                <input type="text" id="ws-name" placeholder="お名前" required class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                <input type="email" id="ws-email" placeholder="メールアドレス" required class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                <input type="tel" id="ws-phone" placeholder="電話番号（任意）" class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+              </div>
+            </div>
+            
+            <!-- 利用規約等のチェックボックス -->
+            <div class="bg-gray-50 rounded-xl p-3 mb-4 space-y-2">
+              <label class="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" id="ws-agree-terms" class="mt-1 w-4 h-4 text-amber-500 border-gray-300 rounded focus:ring-amber-500" onchange="checkWsAgreements()">
+                <span class="text-xs text-gray-700">
+                  <a href="/terms" target="_blank" class="text-amber-600 underline">利用規約</a>に同意する
+                </span>
+              </label>
+              <label class="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" id="ws-agree-cancellation" class="mt-1 w-4 h-4 text-amber-500 border-gray-300 rounded focus:ring-amber-500" onchange="checkWsAgreements()">
+                <span class="text-xs text-gray-700">
+                  <a href="/cancellation-policy" target="_blank" class="text-amber-600 underline">キャンセルポリシー</a>に同意する
+                </span>
+              </label>
+              <label class="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" id="ws-agree-commerce" class="mt-1 w-4 h-4 text-amber-500 border-gray-300 rounded focus:ring-amber-500" onchange="checkWsAgreements()">
+                <span class="text-xs text-gray-700">
+                  <a href="/commerce" target="_blank" class="text-amber-600 underline">特定商取引法に基づく表記</a>を確認しました
+                </span>
+              </label>
+            </div>
+            
+            <button onclick="processWorkspaceBooking()" id="ws-submit-btn" class="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+              <i class="fas fa-credit-card mr-2"></i>500円で予約する
+            </button>
+            <p class="text-xs text-gray-400 text-center mt-2">決済はStripeで安全に処理されます</p>
+          </div>
+          
+          <button onclick="closeWorkspaceModal()" class="w-full mt-4 py-2 text-gray-500 hover:text-gray-700 text-sm">
+            閉じる
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+      let selectedWorkspaceSchedule = null;
+      
+      function openWorkspaceModal() {
+        const modal = document.getElementById('workspace-modal');
+        modal.style.display = 'flex';
+        // 少し遅らせてクラス追加（アニメーション用）
+        requestAnimationFrame(() => {
+          modal.classList.add('active');
+        });
+        document.body.style.overflow = 'hidden';
+        loadWorkspaceSchedules();
+      }
+      
+      function closeWorkspaceModal() {
+        const modal = document.getElementById('workspace-modal');
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+        selectedWorkspaceSchedule = null;
+        document.getElementById('workspace-booking-form').classList.add('hidden');
+        // アニメーション完了後に非表示
+        setTimeout(() => {
+          modal.style.display = 'none';
+        }, 300);
+      }
+      
+      async function loadWorkspaceSchedules() {
+        try {
+          const res = await fetch('/api/workspace/schedules');
+          const data = await res.json();
+          const container = document.getElementById('workspace-schedules');
+          
+          if (!data.schedules || data.schedules.length === 0) {
+            container.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-calendar-times text-3xl mb-2 opacity-50"></i><p>現在予約可能な日程はありません</p></div>';
+            return;
+          }
+          
+          container.innerHTML = data.schedules.map(s => {
+            const remaining = s.capacity - s.enrolled;
+            const isFull = remaining <= 0;
+            const dateObj = new Date(s.date);
+            const dateStr = dateObj.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' });
+            
+            return '<div class="schedule-option border-2 rounded-xl p-4 cursor-pointer transition-all ' + (isFull ? 'opacity-50 cursor-not-allowed border-gray-200' : 'border-amber-200 hover:border-amber-500 hover:bg-amber-50') + '" data-id="' + s.id + '" onclick="' + (isFull ? '' : 'selectWorkspaceSchedule(this, \\'' + s.id + '\\')') + '">' +
+              '<div class="flex justify-between items-center">' +
+                '<div>' +
+                  '<p class="font-bold text-gray-800">' + dateStr + '</p>' +
+                  '<p class="text-sm text-gray-500">' + s.start_time + ' 〜 ' + s.end_time + '</p>' +
+                '</div>' +
+                '<span class="px-3 py-1 rounded-full text-sm font-medium ' + (isFull ? 'bg-gray-200 text-gray-500' : 'bg-green-100 text-green-600') + '">' +
+                  (isFull ? '満席' : '残り' + remaining + '席') +
+                '</span>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+        } catch (error) {
+          console.error('ワークスペーススケジュール取得エラー:', error);
+          document.getElementById('workspace-schedules').innerHTML = '<div class="text-center py-8 text-red-500"><p>読み込みに失敗しました</p></div>';
+        }
+      }
+      
+      function selectWorkspaceSchedule(el, scheduleId) {
+        // 選択状態をリセット
+        document.querySelectorAll('.schedule-option').forEach(opt => {
+          opt.classList.remove('border-amber-500', 'bg-amber-50', 'ring-2', 'ring-amber-500');
+        });
+        
+        // 選択状態を設定
+        el.classList.add('border-amber-500', 'bg-amber-50', 'ring-2', 'ring-amber-500');
+        selectedWorkspaceSchedule = scheduleId;
+        
+        // 予約フォームを表示
+        document.getElementById('workspace-booking-form').classList.remove('hidden');
+        
+        // チェックボックスをリセット
+        document.getElementById('ws-agree-terms').checked = false;
+        document.getElementById('ws-agree-cancellation').checked = false;
+        document.getElementById('ws-agree-commerce').checked = false;
+        document.getElementById('ws-submit-btn').disabled = true;
+      }
+      
+      function checkWsAgreements() {
+        const terms = document.getElementById('ws-agree-terms').checked;
+        const cancellation = document.getElementById('ws-agree-cancellation').checked;
+        const commerce = document.getElementById('ws-agree-commerce').checked;
+        document.getElementById('ws-submit-btn').disabled = !(terms && cancellation && commerce);
+      }
+      
+      async function processWorkspaceBooking() {
+        if (!selectedWorkspaceSchedule) {
+          alert('日程を選択してください');
+          return;
+        }
+        
+        const name = document.getElementById('ws-name').value.trim();
+        const email = document.getElementById('ws-email').value.trim();
+        const phone = document.getElementById('ws-phone').value.trim();
+        
+        if (!name || !email) {
+          alert('お名前とメールアドレスは必須です');
+          return;
+        }
+        
+        const agreeTerms = document.getElementById('ws-agree-terms').checked;
+        const agreeCancellation = document.getElementById('ws-agree-cancellation').checked;
+        const agreeCommerce = document.getElementById('ws-agree-commerce').checked;
+        
+        if (!agreeTerms || !agreeCancellation || !agreeCommerce) {
+          alert('利用規約、キャンセルポリシー、特定商取引法に基づく表記への同意が必要です');
+          return;
+        }
+        
+        try {
+          const res = await fetch('/api/workspace/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              scheduleId: selectedWorkspaceSchedule,
+              customerName: name,
+              customerEmail: email,
+              customerPhone: phone
+            })
+          });
+          
+          const data = await res.json();
+          
+          if (data.url) {
+            window.location.href = data.url;
+          } else {
+            alert(data.error || '予約処理に失敗しました');
+          }
+        } catch (error) {
+          console.error('予約エラー:', error);
+          alert('予約処理中にエラーが発生しました');
+        }
+      }
+    </script>
+    
+    <!-- 個別相談モーダル -->
+    <div id="consultation-modal" class="consultation-modal-overlay" style="display:none;" onclick="if(event.target === this) closeConsultationModal()">
+      <div class="consultation-modal">
+        <div class="consultation-header">
+          <img src="/static/consultation-btn.png?v=2" alt="個別相談" class="w-40 mx-auto mb-3">
+          <h2 class="text-2xl font-bold text-pink-800">個別相談のご案内</h2>
+          <p class="text-pink-600 mt-2">あなたのお悩みに寄り添います 🌸</p>
+        </div>
+        <div class="consultation-content">
+          <div class="mb-6">
+            <p class="text-gray-600 text-sm leading-relaxed">
+              AI活用やキャリア・メンタルのお悩みについて、1対1でじっくりお話を伺います。
+              お気軽にご相談ください。
+            </p>
+          </div>
+          
+          <!-- 相談タイプ選択 -->
+          <div class="space-y-4 mb-6">
+            <div class="consultation-type-card" onclick="selectConsultationType('ai')">
+              <div class="flex items-center gap-4">
+                <div class="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
+                  <i class="fas fa-robot text-2xl text-blue-500"></i>
+                </div>
+                <div class="flex-1">
+                  <h3 class="font-bold text-gray-800">AI活用相談</h3>
+                  <p class="text-sm text-gray-500">AIの使い方、活用方法のご相談</p>
+                </div>
+                <div class="text-right">
+                  <p class="font-bold text-blue-600">¥3,000〜</p>
+                  <p class="text-xs text-gray-400">30分〜</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="consultation-type-card" onclick="selectConsultationType('mental')">
+              <div class="flex items-center gap-4">
+                <div class="w-14 h-14 bg-pink-100 rounded-full flex items-center justify-center">
+                  <i class="fas fa-heart text-2xl text-pink-500"></i>
+                </div>
+                <div class="flex-1">
+                  <h3 class="font-bold text-gray-800">キャリア・メンタル相談</h3>
+                  <p class="text-sm text-gray-500">キャリアやメンタルのお悩み相談</p>
+                </div>
+                <div class="text-right">
+                  <p class="font-bold text-pink-600">¥3,000〜</p>
+                  <p class="text-xs text-gray-400">30分〜</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 料金表 -->
+          <div class="bg-gradient-to-r from-pink-50 to-blue-50 rounded-xl p-4 mb-6">
+            <h4 class="font-bold text-gray-700 mb-3 text-center"><i class="fas fa-yen-sign mr-2"></i>料金プラン</h4>
+            <div class="grid grid-cols-2 gap-3 text-center">
+              <div class="bg-white rounded-lg p-3 shadow-sm">
+                <p class="text-lg font-bold text-gray-800">30分</p>
+                <p class="text-xl font-bold text-pink-600">¥3,000</p>
+              </div>
+              <div class="bg-white rounded-lg p-3 shadow-sm">
+                <p class="text-lg font-bold text-gray-800">60分</p>
+                <p class="text-xl font-bold text-pink-600">¥5,000</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="text-center">
+            <a href="/consultation" class="inline-flex items-center justify-center w-full py-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all">
+              <i class="fas fa-calendar-check mr-2"></i>予約カレンダーを見る
+            </a>
+            <p class="text-xs text-gray-400 mt-2">Googleカレンダーと連携して空き状況を確認できます</p>
+          </div>
+          
+          <button onclick="closeConsultationModal()" class="w-full mt-4 py-2 text-gray-500 hover:text-gray-700 text-sm">
+            閉じる
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+      function openConsultationModal() {
+        const modal = document.getElementById('consultation-modal');
+        modal.style.display = 'flex';
+        requestAnimationFrame(() => {
+          modal.classList.add('active');
+        });
+        document.body.style.overflow = 'hidden';
+      }
+      
+      function closeConsultationModal() {
+        const modal = document.getElementById('consultation-modal');
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+        setTimeout(() => {
+          modal.style.display = 'none';
+        }, 300);
+      }
+      
+      function selectConsultationType(type) {
+        // 選択時に予約ページへ遷移（タイプをパラメータで渡す）
+        window.location.href = '/consultation?type=' + type;
+      }
+    </script>
 
     <style>
       .news-scroll-container::-webkit-scrollbar {
@@ -775,6 +1128,277 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       .news-scroll-container::-webkit-scrollbar-track {
         background: #f1f1f1;
         border-radius: 4px;
+      }
+      
+      /* 個別相談バナーふわふわアニメーション */
+      .consultation-banner-wrapper {
+        animation: consultation-float 4s ease-in-out infinite;
+      }
+      
+      .consultation-banner {
+        filter: drop-shadow(0 4px 12px rgba(236, 72, 153, 0.3));
+        transition: all 0.3s ease;
+      }
+      
+      .consultation-banner-wrapper:hover .consultation-banner {
+        filter: drop-shadow(0 8px 20px rgba(236, 72, 153, 0.5));
+      }
+      
+      @keyframes consultation-float {
+        0%, 100% { 
+          transform: translateY(0px) rotate(-3deg); 
+        }
+        25% {
+          transform: translateY(-8px) rotate(-1deg);
+        }
+        50% { 
+          transform: translateY(-4px) rotate(2deg); 
+        }
+        75% {
+          transform: translateY(-12px) rotate(0deg);
+        }
+      }
+      
+      /* 個別相談モーダル */
+      .consultation-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+      }
+      
+      .consultation-modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+      }
+      
+      .consultation-modal {
+        background: linear-gradient(135deg, #fff5f7 0%, #fdf2f8 50%, #fef3f2 100%);
+        border-radius: 24px;
+        max-width: 480px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        transform: translateY(20px) scale(0.95);
+        transition: all 0.3s ease;
+        border: 3px solid #fbcfe8;
+        box-shadow: 0 25px 50px -12px rgba(236, 72, 153, 0.25);
+      }
+      
+      .consultation-modal-overlay.active .consultation-modal {
+        transform: translateY(0) scale(1);
+      }
+      
+      .consultation-header {
+        text-align: center;
+        padding: 24px 24px 16px;
+        border-bottom: 1px dashed #fbcfe8;
+      }
+      
+      .consultation-content {
+        padding: 20px 24px 24px;
+      }
+      
+      .consultation-type-card {
+        background: white;
+        border: 2px solid #f9a8d4;
+        border-radius: 16px;
+        padding: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      
+      .consultation-type-card:hover {
+        border-color: #ec4899;
+        box-shadow: 0 8px 20px rgba(236, 72, 153, 0.2);
+        transform: translateY(-2px);
+      }
+      
+      /* カフェカップアニメーション */
+      .cafe-cup-container {
+        position: relative;
+        display: inline-block;
+        transition: transform 0.3s ease;
+      }
+      
+      .cafe-cup-image {
+        animation: float 3s ease-in-out infinite;
+      }
+      
+      @keyframes float {
+        0%, 100% { transform: translateY(0px) rotate(-2deg); }
+        50% { transform: translateY(-10px) rotate(2deg); }
+      }
+      
+      .cafe-cup-container:hover .cafe-cup-image {
+        animation: float-excited 0.5s ease-in-out infinite;
+      }
+      
+      @keyframes float-excited {
+        0%, 100% { transform: translateY(0px) rotate(-3deg) scale(1.05); }
+        50% { transform: translateY(-5px) rotate(3deg) scale(1.05); }
+      }
+      
+      /* ふわふわ湯気アニメーション */
+      .steam-svg {
+        position: absolute;
+        top: -55px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 110px;
+        height: 70px;
+        opacity: 0;
+        transition: opacity 0.4s ease;
+        pointer-events: none;
+      }
+      
+      .cafe-cup-container:hover .steam-svg {
+        opacity: 1;
+      }
+      
+      .steam-cloud {
+        transform-origin: center;
+      }
+      
+      .cafe-cup-container:hover .steam-1 {
+        animation: steam-rise-1 2.5s ease-in-out infinite;
+      }
+      .cafe-cup-container:hover .steam-2 {
+        animation: steam-rise-2 2.8s ease-in-out infinite;
+      }
+      .cafe-cup-container:hover .steam-3 {
+        animation: steam-rise-3 2.3s ease-in-out infinite;
+      }
+      
+      @keyframes steam-rise-1 {
+        0%, 100% { transform: translateY(0) scale(1); opacity: 0.6; }
+        50% { transform: translateY(-8px) scale(1.1); opacity: 0.8; }
+      }
+      @keyframes steam-rise-2 {
+        0%, 100% { transform: translateY(0) scale(1); opacity: 0.6; }
+        50% { transform: translateY(-10px) scale(1.15); opacity: 0.85; }
+      }
+      @keyframes steam-rise-3 {
+        0%, 100% { transform: translateY(0) scale(1); opacity: 0.6; }
+        50% { transform: translateY(-6px) scale(1.08); opacity: 0.75; }
+      }
+      
+      /* ツールチップ */
+      .cafe-tooltip {
+        position: absolute;
+        bottom: -50px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #92400e, #b45309);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 12px;
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        box-shadow: 0 4px 15px rgba(146, 64, 14, 0.3);
+      }
+      
+      .cafe-tooltip::before {
+        content: '';
+        position: absolute;
+        top: -6px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 0 6px 6px 6px;
+        border-style: solid;
+        border-color: transparent transparent #92400e transparent;
+      }
+      
+      .cafe-cup-container:hover .cafe-tooltip {
+        opacity: 1;
+        visibility: visible;
+        bottom: -55px;
+      }
+      
+      /* ワークスペースモーダル */
+      .workspace-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .workspace-modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+      }
+      
+      .workspace-modal {
+        background: #fefce8;
+        border-radius: 24px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        transform: scale(0.9) translateY(20px);
+        transition: transform 0.3s ease;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        position: relative;
+      }
+      
+      .workspace-modal-overlay.active .workspace-modal {
+        transform: scale(1) translateY(0);
+      }
+      
+      /* カフェ扉風デザイン */
+      .cafe-door-frame {
+        border: 8px solid #92400e;
+        border-radius: 20px;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .cafe-door-frame::before {
+        content: '☕ OPEN ☕';
+        position: absolute;
+        top: -1px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #92400e;
+        color: #fef3c7;
+        padding: 4px 20px;
+        font-size: 12px;
+        font-weight: bold;
+        border-radius: 0 0 12px 12px;
+        letter-spacing: 2px;
+      }
+      
+      .cafe-door-header {
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        padding: 2rem 1.5rem 1.5rem;
+        text-align: center;
+        border-bottom: 2px dashed #d97706;
+      }
+      
+      .cafe-door-content {
+        padding: 1.5rem;
+        background: white;
       }
     </style>
   `

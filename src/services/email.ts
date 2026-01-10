@@ -3,7 +3,7 @@
 
 // 管理者メールアドレス（送信元・通知先）
 const ADMIN_EMAIL = 'ai.career@miraicafe.work'
-const FROM_EMAIL = 'mirAIcafe <noreply@miraicafe.work>'  // Resendで認証されたドメインを使用
+const FROM_EMAIL = 'mirAIcafe <noreply@miraicafe.work>'  // Resendで認証済みドメイン
 
 export interface EmailOptions {
   to: string | string[]
@@ -429,6 +429,262 @@ function escapeHtml(text: string): string {
     "'": '&#39;'
   }
   return text.replace(/[&<>"']/g, char => htmlEntities[char] || char)
+}
+
+// ======================
+// 予約完了メール（顧客向け）
+// ======================
+
+export interface BookingConfirmationData {
+  customerName: string
+  customerEmail: string
+  courseName: string
+  scheduleDate?: string
+  scheduleTime?: string
+  amount: number
+  bookingId: string | number
+  isSeriesBooking?: boolean
+  seriesSchedules?: Array<{
+    courseTitle: string
+    date: string
+    startTime: string
+    endTime: string
+  }>
+  meetUrl?: string
+  receiptUrl?: string
+}
+
+export async function sendBookingConfirmationEmail(
+  env: Env,
+  data: BookingConfirmationData
+): Promise<{ success: boolean; error?: string }> {
+  
+  let scheduleHtml = ''
+  if (data.isSeriesBooking && data.seriesSchedules && data.seriesSchedules.length > 0) {
+    scheduleHtml = `
+      <h3 style="color: #92400e; margin-top: 20px;">📅 講座スケジュール</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+        <tr style="background: #fef3c7;">
+          <th style="padding: 10px; text-align: left; border: 1px solid #fcd34d;">講座名</th>
+          <th style="padding: 10px; text-align: left; border: 1px solid #fcd34d;">日程</th>
+          <th style="padding: 10px; text-align: left; border: 1px solid #fcd34d;">時間</th>
+        </tr>
+        ${data.seriesSchedules.map(s => `
+          <tr>
+            <td style="padding: 10px; border: 1px solid #fcd34d;">${escapeHtml(s.courseTitle)}</td>
+            <td style="padding: 10px; border: 1px solid #fcd34d;">${escapeHtml(s.date)}</td>
+            <td style="padding: 10px; border: 1px solid #fcd34d;">${escapeHtml(s.startTime)}〜${escapeHtml(s.endTime)}</td>
+          </tr>
+        `).join('')}
+      </table>
+    `
+  } else if (data.scheduleDate) {
+    scheduleHtml = `<p><strong>日程:</strong> ${escapeHtml(data.scheduleDate)} ${escapeHtml(data.scheduleTime || '')}</p>`
+  }
+
+  const meetUrlSection = data.meetUrl 
+    ? `<div style="background: #d1fae5; padding: 15px; border-radius: 8px; margin-top: 20px;">
+        <p style="margin: 0; color: #065f46;"><strong>🎥 参加URL:</strong></p>
+        <a href="${escapeHtml(data.meetUrl)}" style="color: #059669; word-break: break-all;">${escapeHtml(data.meetUrl)}</a>
+      </div>`
+    : `<p style="color: #6b7280; font-size: 14px; margin-top: 20px;">※参加URLは開催日までにメールでお送りします</p>`
+
+  const receiptSection = data.receiptUrl 
+    ? `<div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+        <p><strong>📄 領収書:</strong></p>
+        <a href="${escapeHtml(data.receiptUrl)}" style="color: #3b82f6;">領収書をダウンロード</a>
+      </div>`
+    : ''
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+  <div style="background: linear-gradient(135deg, #f59e0b, #ea580c); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">☕ mirAIcafe</h1>
+    <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">ご予約ありがとうございます</p>
+  </div>
+  
+  <div style="background: white; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
+    <p>${escapeHtml(data.customerName)} 様</p>
+    
+    <p>この度はmirAIcafeの講座にお申し込みいただき、誠にありがとうございます。<br>以下の内容でご予約を承りました。</p>
+    
+    <div style="background: #fffbeb; padding: 20px; border-radius: 12px; margin: 20px 0;">
+      <h2 style="color: #92400e; margin: 0 0 15px 0; font-size: 18px;">📚 予約内容</h2>
+      <p style="margin: 5px 0;"><strong>講座名:</strong> ${escapeHtml(data.courseName)}</p>
+      ${scheduleHtml}
+      <p style="margin: 15px 0 5px 0;"><strong>お支払い金額:</strong> ¥${data.amount.toLocaleString()}</p>
+      <p style="margin: 5px 0; font-size: 14px; color: #6b7280;">予約ID: ${data.bookingId}</p>
+    </div>
+    
+    ${meetUrlSection}
+    ${receiptSection}
+    
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+      <p style="font-size: 14px; color: #6b7280;">
+        ご不明な点がございましたら、お気軽にお問い合わせください。<br>当日お会いできることを楽しみにしております！
+      </p>
+    </div>
+    
+    <div style="margin-top: 30px; text-align: center; color: #9ca3af; font-size: 12px;">
+      <p>mirAIcafe - AIと学ぶ、新しい学びのカタチ</p>
+      <p><a href="https://miraicafe.work" style="color: #f59e0b;">https://miraicafe.work</a></p>
+    </div>
+  </div>
+</body>
+</html>
+  `
+
+  return sendEmail(env, {
+    to: data.customerEmail,
+    subject: `【mirAIcafe】ご予約完了のお知らせ - ${data.courseName}`,
+    html
+  })
+}
+
+// ======================
+// ワークスペース予約完了メール
+// ======================
+
+export interface WorkspaceConfirmationData {
+  customerName: string
+  customerEmail: string
+  scheduleDate: string
+  scheduleTime: string
+  amount: number
+  bookingId: number
+  meetUrl?: string
+}
+
+export async function sendWorkspaceConfirmationEmail(
+  env: Env,
+  data: WorkspaceConfirmationData
+): Promise<{ success: boolean; error?: string }> {
+
+  const meetUrlSection = data.meetUrl 
+    ? `<div style="background: #d1fae5; padding: 15px; border-radius: 8px; margin-top: 20px;">
+        <p style="margin: 0; color: #065f46;"><strong>🎥 参加URL:</strong></p>
+        <a href="${escapeHtml(data.meetUrl)}" style="color: #059669; word-break: break-all;">${escapeHtml(data.meetUrl)}</a>
+      </div>`
+    : `<p style="color: #6b7280; font-size: 14px; margin-top: 20px;">※参加URLは開催日までにメールでお送りします</p>`
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+  <div style="background: linear-gradient(135deg, #f59e0b, #ea580c); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">☕ mirAIcafe ワークスペース</h1>
+    <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">ご予約ありがとうございます</p>
+  </div>
+  
+  <div style="background: white; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
+    <p>${escapeHtml(data.customerName)} 様</p>
+    
+    <p>mirAIcafe ワークスペースへのご予約ありがとうございます！<br>みんなでAIツールを触る時間を楽しみましょう☕</p>
+    
+    <div style="background: #fffbeb; padding: 20px; border-radius: 12px; margin: 20px 0;">
+      <h2 style="color: #92400e; margin: 0 0 15px 0; font-size: 18px;">☕ ワークスペース予約内容</h2>
+      <p style="margin: 5px 0;"><strong>日程:</strong> ${escapeHtml(data.scheduleDate)}</p>
+      <p style="margin: 5px 0;"><strong>時間:</strong> ${escapeHtml(data.scheduleTime)}</p>
+      <p style="margin: 15px 0 5px 0;"><strong>お支払い金額:</strong> ¥${data.amount.toLocaleString()}</p>
+    </div>
+    
+    ${meetUrlSection}
+    
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+      <p style="font-size: 14px; color: #6b7280;">
+        当日は気軽にAIについて質問してくださいね！<br>お会いできることを楽しみにしております☕
+      </p>
+    </div>
+    
+    <div style="margin-top: 30px; text-align: center; color: #9ca3af; font-size: 12px;">
+      <p>mirAIcafe - AIと学ぶ、新しい学びのカタチ</p>
+      <p><a href="https://miraicafe.work" style="color: #f59e0b;">https://miraicafe.work</a></p>
+    </div>
+  </div>
+</body>
+</html>
+  `
+
+  return sendEmail(env, {
+    to: data.customerEmail,
+    subject: `【mirAIcafe】ワークスペースご予約完了 - ${data.scheduleDate}`,
+    html
+  })
+}
+
+// ======================
+// リマインドメール
+// ======================
+
+export interface ReminderData {
+  customerName: string
+  customerEmail: string
+  courseName: string
+  scheduleDate: string
+  scheduleTime: string
+  meetUrl?: string
+  daysUntil: number
+}
+
+export async function sendReminderEmail(
+  env: Env,
+  data: ReminderData
+): Promise<{ success: boolean; error?: string }> {
+
+  const daysText = data.daysUntil === 0 ? '本日' : 
+                   data.daysUntil === 1 ? '明日' : 
+                   `${data.daysUntil}日後`
+
+  const meetUrlSection = data.meetUrl 
+    ? `<div style="background: #d1fae5; padding: 15px; border-radius: 8px; margin-top: 20px;">
+        <p style="margin: 0; color: #065f46;"><strong>🎥 参加URL:</strong></p>
+        <a href="${escapeHtml(data.meetUrl)}" style="color: #059669; word-break: break-all;">${escapeHtml(data.meetUrl)}</a>
+        <p style="margin: 10px 0 0 0; font-size: 12px; color: #6b7280;">※開始5分前からお入りいただけます</p>
+      </div>`
+    : ''
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+  <div style="background: linear-gradient(135deg, #3b82f6, #8b5cf6); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">🔔 リマインド</h1>
+    <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">${daysText}の講座のお知らせ</p>
+  </div>
+  
+  <div style="background: white; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px;">
+    <p>${escapeHtml(data.customerName)} 様</p>
+    
+    <p>ご予約いただいた講座が<strong>${daysText}</strong>に開催されます。<br>お忘れなくご参加ください！</p>
+    
+    <div style="background: #eff6ff; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+      <h2 style="color: #1e40af; margin: 0 0 15px 0; font-size: 18px;">📚 講座情報</h2>
+      <p style="margin: 5px 0;"><strong>講座名:</strong> ${escapeHtml(data.courseName)}</p>
+      <p style="margin: 5px 0;"><strong>日程:</strong> ${escapeHtml(data.scheduleDate)}</p>
+      <p style="margin: 5px 0;"><strong>時間:</strong> ${escapeHtml(data.scheduleTime)}</p>
+    </div>
+    
+    ${meetUrlSection}
+    
+    <div style="margin-top: 30px; text-align: center; color: #9ca3af; font-size: 12px;">
+      <p>mirAIcafe - AIと学ぶ、新しい学びのカタチ</p>
+      <p><a href="https://miraicafe.work" style="color: #f59e0b;">https://miraicafe.work</a></p>
+    </div>
+  </div>
+</body>
+</html>
+  `
+
+  return sendEmail(env, {
+    to: data.customerEmail,
+    subject: `【mirAIcafe】${daysText}の講座リマインド - ${data.courseName}`,
+    html
+  })
 }
 
 // エクスポート

@@ -13,6 +13,8 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
     { id: 'pricing-patterns', icon: 'fas fa-tags', label: '料金パターン', href: '/admin/pricing-patterns' },
     { id: 'portfolios', icon: 'fas fa-briefcase', label: 'ポートフォリオ', href: '/admin/portfolios' },
     { id: 'bookings', icon: 'fas fa-calendar-check', label: '予約管理', href: '/admin/bookings' },
+    { id: 'consultations', icon: 'fas fa-user-clock', label: '個別相談', href: '/admin/consultations' },
+    { id: 'workspace', icon: 'fas fa-coffee', label: 'ワークスペース', href: '/admin/workspace' },
     { id: 'payments', icon: 'fas fa-credit-card', label: '決済履歴', href: '/admin/payments' },
     { id: 'reviews', icon: 'fas fa-star', label: '口コミ管理', href: '/admin/reviews' },
     { id: 'surveys', icon: 'fas fa-clipboard-list', label: 'アンケート', href: '/admin/surveys' },
@@ -419,7 +421,37 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
         
         progressBar.style.width = '90%';
         
-        const result = await response.json();
+        // レスポンスのContent-Typeを確認
+        const contentType = response.headers.get('content-type');
+        let result;
+        
+        if (!response.ok) {
+          // エラーレスポンスの場合
+          let errorText = '';
+          try {
+            if (contentType && contentType.includes('application/json')) {
+              result = await response.json();
+              errorText = result.error || 'アップロードに失敗しました';
+            } else {
+              errorText = await response.text();
+            }
+          } catch (e) {
+            errorText = 'サーバーエラー (HTTP ' + response.status + ')';
+          }
+          throw new Error(errorText);
+        }
+        
+        // JSONパースを試みる
+        try {
+          if (contentType && contentType.includes('application/json')) {
+            result = await response.json();
+          } else {
+            const text = await response.text();
+            throw new Error('サーバーからの応答が不正です: ' + text.substring(0, 100));
+          }
+        } catch (parseError) {
+          throw new Error('レスポンスの解析に失敗しました');
+        }
         
         if (result.success) {
           progressBar.style.width = '100%';
@@ -434,7 +466,7 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
       } catch (error) {
         console.error('Upload error:', error);
         let errorMsg = error.message || 'アップロードに失敗しました';
-        if (errorMsg.includes('2MB') || errorMsg.includes('サイズ')) {
+        if (errorMsg.includes('2MB') || errorMsg.includes('サイズ') || errorMsg.includes('10MB')) {
           errorMsg += '\\n\\n画像圧縮サイト: https://squoosh.app/';
         }
         alert(errorMsg);

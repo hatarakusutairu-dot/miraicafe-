@@ -10,16 +10,21 @@ export function createStripeClient(apiKey: string): Stripe {
 
 // Types
 export interface CreateCheckoutSessionParams {
-  courseId: string
+  courseId?: string
   courseTitle: string
   price: number
   customerEmail: string
   customerName: string
+  customerPhone?: string
+  scheduleId?: string
   scheduleDate?: string
   scheduleTime?: string
   successUrl: string
   cancelUrl: string
   bookingId?: number
+  seriesId?: string
+  termId?: string
+  pricingType?: string
 }
 
 export interface PaymentRecord {
@@ -69,19 +74,27 @@ export async function createCheckoutSession(
     cancel_url: params.cancelUrl,
     customer_email: params.customerEmail,
     metadata: {
-      course_id: params.courseId,
+      course_id: params.courseId || '',
       course_title: params.courseTitle,
       customer_name: params.customerName,
+      customer_phone: params.customerPhone || '',
+      schedule_id: params.scheduleId || '',
       schedule_date: params.scheduleDate || '',
       schedule_time: params.scheduleTime || '',
       booking_id: params.bookingId?.toString() || '',
+      series_id: params.seriesId || '',
+      term_id: params.termId || '',
+      pricing_type: params.pricingType || 'single',
     },
     locale: 'ja',
     payment_intent_data: {
       metadata: {
-        course_id: params.courseId,
+        course_id: params.courseId || '',
         course_title: params.courseTitle,
         customer_name: params.customerName,
+        series_id: params.seriesId || '',
+        term_id: params.termId || '',
+        pricing_type: params.pricingType || 'single',
       },
     },
   })
