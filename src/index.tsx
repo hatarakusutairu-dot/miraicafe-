@@ -3142,12 +3142,129 @@ app.post('/api/stripe/webhook', async (c) => {
         const pricingType = metadata.pricing_type || 'single'
         const courseId = metadata.course_id
         const scheduleId = metadata.schedule_id
+        const consultationId = metadata.consultation_id  // 個別相談ID
         const isSeriesBooking = seriesId && termId && pricingType !== 'single'
+        const isConsultationBooking = !!consultationId  // 個別相談の決済
         
         let seriesBookingId = null
         let bookingId = null
         
-        // 予約を作成（決済完了後）
+        // 個別相談の決済完了処理
+        if (isConsultationBooking) {
+          console.log('Processing consultation payment completion:', consultationId)
+          
+          const MEET_URL = 'https://meet.google.com/hsd-xuri-hiu'
+          
+          // consultation_bookingsテーブルを更新
+          await c.env.DB.prepare(`
+            UPDATE consultation_bookings 
+            SET status = 'confirmed', payment_status = 'paid', stripe_payment_intent = ?, meet_url = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `).bind(session.payment_intent, MEET_URL, consultationId).run()
+          
+          console.log('Consultation booking confirmed:', consultationId)
+          
+          // 確認メール送信
+          const RESEND_API_KEY = c.env.RESEND_API_KEY
+          if (RESEND_API_KEY) {
+            try {
+              const typeLabel = metadata.type === 'ai' ? 'AI活用相談' : 'キャリア・メンタル相談'
+              
+              // 日付フォーマット
+              const [year, month, day] = (metadata.date || '').split('-').map(Number)
+              const weekdays = ['日', '月', '火', '水', '木', '金', '土']
+              const dateObj = new Date(year, month - 1, day)
+              const dateLabel = `${year}年${month}月${day}日(${weekdays[dateObj.getDay()]})`
+              
+              // お客様への確認メール
+              await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${RESEND_API_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  from: 'mirAIcafe <noreply@miraicafe.work>',
+                  to: customerEmail,
+                  subject: `【予約確定】${dateLabel} ${metadata.time}〜 ${typeLabel} | mirAIcafe`,
+                  html: `
+                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                      <div style="background: linear-gradient(135deg, #ec4899, #f43f5e); padding: 24px; text-align: center; border-radius: 12px 12px 0 0;">
+                        <h1 style="color: white; margin: 0; font-size: 24px;">✨ ご予約が確定しました</h1>
+                      </div>
+                      <div style="padding: 24px; background: #fff; border: 1px solid #fce7f3; border-top: none;">
+                        <p style="font-size: 16px;">${customerName} 様</p>
+                        <p>お支払いが完了し、ご予約が確定しました。</p>
+                        
+                        <div style="background: #fdf2f8; border-radius: 12px; padding: 20px; margin: 20px 0;">
+                          <h2 style="margin: 0 0 16px 0; color: #be185d; font-size: 18px;">📅 ご予約内容</h2>
+                          <table style="width: 100%; border-collapse: collapse;">
+                            <tr><td style="padding: 10px 0; color: #6b7280;">相談タイプ</td><td style="padding: 10px 0; font-weight: bold;">${typeLabel}</td></tr>
+                            <tr><td style="padding: 10px 0; color: #6b7280;">日時</td><td style="padding: 10px 0; font-weight: bold;">${dateLabel} ${metadata.time}〜</td></tr>
+                            <tr><td style="padding: 10px 0; color: #6b7280;">所要時間</td><td style="padding: 10px 0; font-weight: bold;">${metadata.duration}分</td></tr>
+                          </table>
+                        </div>
+                        
+                        <div style="background: #ecfdf5; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
+                          <h2 style="margin: 0 0 12px 0; color: #059669; font-size: 18px;">🎥 オンラインミーティング</h2>
+                          <p style="margin: 0 0 16px 0;">当日は下記のGoogle Meetからご参加ください。</p>
+                          <a href="${MEET_URL}" style="display: inline-block; background: #10b981; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+                            Google Meet に参加
+                          </a>
+                          <p style="margin: 16px 0 0 0; font-size: 12px; color: #6b7280;">${MEET_URL}</p>
+                        </div>
+                      </div>
+                      <div style="background: #f3f4f6; padding: 16px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 12px 12px;">
+                        mirAIcafe<br><a href="https://miraicafe.work" style="color: #ec4899;">https://miraicafe.work</a>
+                      </div>
+                    </div>
+                  `
+                })
+              })
+              
+              // 管理者への通知メール
+              await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${RESEND_API_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  from: 'mirAIcafe <noreply@miraicafe.work>',
+                  to: 'hatarakusutairu@gmail.com',
+                  subject: `【決済完了】${customerName}様 ${typeLabel} 予約確定`,
+                  html: `
+                    <div style="font-family: sans-serif;">
+                      <h2 style="color: #059669;">決済完了・予約確定</h2>
+                      <p><strong>${customerName}</strong>様の個別相談予約が確定しました。</p>
+                      <p><strong>日時:</strong> ${dateLabel} ${metadata.time}〜</p>
+                      <p><strong>タイプ:</strong> ${typeLabel}（${metadata.duration}分）</p>
+                      <p><strong>金額:</strong> ¥${session.amount_total?.toLocaleString()}</p>
+                      <p><a href="https://miraicafe.work/admin/consultations">管理画面で確認</a></p>
+                    </div>
+                  `
+                })
+              })
+              
+              console.log('Consultation confirmation emails sent')
+            } catch (emailError) {
+              console.error('Failed to send consultation emails:', emailError)
+            }
+          }
+          
+          // paymentレコードも更新（あれば）
+          await c.env.DB.prepare(`
+            UPDATE payments SET
+              stripe_payment_intent_id = ?,
+              status = 'succeeded',
+              updated_at = CURRENT_TIMESTAMP
+            WHERE stripe_checkout_session_id = ?
+          `).bind(session.payment_intent, session.id).run()
+          
+          break  // 個別相談の処理完了
+        }
+        
+        // 予約を作成（決済完了後）- 講座予約
         if (isSeriesBooking) {
           // シリーズ一括予約
           console.log('Creating series booking from webhook:', { seriesId, termId, pricingType })

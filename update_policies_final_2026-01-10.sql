@@ -73,7 +73,7 @@ UPDATE policies SET
 <p class="text-gray-700 leading-relaxed mb-3">コースサービスについては、以下の支払方法を選択できます。</p>
 <ul class="list-disc list-inside space-y-2 text-gray-700 ml-4">
 <li><strong>一括払い</strong>：申込時に全額を決済</li>
-<li><strong>単発参加</strong>：各回ごとに決済</li>
+<li><strong>1回ごとの参加</strong>：各回ごとに決済</li>
 </ul>
 </section>
 
@@ -140,15 +140,15 @@ UPDATE policies SET
 <h4 class="font-semibold text-gray-700 mt-4 mb-2">(1) 一括払いの場合</h4>
 <p class="text-gray-700 leading-relaxed">コース一括払いでお申込みいただいた場合、決済完了時点で全回分の受講権が確定し、途中での解約・返金には原則として応じません。やむを得ず一部の回に参加できない場合でも、不参加分の返金・繰越はいたしません。</p>
 
-<h4 class="font-semibold text-gray-700 mt-4 mb-2">(2) 単発参加からコースへの切替</h4>
-<p class="text-gray-700 leading-relaxed">単発参加でお支払いいただいた料金は、コース料金への充当・差額精算には応じておりません。コースへの切替をご希望の場合は、別途コース料金の全額をお支払いいただきます。</p>
+<h4 class="font-semibold text-gray-700 mt-4 mb-2">(2) 1回ごとの参加からコースへの切替</h4>
+<p class="text-gray-700 leading-relaxed">1回ごとの参加でお支払いいただいた料金は、コース料金への充当・差額精算には応じておりません。コースへの切替をご希望の場合は、別途コース料金の全額をお支払いいただきます。</p>
 
 <h4 class="font-semibold text-gray-700 mt-4 mb-2">(3) 早期申込割引について</h4>
 <p class="text-gray-700 leading-relaxed">早期申込割引は、コース開始日の3週間前までにお申込みいただいた場合に適用されます。期限経過後の割引適用には応じておりません。</p>
 </section>
 
 <section class="mb-8">
-<h2 class="text-xl font-bold text-gray-800 mb-3 pb-2 border-b-2 border-pink-200">3. 日程変更（個別日程型サービスのみ）</h2>
+<h2 class="text-xl font-bold text-gray-800 mb-3 pb-2 border-b-2 border-pink-200">3. 日程変更について</h2>
 <div class="space-y-4 text-gray-700 leading-relaxed">
 <p>個別日程が設定された講座・セッション・個別相談サービス等（以下「個別日程型サービス」といいます。）については、開催日の3日前までに、当所所定の方法（原則としてお問い合わせフォーム）により日程変更の申出があった場合に限り、当所の判断で日程変更に応じることがあります。</p>
 <p>日程変更は、原則として1回までとします。</p>
@@ -271,7 +271,7 @@ UPDATE policies SET
 <div class="space-y-3 text-gray-700 leading-relaxed">
 <p>個別相談サービスは、AI活用、キャリア、メンタルに関する一般的な情報提供およびアドバイスを目的とするものであり、以下のような専門的サービスには該当しません。</p>
 <ul class="list-disc list-inside space-y-2 ml-4">
-<li>医療行為、医療的診断、治療、カウンセリング（医師法、精神保健福祉法等に基づくもの）</li>
+<li>医療行為、医療的診断、治療（医師法、精神保健福祉法等に基づくもの）</li>
 <li>法律相談、法的助言（弁護士法に基づくもの）</li>
 <li>財務・税務相談、投資助言（税理士法、金融商品取引法等に基づくもの）</li>
 <li>その他法令上の資格を要する専門的サービス</li>
@@ -373,9 +373,9 @@ UPDATE policies SET
 <section class="mb-6">
 <h2 class="text-xl font-bold text-gray-800 mb-3 pb-2 border-b-2 border-pink-200">第10条の2（コースサービスの支払方法）</h2>
 <ol class="list-decimal list-inside space-y-3 text-gray-700 leading-relaxed ml-4">
-<li>コースサービスについては、一括払いまたは単発参加のいずれかの方法で申込むことができます。各支払方法の詳細および価格は、サービスページに表示します。</li>
+<li>コースサービスについては、一括払いまたは1回ごとの参加のいずれかの方法で申込むことができます。各支払方法の詳細および価格は、サービスページに表示します。</li>
 <li>一括払いでお申込みいただいた場合、申込時に全額を決済いただきます。</li>
-<li>単発参加の場合、各回ごとに決済いただきます。単発参加で支払った料金は、コース料金への充当には応じておりません。</li>
+<li>1回ごとの参加の場合、各回ごとに決済いただきます。1回ごとの参加で支払った料金は、コース料金への充当には応じておりません。</li>
 <li>早期申込割引その他の割引は、コース開始日の3週間前までにお申込みいただいた場合に限り適用されます。期限経過後の割引適用には応じておりません。</li>
 </ol>
 </section>
@@ -392,7 +392,7 @@ UPDATE policies SET
 
 <section class="mb-6">
 <h2 class="text-xl font-bold text-gray-800 mb-3 pb-2 border-b-2 border-pink-200">第11条（キャンセル・返金・日程変更）</h2>
-<p class="text-gray-700 leading-relaxed">キャンセル、返金、日程変更に関する取扱い（コースサービスにおける一括払い、単発参加の取扱いを含みます。）は、キャンセル・返金ポリシーに従うものとし、本規約とキャンセル・返金ポリシーの内容が矛盾抵触する場合にはキャンセル・返金ポリシーが優先して適用されます。</p>
+<p class="text-gray-700 leading-relaxed">キャンセル、返金、日程変更に関する取扱い（コースサービスにおける一括払い、1回ごとの参加の取扱いを含みます。）は、キャンセル・返金ポリシーに従うものとし、本規約とキャンセル・返金ポリシーの内容が矛盾抵触する場合にはキャンセル・返金ポリシーが優先して適用されます。</p>
 </section>
 
 <section class="mb-6">

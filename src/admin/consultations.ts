@@ -169,7 +169,7 @@ export function renderConsultationAdmin(bookings: ConsultationBooking[]): string
 
       ${awaitingApproval.length > 0 ? `
       <!-- 承認待ちの予約（要対応） -->
-      <div class="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-orange-300">
+      <div id="approval-section" class="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-orange-300">
         <div class="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-4">
           <h2 class="text-lg font-bold text-white flex items-center">
             <i class="fas fa-exclamation-circle mr-2"></i>
@@ -282,6 +282,22 @@ export function renderConsultationAdmin(bookings: ConsultationBooking[]): string
           </button>
         </div>
       </div>
+
+      <!-- 承認待ちアラート（今後の予約の直前に表示） -->
+      ${awaitingApproval.length > 0 ? `
+        <div class="bg-orange-100 border-l-4 border-orange-500 p-4 rounded-r-lg mb-4 animate-pulse">
+          <div class="flex items-center">
+            <i class="fas fa-exclamation-triangle text-orange-500 text-xl mr-3"></i>
+            <div>
+              <p class="font-bold text-orange-800">承認待ちの予約が ${awaitingApproval.length}件 あります</p>
+              <p class="text-sm text-orange-700">上部の「承認待ちの予約」セクションから対応してください</p>
+            </div>
+            <a href="#approval-section" class="ml-auto px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
+              <i class="fas fa-arrow-up mr-1"></i>確認する
+            </a>
+          </div>
+        </div>
+      ` : ''}
 
       <!-- 今後の予約 -->
       ${upcomingBookings.length > 0 ? `
