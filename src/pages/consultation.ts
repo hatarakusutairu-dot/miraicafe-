@@ -10,11 +10,30 @@ export const renderConsultationPage = (props: ConsultationPageProps = {}) => {
   const content = `
     <div class="min-h-screen bg-gradient-to-b from-pink-50 via-white to-pink-50">
       <!-- ヘッダー -->
-      <div class="bg-gradient-to-r from-pink-500 to-rose-500 text-white py-12">
+      <div class="bg-gradient-to-r from-pink-500 to-rose-500 text-white py-8 md:py-12">
         <div class="max-w-4xl mx-auto px-4 text-center">
-          <h1 class="text-3xl md:text-4xl font-bold">
+          <h1 class="text-2xl md:text-4xl font-bold mb-4">
             <i class="fas fa-comments mr-3"></i>個別相談予約
           </h1>
+          <p class="text-pink-100 text-sm md:text-base">
+            AI活用・キャリア・メンタルのお悩みについて1対1でじっくりお話を伺います
+          </p>
+        </div>
+      </div>
+      
+      <!-- 承認制フローの概要 -->
+      <div class="bg-white border-b border-pink-100 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 py-4">
+          <div class="flex flex-wrap items-center justify-center gap-2 md:gap-4 text-xs md:text-sm">
+            <span class="flex items-center text-pink-700"><span class="w-6 h-6 bg-pink-500 text-white rounded-full flex items-center justify-center mr-1 text-xs font-bold">1</span>申請</span>
+            <i class="fas fa-chevron-right text-pink-300"></i>
+            <span class="flex items-center text-pink-700"><span class="w-6 h-6 bg-pink-500 text-white rounded-full flex items-center justify-center mr-1 text-xs font-bold">2</span>承認</span>
+            <i class="fas fa-chevron-right text-pink-300"></i>
+            <span class="flex items-center text-pink-700"><span class="w-6 h-6 bg-pink-500 text-white rounded-full flex items-center justify-center mr-1 text-xs font-bold">3</span>決済</span>
+            <i class="fas fa-chevron-right text-pink-300"></i>
+            <span class="flex items-center text-pink-700 font-bold"><span class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center mr-1 text-xs">✓</span>予約確定</span>
+          </div>
+          <p class="text-center text-xs text-gray-500 mt-2">※ 決済は予約日の前日までにお済ませください</p>
         </div>
       </div>
 
@@ -253,11 +272,35 @@ export const renderConsultationPage = (props: ConsultationPageProps = {}) => {
               </label>
             </div>
             
-            <div class="bg-amber-50 rounded-xl p-4 mb-6">
-              <p class="text-sm text-amber-800">
-                <i class="fas fa-info-circle mr-2"></i>
-                <strong>承認制について：</strong>予約申請後、担当者が確認し承認いたします。承認後に決済用URLをメールでお送りします。
-              </p>
+            <!-- 承認制フローの詳細説明 -->
+            <div class="bg-amber-50 rounded-xl p-5 mb-6 border border-amber-200">
+              <h4 class="font-bold text-amber-800 mb-3 flex items-center">
+                <i class="fas fa-info-circle mr-2"></i>予約の流れ（承認制）
+              </h4>
+              <ol class="space-y-2 text-sm text-amber-800">
+                <li class="flex items-start gap-2">
+                  <span class="w-5 h-5 bg-amber-200 text-amber-800 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold">1</span>
+                  <span>予約申請を送信</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="w-5 h-5 bg-amber-200 text-amber-800 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold">2</span>
+                  <span>担当者が内容を確認（通常1〜2営業日以内）</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="w-5 h-5 bg-amber-200 text-amber-800 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold">3</span>
+                  <span>承認後、決済用URLをメールでお送り</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="w-5 h-5 bg-amber-200 text-amber-800 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold">4</span>
+                  <span><strong>決済完了で予約確定</strong>（Meet URLをお送りします）</span>
+                </li>
+              </ol>
+              <div class="mt-4 pt-3 border-t border-amber-200">
+                <p class="text-xs text-amber-700">
+                  <i class="fas fa-exclamation-triangle mr-1"></i>
+                  <strong>重要：</strong>決済は<strong>予約日の前日まで</strong>にお済ませください。期限を過ぎると予約は自動キャンセルとなります。
+                </p>
+              </div>
             </div>
             
             <button onclick="submitBooking()" id="submitBtn" class="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
@@ -409,6 +452,9 @@ export const renderConsultationPage = (props: ConsultationPageProps = {}) => {
 
       // 初期化
       document.addEventListener('DOMContentLoaded', function() {
+        // ページ読み込み時に最上部にスクロール
+        window.scrollTo(0, 0);
+        
         if (selectedType) {
           document.querySelector(\`.consultation-type-option[data-type="\${selectedType}"]\`)?.classList.add('selected');
           updateNextButton();

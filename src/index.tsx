@@ -5325,15 +5325,28 @@ app.post('/admin/api/consultations/:id/approve', async (c) => {
       return c.json({ error: '予約が見つかりません' }, 404)
     }
     
-    if (booking.status !== 'pending') {
+    if (booking.status !== 'pending_approval') {
       return c.json({ error: 'この予約は既に処理済みです' }, 400)
     }
     
     const typeLabel = booking.type === 'ai' ? 'AI活用相談' : 'キャリア・メンタル相談'
     const [year, month, day] = booking.date.split('-').map(Number)
-    const date = new Date(year, month - 1, day)
+    const bookingDate = new Date(year, month - 1, day)
     const weekdays = ['日', '月', '火', '水', '木', '金', '土']
-    const dateLabel = `${year}年${month}月${day}日(${weekdays[date.getDay()]})`
+    const dateLabel = `${year}年${month}月${day}日(${weekdays[bookingDate.getDay()]})`
+    
+    // 決済期限を予約日の前日23:59までに設定（JST）
+    // 予約日の前日 23:59 JST = 予約日 -1日 + 14:59 UTC
+    const deadlineDate = new Date(Date.UTC(year, month - 1, day - 1, 14, 59, 0))
+    const now = new Date()
+    
+    // 既に予約日を過ぎている場合はエラー
+    if (now >= bookingDate) {
+      return c.json({ error: '予約日を過ぎているため承認できません' }, 400)
+    }
+    
+    // 決済期限が既に過ぎている場合は警告
+    const isDeadlinePassed = now >= deadlineDate
     
     // Stripeチェックアウトセッションを作成
     const stripe = new Stripe(STRIPE_SECRET_KEY, {
@@ -5341,6 +5354,16 @@ app.post('/admin/api/consultations/:id/approve', async (c) => {
     })
     
     const origin = c.req.header('origin') || 'https://miraicafe.work'
+    
+    // Stripeセッションの有効期限を設定（最大24時間、または予約前日23:59まで）
+    // expires_at は Unix timestamp（秒）
+    const maxExpiry = Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24時間後
+    const deadlineExpiry = Math.floor(deadlineDate.getTime() / 1000)
+    const expiresAt = Math.min(maxExpiry, deadlineExpiry)
+    
+    // 最低30分の有効期限を確保
+    const minExpiry = Math.floor(Date.now() / 1000) + (30 * 60)
+    const finalExpiresAt = Math.max(expiresAt, minExpiry)
     
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -5361,6 +5384,7 @@ app.post('/admin/api/consultations/:id/approve', async (c) => {
       success_url: `${origin}/consultation/complete?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/consultation?canceled=true`,
       customer_email: booking.customer_email,
+      expires_at: finalExpiresAt,
       metadata: {
         consultation_id: booking.id,
         type: booking.type,
@@ -5418,9 +5442,16 @@ app.post('/admin/api/consultations/:id/approve', async (c) => {
                   </a>
                 </div>
                 
+                <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                  <p style="margin: 0; color: #92400e; font-size: 14px;">
+                    <strong>⚠️ 重要：お支払い期限について</strong><br>
+                    決済は<strong>予約日の前日23:59まで</strong>にお済ませください。<br>
+                    期限を過ぎると決済リンクは無効となり、予約は自動キャンセルとなります。
+                  </p>
+                </div>
+                
                 <p style="color: #666; font-size: 14px;">
-                  ※ 決済完了後、Google Meetの参加URLをお送りいたします。<br>
-                  ※ お支払いは予約日の前日までにお済ませください。
+                  ※ 決済完了後、Google Meetの参加URLをお送りいたします。
                 </p>
                 
                 <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">

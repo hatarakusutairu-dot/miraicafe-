@@ -358,10 +358,10 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           <div class="lg:w-72 flex-shrink-0 mx-auto lg:mx-0 relative">
             <img src="/static/mion-profile.png" alt="mion(ミオン)" class="w-full max-w-xs mx-auto rounded-2xl shadow-xl">
             
-            <!-- 個別相談バナー（ふわふわアニメーション） -->
-            <div class="consultation-banner-wrapper absolute -bottom-12 -left-8 lg:-left-20 z-20 cursor-pointer" onclick="openConsultationModal()">
+            <!-- 個別相談バナー（ふわふわアニメーション） - 直接予約ページへ -->
+            <a href="/consultation" class="consultation-banner-wrapper absolute -bottom-12 -left-8 lg:-left-20 z-20 cursor-pointer block">
               <img src="/static/consultation-btn.png?v=2" alt="個別相談はこちらから" class="consultation-banner w-44 md:w-52 lg:w-56 drop-shadow-lg hover:scale-110 transition-transform duration-300">
-            </div>
+            </a>
           </div>
           
           <!-- 右側: プロフィール本文（短縮版） -->
@@ -1011,111 +1011,6 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         }
       }
     </script>
-    
-    <!-- 個別相談モーダル -->
-    <div id="consultation-modal" class="consultation-modal-overlay" style="display:none;" onclick="if(event.target === this) closeConsultationModal()">
-      <div class="consultation-modal">
-        <div class="consultation-header">
-          <img src="/static/consultation-btn.png?v=2" alt="個別相談" class="w-40 mx-auto mb-3">
-          <h2 class="text-2xl font-bold text-pink-800">個別相談のご案内</h2>
-          <p class="text-pink-600 mt-2">あなたのお悩みに寄り添います 🌸</p>
-        </div>
-        <div class="consultation-content">
-          <div class="mb-6">
-            <p class="text-gray-600 text-sm leading-relaxed">
-              AI活用やキャリア・メンタルのお悩みについて、1対1でじっくりお話を伺います。
-              お気軽にご相談ください。
-            </p>
-          </div>
-          
-          <!-- 相談タイプ選択 -->
-          <div class="space-y-4 mb-6">
-            <div class="consultation-type-card" onclick="selectConsultationType('ai')">
-              <div class="flex items-center gap-4">
-                <div class="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
-                  <i class="fas fa-robot text-2xl text-blue-500"></i>
-                </div>
-                <div class="flex-1">
-                  <h3 class="font-bold text-gray-800">AI活用相談</h3>
-                  <p class="text-sm text-gray-500">AIの使い方、活用方法のご相談</p>
-                </div>
-                <div class="text-right">
-                  <p class="font-bold text-blue-600">¥3,000〜</p>
-                  <p class="text-xs text-gray-400">30分〜</p>
-                </div>
-              </div>
-            </div>
-            
-            <div class="consultation-type-card" onclick="selectConsultationType('mental')">
-              <div class="flex items-center gap-4">
-                <div class="w-14 h-14 bg-pink-100 rounded-full flex items-center justify-center">
-                  <i class="fas fa-heart text-2xl text-pink-500"></i>
-                </div>
-                <div class="flex-1">
-                  <h3 class="font-bold text-gray-800">キャリア・メンタル相談</h3>
-                  <p class="text-sm text-gray-500">キャリアやメンタルのお悩み相談</p>
-                </div>
-                <div class="text-right">
-                  <p class="font-bold text-pink-600">¥3,000〜</p>
-                  <p class="text-xs text-gray-400">30分〜</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 料金表 -->
-          <div class="bg-gradient-to-r from-pink-50 to-blue-50 rounded-xl p-4 mb-6">
-            <h4 class="font-bold text-gray-700 mb-3 text-center"><i class="fas fa-yen-sign mr-2"></i>料金プラン</h4>
-            <div class="grid grid-cols-2 gap-3 text-center">
-              <div class="bg-white rounded-lg p-3 shadow-sm">
-                <p class="text-lg font-bold text-gray-800">30分</p>
-                <p class="text-xl font-bold text-pink-600">¥3,000</p>
-              </div>
-              <div class="bg-white rounded-lg p-3 shadow-sm">
-                <p class="text-lg font-bold text-gray-800">60分</p>
-                <p class="text-xl font-bold text-pink-600">¥5,000</p>
-              </div>
-            </div>
-          </div>
-          
-          <div class="text-center">
-            <a href="/consultation" class="inline-flex items-center justify-center w-full py-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all">
-              <i class="fas fa-calendar-check mr-2"></i>予約カレンダーを見る
-            </a>
-            <p class="text-xs text-gray-400 mt-2">Googleカレンダーと連携して空き状況を確認できます</p>
-          </div>
-          
-          <button onclick="closeConsultationModal()" class="w-full mt-4 py-2 text-gray-500 hover:text-gray-700 text-sm">
-            閉じる
-          </button>
-        </div>
-      </div>
-    </div>
-    
-    <script>
-      function openConsultationModal() {
-        const modal = document.getElementById('consultation-modal');
-        modal.style.display = 'flex';
-        requestAnimationFrame(() => {
-          modal.classList.add('active');
-        });
-        document.body.style.overflow = 'hidden';
-      }
-      
-      function closeConsultationModal() {
-        const modal = document.getElementById('consultation-modal');
-        modal.classList.remove('active');
-        document.body.style.overflow = '';
-        setTimeout(() => {
-          modal.style.display = 'none';
-        }, 300);
-      }
-      
-      function selectConsultationType(type) {
-        // 選択時に予約ページへ遷移（タイプをパラメータで渡す）
-        window.location.href = '/consultation?type=' + type;
-      }
-    </script>
 
     <style>
       .news-scroll-container::-webkit-scrollbar {
@@ -1157,68 +1052,6 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         75% {
           transform: translateY(-12px) rotate(0deg);
         }
-      }
-      
-      /* 個別相談モーダル */
-      .consultation-modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.6);
-        backdrop-filter: blur(4px);
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        visibility: hidden;
-        transition: all 0.3s ease;
-      }
-      
-      .consultation-modal-overlay.active {
-        opacity: 1;
-        visibility: visible;
-      }
-      
-      .consultation-modal {
-        background: linear-gradient(135deg, #fff5f7 0%, #fdf2f8 50%, #fef3f2 100%);
-        border-radius: 24px;
-        max-width: 480px;
-        width: 90%;
-        max-height: 90vh;
-        overflow-y: auto;
-        transform: translateY(20px) scale(0.95);
-        transition: all 0.3s ease;
-        border: 3px solid #fbcfe8;
-        box-shadow: 0 25px 50px -12px rgba(236, 72, 153, 0.25);
-      }
-      
-      .consultation-modal-overlay.active .consultation-modal {
-        transform: translateY(0) scale(1);
-      }
-      
-      .consultation-header {
-        text-align: center;
-        padding: 24px 24px 16px;
-        border-bottom: 1px dashed #fbcfe8;
-      }
-      
-      .consultation-content {
-        padding: 20px 24px 24px;
-      }
-      
-      .consultation-type-card {
-        background: white;
-        border: 2px solid #f9a8d4;
-        border-radius: 16px;
-        padding: 16px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-      }
-      
-      .consultation-type-card:hover {
-        border-color: #ec4899;
-        box-shadow: 0 8px 20px rgba(236, 72, 153, 0.2);
-        transform: translateY(-2px);
       }
       
       /* カフェカップアニメーション */
