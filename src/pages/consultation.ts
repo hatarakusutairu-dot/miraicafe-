@@ -21,17 +21,33 @@ export const renderConsultationPage = (props: ConsultationPageProps = {}) => {
         </div>
       </div>
       
-      <!-- 承認制フローの概要 -->
+      <!-- 承認制フローの概要（申請前なので1のみアクティブ、2〜確定はグレー） -->
       <div class="bg-white border-b border-pink-100 shadow-sm">
         <div class="max-w-4xl mx-auto px-4 py-4">
           <div class="flex flex-wrap items-center justify-center gap-2 md:gap-4 text-xs md:text-sm">
-            <span class="flex items-center text-pink-700"><span class="w-6 h-6 bg-pink-500 text-white rounded-full flex items-center justify-center mr-1 text-xs font-bold">1</span>申請</span>
-            <i class="fas fa-chevron-right text-pink-300"></i>
-            <span class="flex items-center text-pink-700"><span class="w-6 h-6 bg-pink-500 text-white rounded-full flex items-center justify-center mr-1 text-xs font-bold">2</span>承認</span>
-            <i class="fas fa-chevron-right text-pink-300"></i>
-            <span class="flex items-center text-pink-700"><span class="w-6 h-6 bg-pink-500 text-white rounded-full flex items-center justify-center mr-1 text-xs font-bold">3</span>決済</span>
-            <i class="fas fa-chevron-right text-pink-300"></i>
-            <span class="flex items-center text-pink-700 font-bold"><span class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center mr-1 text-xs">✓</span>予約確定</span>
+            <!-- Step 1: 申請 - 現在のステップ（アクティブ） -->
+            <span class="flex items-center text-pink-700 font-bold">
+              <span class="w-6 h-6 bg-pink-500 text-white rounded-full flex items-center justify-center mr-1 text-xs font-bold shadow-md">1</span>
+              申請
+            </span>
+            <i class="fas fa-chevron-right text-gray-300"></i>
+            <!-- Step 2: 承認 - 未達成（グレー） -->
+            <span class="flex items-center text-gray-400">
+              <span class="w-6 h-6 bg-gray-300 text-white rounded-full flex items-center justify-center mr-1 text-xs font-bold">2</span>
+              承認
+            </span>
+            <i class="fas fa-chevron-right text-gray-300"></i>
+            <!-- Step 3: 決済 - 未達成（グレー） -->
+            <span class="flex items-center text-gray-400">
+              <span class="w-6 h-6 bg-gray-300 text-white rounded-full flex items-center justify-center mr-1 text-xs font-bold">3</span>
+              決済
+            </span>
+            <i class="fas fa-chevron-right text-gray-300"></i>
+            <!-- 予約確定 - 未達成（グレー） -->
+            <span class="flex items-center text-gray-400">
+              <span class="w-6 h-6 bg-gray-300 text-white rounded-full flex items-center justify-center mr-1 text-xs">✓</span>
+              予約確定
+            </span>
           </div>
           <p class="text-center text-xs text-gray-500 mt-2">※ 決済は予約日の前日までにお済ませください</p>
         </div>
