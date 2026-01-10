@@ -1616,7 +1616,15 @@ app.get('/consultation/complete', async (c) => {
         const emailEndUTC = new Date(emailStartUTC.getTime() + emailDuration * 60 * 1000);
         const emailFormatDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
         const emailEventTitle = `【mirAIcafe】${typeLabel}`;
-        const emailEventDetails = `mirAIcafe 個別相談\n\n相談タイプ: ${typeLabel}\n所要時間: ${emailDuration}分\n\n【Google Meet URL】\n${MEET_URL}\n\n開始時刻の5分前にはお入りください。`;
+        const emailEventDetails = `mirAIcafe 個別相談
+
+相談タイプ: ${typeLabel}
+所要時間: ${emailDuration}分
+
+【Google Meet URL】
+${MEET_URL}
+
+開始時刻の5分前にはお入りください。`;
         const emailGoogleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(emailEventTitle)}&dates=${emailFormatDate(emailStartUTC)}/${emailFormatDate(emailEndUTC)}&details=${encodeURIComponent(emailEventDetails)}&location=${encodeURIComponent(MEET_URL)}`;
         
         await fetch('https://api.resend.com/emails', {
@@ -1766,7 +1774,15 @@ app.get('/consultation/complete', async (c) => {
     const formatGoogleDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
     
     const eventTitle = `【mirAIcafe】${typeLabel}`;
-    const eventDetails = `mirAIcafe 個別相談\\n\\n相談タイプ: ${typeLabel}\\n所要時間: ${durationMinutes}分\\n\\n【Google Meet URL】\\n${MEET_URL}\\n\\n開始時刻の5分前にはお入りください。`;
+    const eventDetails = `mirAIcafe 個別相談
+
+相談タイプ: ${typeLabel}
+所要時間: ${durationMinutes}分
+
+【Google Meet URL】
+${MEET_URL}
+
+開始時刻の5分前にはお入りください。`;
     
     const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${formatGoogleDate(startDateUTC)}/${formatGoogleDate(endDateUTC)}&details=${encodeURIComponent(eventDetails)}&location=${encodeURIComponent(MEET_URL)}`;
     
