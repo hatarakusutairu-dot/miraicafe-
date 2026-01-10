@@ -5466,9 +5466,7 @@ app.post('/admin/api/consultations/:id/approve', async (c) => {
     const isDeadlinePassed = now >= deadlineDate
     
     // Stripeチェックアウトセッションを作成
-    const stripe = new Stripe(STRIPE_SECRET_KEY, {
-      apiVersion: '2023-10-16',
-    })
+    const stripe = createStripeClient(STRIPE_SECRET_KEY)
     
     const origin = c.req.header('origin') || 'https://miraicafe.work'
     
@@ -5651,9 +5649,7 @@ app.post('/admin/api/consultations/:id/resend-payment', async (c) => {
     const dateLabel = `${year}年${month}月${day}日(${weekdays[date.getDay()]})`
     
     // 既存のセッションを取得するか、新しく作成
-    const stripe = new Stripe(STRIPE_SECRET_KEY, {
-      apiVersion: '2023-10-16',
-    })
+    const stripe = createStripeClient(STRIPE_SECRET_KEY)
     
     let paymentUrl: string | null = null
     
