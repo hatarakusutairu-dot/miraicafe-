@@ -452,13 +452,29 @@ export const renderConsultationPage = (props: ConsultationPageProps = {}) => {
 
       // 初期化
       document.addEventListener('DOMContentLoaded', function() {
-        // ページ読み込み時に最上部にスクロール
+        // ページ読み込み時に最上部にスクロール（強制的に）
         window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        
+        // 少し遅延させて確実にスクロール
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        }, 100);
         
         if (selectedType) {
           document.querySelector(\`.consultation-type-option[data-type="\${selectedType}"]\`)?.classList.add('selected');
           updateNextButton();
         }
+      });
+      
+      // ページ表示時にも上部へスクロール（履歴操作対応）
+      window.addEventListener('pageshow', function(e) {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
       });
 
       // タイプ選択
@@ -491,6 +507,11 @@ export const renderConsultationPage = (props: ConsultationPageProps = {}) => {
         document.getElementById('step1').classList.add('hidden');
         document.getElementById('step2').classList.remove('hidden');
         
+        // 上部にスクロール（即座に）
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        
         // インジケーター更新
         document.getElementById('step1-progress').style.width = '100%';
         document.getElementById('step2-indicator').classList.remove('bg-gray-200', 'text-gray-500');
@@ -510,6 +531,11 @@ export const renderConsultationPage = (props: ConsultationPageProps = {}) => {
         document.getElementById('step2').classList.add('hidden');
         document.getElementById('step1').classList.remove('hidden');
         
+        // 上部にスクロール（即座に）
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        
         document.getElementById('step1-progress').style.width = '0%';
         document.getElementById('step2-indicator').classList.remove('bg-pink-500', 'text-white');
         document.getElementById('step2-indicator').classList.add('bg-gray-200', 'text-gray-500');
@@ -521,6 +547,11 @@ export const renderConsultationPage = (props: ConsultationPageProps = {}) => {
         
         document.getElementById('step2').classList.add('hidden');
         document.getElementById('step3').classList.remove('hidden');
+        
+        // 上部にスクロール（即座に）
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
         
         document.getElementById('step2-progress').style.width = '100%';
         document.getElementById('step3-indicator').classList.remove('bg-gray-200', 'text-gray-500');
@@ -538,6 +569,11 @@ export const renderConsultationPage = (props: ConsultationPageProps = {}) => {
       function goToStep2Back() {
         document.getElementById('step3').classList.add('hidden');
         document.getElementById('step2').classList.remove('hidden');
+        
+        // 上部にスクロール（即座に）
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
         
         document.getElementById('step2-progress').style.width = '0%';
         document.getElementById('step3-indicator').classList.remove('bg-pink-500', 'text-white');
