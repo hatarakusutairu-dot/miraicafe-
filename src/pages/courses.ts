@@ -133,13 +133,19 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
           </div>
         </div>
         
-        <!-- AI相談ボタン（横配置） -->
+        <!-- AI相談ボタン（目立つデザイン） -->
         <div class="mt-6 flex justify-center lg:justify-start">
           <button id="ai-advisor-btn" 
-                  class="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-cafe-wood to-cafe-caramel text-white rounded-full font-medium shadow-lg hover:shadow-xl transition-all hover:scale-105">
-            <i class="fas fa-robot"></i>
+                  class="group relative inline-flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all hover:scale-105 text-base sm:text-lg animate-pulse hover:animate-none">
+            <!-- キラキラエフェクト -->
+            <span class="absolute -top-1 -right-1 text-yellow-300 text-sm">✨</span>
+            <span class="absolute -bottom-1 -left-1 text-yellow-300 text-sm">✨</span>
+            <!-- アイコン -->
+            <span class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+              <i class="fas fa-robot text-xl"></i>
+            </span>
             <span>AIに講座を相談する</span>
-            <i class="fas fa-chevron-down text-sm transition-transform" id="ai-btn-icon"></i>
+            <i class="fas fa-chevron-down text-sm transition-transform group-hover:translate-y-1" id="ai-btn-icon"></i>
           </button>
         </div>
       </div>
