@@ -234,7 +234,8 @@ export const renderContactPage = () => {
                 <!-- Privacy Policy Agreement -->
                 <div class="flex items-center glass rounded-xl sm:rounded-2xl p-3 sm:p-4">
                   <input type="checkbox" id="privacy-agree"
-                    class="mr-2 sm:mr-3 w-3.5 h-3.5 sm:w-4 sm:h-4 accent-ai-blue rounded flex-shrink-0 cursor-pointer">
+                    class="mr-2 sm:mr-3 flex-shrink-0 cursor-pointer"
+                    style="width: 14px; height: 14px; accent-color: #6366f1;">
                   <label for="privacy-agree" class="text-future-textLight text-xs sm:text-sm leading-relaxed cursor-pointer">
                     <a href="/privacy" class="gradient-ai-text hover:underline font-medium">プライバシーポリシー</a>に同意します <span class="text-red-500">*</span>
                   </label>
