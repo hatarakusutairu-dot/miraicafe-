@@ -116,11 +116,20 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
             </div>
           </div>
           
-          <!-- 右側: ふわふわ画像 -->
+          <!-- 右側: ふわふわ吹き出し -->
           <div class="flex-shrink-0 float-animation">
-            <img src="https://www.genspark.ai/api/files/s/mr6N5cYI" 
-                 alt="1回のみでもコースでも予約できます！" 
-                 class="w-48 sm:w-56 md:w-64 h-auto drop-shadow-lg">
+            <div class="relative bg-gradient-to-br from-orange-50 via-yellow-50 to-pink-50 rounded-[40px] px-6 py-5 shadow-lg border-2 border-orange-200/50" style="border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;">
+              <!-- 装飾 -->
+              <span class="absolute -top-2 -left-2 text-yellow-400 sparkle">✦</span>
+              <span class="absolute -top-1 right-4 text-pink-300 sparkle" style="animation-delay: 0.5s;">♡</span>
+              <span class="absolute -bottom-1 -right-2 text-green-400 sparkle" style="animation-delay: 1s;">✦</span>
+              <span class="absolute bottom-2 -left-3 text-orange-300 sparkle" style="animation-delay: 0.3s;">☆</span>
+              <span class="absolute top-1/2 -right-4 text-yellow-300 sparkle" style="animation-delay: 0.7s;">✿</span>
+              <!-- テキスト -->
+              <p class="text-center font-bold text-amber-800 text-base sm:text-lg leading-relaxed whitespace-nowrap">
+                1回のみでもコース<br>でも予約できます！
+              </p>
+            </div>
           </div>
         </div>
         
