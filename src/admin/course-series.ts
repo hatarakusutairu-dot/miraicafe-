@@ -367,10 +367,15 @@ export const renderCourseSeriesForm = (
           
           <div id="termsList" class="space-y-3">
             ${(terms || []).map((t, i) => `
-              <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg term-item" data-term-id="${t.id}">
+              <div class="flex flex-wrap items-center gap-2 sm:gap-3 p-3 bg-gray-50 rounded-lg term-item" data-term-id="${t.id}">
                 <span class="bg-green-500 text-white px-2 py-1 rounded text-sm">${t.name}</span>
                 <span class="text-sm text-gray-600">${t.start_date} 〜 ${t.end_date}</span>
                 <span class="text-xs px-2 py-1 rounded ${t.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">${t.status === 'active' ? '募集中' : '終了'}</span>
+                ${t.early_bird_deadline ? `
+                  <span class="text-xs px-2 py-1 rounded bg-orange-100 text-orange-700">
+                    <i class="fas fa-clock mr-1"></i>早期〆${t.early_bird_deadline}
+                  </span>
+                ` : ''}
                 <button type="button" onclick="deleteTerm('${t.id}')" class="ml-auto text-red-500 hover:text-red-700">
                   <i class="fas fa-trash"></i>
                 </button>
@@ -386,10 +391,10 @@ export const renderCourseSeriesForm = (
           
           <div class="border-t pt-4 mt-4">
             <h4 class="text-sm font-medium text-gray-700 mb-3">新しい開催期を追加</h4>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
               <div>
                 <label class="block text-xs text-gray-500 mb-1">開催期名</label>
-                <input type="text" id="newTermName" placeholder="例: 第1期（2026年2月〜3月）"
+                <input type="text" id="newTermName" placeholder="例: 第1期"
                   class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500">
               </div>
               <div>
@@ -402,6 +407,11 @@ export const renderCourseSeriesForm = (
                 <input type="date" id="newTermEndDate"
                   class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500">
               </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">早期締切日 <span class="text-orange-500">*</span></label>
+                <input type="date" id="newTermEarlyDeadline"
+                  class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500">
+              </div>
               <div class="flex items-end">
                 <button type="button" onclick="addTerm()" class="w-full bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition text-sm">
                   <i class="fas fa-plus mr-1"></i>追加
@@ -410,7 +420,7 @@ export const renderCourseSeriesForm = (
             </div>
             <p class="text-xs text-gray-500 mt-2">
               <i class="fas fa-info-circle mr-1"></i>
-              開催期を追加すると、紐付けた講座のスケジュールが自動的にこの開催期に関連付けられます。
+              早期締切日: この日までの申込で早期割引が適用されます（通常は開始日の21日前）
             </p>
           </div>
         </div>
@@ -634,6 +644,7 @@ export const renderCourseSeriesForm = (
         const name = document.getElementById('newTermName').value.trim();
         const startDate = document.getElementById('newTermStartDate').value;
         const endDate = document.getElementById('newTermEndDate').value;
+        const earlyDeadline = document.getElementById('newTermEarlyDeadline').value;
         
         if (!name || !startDate || !endDate) {
           alert('開催期名、開始日、終了日をすべて入力してください。');
@@ -642,6 +653,12 @@ export const renderCourseSeriesForm = (
         
         if (new Date(startDate) > new Date(endDate)) {
           alert('開始日は終了日より前の日付を指定してください。');
+          return;
+        }
+        
+        // 早期締切日が開始日より後の場合は警告
+        if (earlyDeadline && new Date(earlyDeadline) >= new Date(startDate)) {
+          alert('早期締切日は開始日より前の日付を指定してください。');
           return;
         }
         
@@ -658,6 +675,7 @@ export const renderCourseSeriesForm = (
                 name: name,
                 start_date: startDate,
                 end_date: endDate,
+                early_bird_deadline: earlyDeadline || null,
                 status: 'active'
               })
             });
@@ -670,10 +688,11 @@ export const renderCourseSeriesForm = (
               if (warningEl) warningEl.remove();
               
               container.innerHTML += \`
-                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg term-item" data-term-id="\${result.term.id}">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3 p-3 bg-gray-50 rounded-lg term-item" data-term-id="\${result.term.id}">
                   <span class="bg-green-500 text-white px-2 py-1 rounded text-sm">\${name}</span>
                   <span class="text-sm text-gray-600">\${startDate} 〜 \${endDate}</span>
                   <span class="text-xs px-2 py-1 rounded bg-green-100 text-green-700">募集中</span>
+                  \${earlyDeadline ? \`<span class="text-xs px-2 py-1 rounded bg-orange-100 text-orange-700"><i class="fas fa-clock mr-1"></i>早期〆\${earlyDeadline}</span>\` : ''}
                   <button type="button" onclick="deleteTerm('\${result.term.id}')" class="ml-auto text-red-500 hover:text-red-700">
                     <i class="fas fa-trash"></i>
                   </button>

@@ -3052,6 +3052,27 @@ app.post('/api/create-checkout-session', async (c) => {
         courseTitle = courseTitle || seriesResult.title
         // priceは既にフロントから渡されている
       }
+      
+      // 早期割の場合、開催期の早期締切日を確認
+      if (pricingType === 'early' && termId) {
+        const termResult = await c.env.DB.prepare(`
+          SELECT early_bird_deadline FROM course_terms WHERE id = ?
+        `).bind(termId).first() as { early_bird_deadline: string | null } | null
+        
+        if (termResult?.early_bird_deadline) {
+          const deadline = new Date(termResult.early_bird_deadline)
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          
+          if (today > deadline) {
+            return c.json({ 
+              error: '早期申込の締切日を過ぎています。コース一括でお申し込みください。',
+              earlyBirdExpired: true,
+              deadline: termResult.early_bird_deadline
+            }, 400)
+          }
+        }
+      }
     } else {
       // courseIdから講座情報を取得（courseTitle/priceが未指定の場合）
       if (courseId && (!courseTitle || !price)) {
@@ -6105,7 +6126,7 @@ app.get('/admin/course-series/:id/edit', async (c) => {
     `).bind(id).all()
     
     const terms = await c.env.DB.prepare(`
-      SELECT id, series_id, name, start_date, end_date, status FROM course_terms WHERE series_id = ? ORDER BY start_date ASC
+      SELECT id, series_id, name, start_date, end_date, early_bird_deadline, status FROM course_terms WHERE series_id = ? ORDER BY start_date ASC
     `).bind(id).all()
     
     return c.html(renderCourseSeriesForm(
@@ -6407,7 +6428,7 @@ app.delete('/admin/api/course-series/:id', async (c) => {
 app.post('/admin/api/course-terms', async (c) => {
   try {
     const body = await c.req.json()
-    const { series_id, name, start_date, end_date, status } = body
+    const { series_id, name, start_date, end_date, early_bird_deadline, status } = body
     
     if (!series_id || !name || !start_date || !end_date) {
       return c.json({ success: false, error: '必須項目が不足しています' }, 400)
@@ -6416,9 +6437,9 @@ app.post('/admin/api/course-terms', async (c) => {
     const termId = `term-${Date.now().toString(36).toUpperCase()}`
     
     await c.env.DB.prepare(`
-      INSERT INTO course_terms (id, series_id, name, start_date, end_date, status)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(termId, series_id, name, start_date, end_date, status || 'active').run()
+      INSERT INTO course_terms (id, series_id, name, start_date, end_date, early_bird_deadline, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(termId, series_id, name, start_date, end_date, early_bird_deadline || null, status || 'active').run()
     
     // このシリーズに紐づく講座のスケジュールをこの開催期に関連付け
     await c.env.DB.prepare(`
@@ -6429,7 +6450,7 @@ app.post('/admin/api/course-terms', async (c) => {
     
     return c.json({ 
       success: true, 
-      term: { id: termId, series_id, name, start_date, end_date, status: status || 'active' }
+      term: { id: termId, series_id, name, start_date, end_date, early_bird_deadline, status: status || 'active' }
     })
   } catch (error) {
     console.error('Create course term error:', error)

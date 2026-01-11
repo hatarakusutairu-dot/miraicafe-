@@ -131,25 +131,32 @@ export const renderReservationPage = (
                   const remainingSeats = term.max_capacity - term.enrolled
                   
                   return `
-                  <label class="block cursor-pointer term-option" data-term-id="${term.id}">
+                  <label class="block cursor-pointer term-option" data-term-id="${term.id}" data-early-deadline="${term.early_bird_deadline || ''}">
                     <input type="radio" name="selected_term" value="${term.id}" class="hidden" ${termIdx === 0 ? 'checked' : ''} ${!isAvailable ? 'disabled' : ''}>
                     <div class="border-2 ${termIdx === 0 ? 'border-ai-purple bg-ai-purple/5' : 'border-future-sky'} rounded-2xl p-4 hover:border-ai-purple transition ${!isAvailable ? 'opacity-50' : ''}">
-                      <div class="flex items-center justify-between mb-3">
+                      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                         <div class="flex items-center">
                           <div class="w-5 h-5 border-2 ${termIdx === 0 ? 'border-ai-purple' : 'border-future-sky'} rounded-full mr-3 flex items-center justify-center term-radio">
                             <div class="w-2.5 h-2.5 bg-ai-purple rounded-full ${termIdx === 0 ? '' : 'opacity-0'} term-dot"></div>
                           </div>
                           <span class="font-bold text-future-text">${term.name}</span>
                         </div>
-                        ${isAvailable ? `
-                          <span class="text-xs ${remainingSeats <= 3 ? 'text-red-500' : 'text-nature-forest'} font-medium">
-                            <i class="fas fa-user-friends mr-1"></i>残り${remainingSeats}席
-                          </span>
-                        ` : `
-                          <span class="text-xs text-red-500 font-medium">
-                            <i class="fas fa-ban mr-1"></i>満席
-                          </span>
-                        `}
+                        <div class="flex items-center gap-2">
+                          ${term.early_bird_deadline ? `
+                            <span class="text-xs px-2 py-1 rounded ${new Date(term.early_bird_deadline) >= new Date() ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-400 line-through'} font-medium">
+                              <i class="fas fa-clock mr-1"></i>早期〆${new Date(term.early_bird_deadline).toLocaleDateString('ja-JP', {month: 'numeric', day: 'numeric'})}
+                            </span>
+                          ` : ''}
+                          ${isAvailable ? `
+                            <span class="text-xs ${remainingSeats <= 3 ? 'text-red-500' : 'text-nature-forest'} font-medium">
+                              <i class="fas fa-user-friends mr-1"></i>残り${remainingSeats}席
+                            </span>
+                          ` : `
+                            <span class="text-xs text-red-500 font-medium">
+                              <i class="fas fa-ban mr-1"></i>満席
+                            </span>
+                          `}
+                        </div>
                       </div>
                       
                       <!-- この期の全日程 -->
