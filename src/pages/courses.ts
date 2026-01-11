@@ -91,62 +91,55 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
         <div class="orb orb-2 opacity-20"></div>
       </div>
       <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex flex-col lg:flex-row items-center gap-6 lg:gap-8">
-          <!-- 左側: タイトル部分 -->
-          <div class="flex-1 text-center lg:text-left">
-            <span class="inline-flex items-center gradient-ai text-white font-medium px-4 py-2 rounded-full text-sm mb-4">
-              <i class="fas fa-book-open mr-2"></i>ALL COURSES
+        <!-- 中央揃えのヘッダー -->
+        <div class="text-center mb-8">
+          <span class="inline-flex items-center gradient-ai text-white font-medium px-4 py-2 rounded-full text-sm mb-4">
+            <i class="fas fa-book-open mr-2"></i>ALL COURSES
+          </span>
+          <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-future-text mb-3">講座一覧</h1>
+          <p class="text-future-textLight text-sm sm:text-base max-w-lg mx-auto mb-5">
+            目的やレベルに合わせて、最適な講座をお選びください
+          </p>
+          
+          <!-- 特徴バッジ（中央揃え） -->
+          <div class="flex flex-wrap justify-center gap-2 mb-6">
+            <span class="inline-flex items-center bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-xs font-medium">
+              <i class="fas fa-check-circle mr-1.5"></i>1回から受講OK
             </span>
-            <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-future-text mb-3">講座一覧</h1>
-            <p class="text-future-textLight text-sm sm:text-base max-w-md mx-auto lg:mx-0 mb-4">
-              目的やレベルに合わせて、最適な講座をお選びください
-            </p>
-            
-            <!-- 特徴バッジ -->
-            <div class="flex flex-wrap justify-center lg:justify-start gap-2">
-              <span class="inline-flex items-center bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-xs font-medium">
-                <i class="fas fa-check-circle mr-1.5"></i>1回から受講OK
-              </span>
-              <span class="inline-flex items-center bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full text-xs font-medium">
-                <i class="fas fa-layer-group mr-1.5"></i>お得なコースあり
-              </span>
-              <span class="inline-flex items-center bg-orange-100 text-orange-700 px-3 py-1.5 rounded-full text-xs font-medium">
-                <i class="fas fa-gift mr-1.5"></i>無料講座も開催中
-              </span>
-            </div>
+            <span class="inline-flex items-center bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full text-xs font-medium">
+              <i class="fas fa-layer-group mr-1.5"></i>お得なコースあり
+            </span>
+            <span class="inline-flex items-center bg-orange-100 text-orange-700 px-3 py-1.5 rounded-full text-xs font-medium">
+              <i class="fas fa-gift mr-1.5"></i>無料講座も開催中
+            </span>
           </div>
           
-          <!-- 右側: ふわふわ吹き出し -->
-          <div class="flex-shrink-0 float-animation">
-            <div class="relative bg-gradient-to-br from-orange-50 via-yellow-50 to-pink-50 rounded-[40px] px-6 py-5 shadow-lg border-2 border-orange-200/50" style="border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;">
-              <!-- 装飾 -->
+          <!-- ふわふわ吹き出し（中央） -->
+          <div class="inline-block float-animation mb-6">
+            <div class="relative bg-gradient-to-br from-orange-50 via-yellow-50 to-pink-50 rounded-[40px] px-6 py-4 shadow-lg border-2 border-orange-200/50" style="border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;">
               <span class="absolute -top-2 -left-2 text-yellow-400 sparkle">✦</span>
               <span class="absolute -top-1 right-4 text-pink-300 sparkle" style="animation-delay: 0.5s;">♡</span>
               <span class="absolute -bottom-1 -right-2 text-green-400 sparkle" style="animation-delay: 1s;">✦</span>
               <span class="absolute bottom-2 -left-3 text-orange-300 sparkle" style="animation-delay: 0.3s;">☆</span>
-              <span class="absolute top-1/2 -right-4 text-yellow-300 sparkle" style="animation-delay: 0.7s;">✿</span>
-              <!-- テキスト -->
-              <p class="text-center font-bold text-amber-800 text-base sm:text-lg leading-relaxed whitespace-nowrap">
-                1回のみでもコース<br>でも予約できます！
+              <p class="text-center font-bold text-amber-800 text-sm sm:text-base leading-relaxed">
+                1回のみでもコースでも<br>予約できます！
               </p>
             </div>
           </div>
-        </div>
-        
-        <!-- AI相談ボタン（目立つデザイン） -->
-        <div class="mt-6 flex justify-center lg:justify-start">
-          <button id="ai-advisor-btn" 
-                  class="group relative inline-flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all hover:scale-105 text-base sm:text-lg animate-pulse hover:animate-none">
-            <!-- キラキラエフェクト -->
-            <span class="absolute -top-1 -right-1 text-yellow-300 text-sm">✨</span>
-            <span class="absolute -bottom-1 -left-1 text-yellow-300 text-sm">✨</span>
-            <!-- アイコン -->
-            <span class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <i class="fas fa-robot text-xl"></i>
-            </span>
-            <span>AIに講座を相談する</span>
-            <i class="fas fa-chevron-down text-sm transition-transform group-hover:translate-y-1" id="ai-btn-icon"></i>
-          </button>
+          
+          <!-- AI相談ボタン（中央） -->
+          <div class="flex justify-center">
+            <button id="ai-advisor-btn" 
+                    class="group relative inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all hover:scale-105 text-sm sm:text-base">
+              <span class="absolute -top-1 -right-1 text-yellow-300 text-xs">✨</span>
+              <span class="absolute -bottom-1 -left-1 text-yellow-300 text-xs">✨</span>
+              <span class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                <i class="fas fa-robot"></i>
+              </span>
+              <span>AIに講座を相談する</span>
+              <i class="fas fa-chevron-down text-xs transition-transform group-hover:translate-y-1" id="ai-btn-icon"></i>
+            </button>
+          </div>
         </div>
       </div>
     </section>
