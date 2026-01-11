@@ -65,42 +65,93 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
   const seriesCourseIds = new Set(Object.keys(seriesMap || {}))
   
   const content = `
+    <!-- ふわふわアニメーション用CSS -->
+    <style>
+      @keyframes float {
+        0%, 100% { transform: translateY(0px) rotate(-1deg); }
+        50% { transform: translateY(-8px) rotate(1deg); }
+      }
+      .float-animation {
+        animation: float 3s ease-in-out infinite;
+      }
+      @keyframes sparkle {
+        0%, 100% { opacity: 0.3; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.2); }
+      }
+      .sparkle {
+        animation: sparkle 2s ease-in-out infinite;
+      }
+    </style>
+
     <!-- Page Header -->
-    <section class="relative py-20 overflow-hidden">
+    <section class="relative py-12 sm:py-16 overflow-hidden">
       <div class="absolute inset-0 gradient-ai-light"></div>
       <div class="absolute inset-0">
         <div class="orb orb-1 opacity-30"></div>
         <div class="orb orb-2 opacity-20"></div>
       </div>
-      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <span class="inline-flex items-center gradient-ai text-white font-medium px-4 py-2 rounded-full text-sm mb-4">
-          <i class="fas fa-book-open mr-2"></i>ALL COURSES
-        </span>
-        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-future-text mb-3 sm:mb-4">講座一覧</h1>
-        <p class="text-future-textLight text-base sm:text-lg max-w-xl mx-auto">
-          目的やレベルに合わせて、最適な講座をお選びください
-        </p>
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col lg:flex-row items-center gap-6 lg:gap-8">
+          <!-- 左側: タイトル部分 -->
+          <div class="flex-1 text-center lg:text-left">
+            <span class="inline-flex items-center gradient-ai text-white font-medium px-4 py-2 rounded-full text-sm mb-4">
+              <i class="fas fa-book-open mr-2"></i>ALL COURSES
+            </span>
+            <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-future-text mb-3">講座一覧</h1>
+            <p class="text-future-textLight text-sm sm:text-base max-w-md mx-auto lg:mx-0 mb-4">
+              目的やレベルに合わせて、最適な講座をお選びください
+            </p>
+            
+            <!-- 特徴バッジ -->
+            <div class="flex flex-wrap justify-center lg:justify-start gap-2">
+              <span class="inline-flex items-center bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-xs font-medium">
+                <i class="fas fa-check-circle mr-1.5"></i>1回から受講OK
+              </span>
+              <span class="inline-flex items-center bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full text-xs font-medium">
+                <i class="fas fa-layer-group mr-1.5"></i>お得なコースあり
+              </span>
+              <span class="inline-flex items-center bg-orange-100 text-orange-700 px-3 py-1.5 rounded-full text-xs font-medium">
+                <i class="fas fa-gift mr-1.5"></i>無料講座も開催中
+              </span>
+            </div>
+          </div>
+          
+          <!-- 右側: ふわふわ画像 -->
+          <div class="flex-shrink-0 float-animation">
+            <img src="https://www.genspark.ai/api/files/s/mr6N5cYI" 
+                 alt="1回のみでもコースでも予約できます！" 
+                 class="w-48 sm:w-56 md:w-64 h-auto drop-shadow-lg">
+          </div>
+        </div>
+        
+        <!-- AI相談ボタン（横配置） -->
+        <div class="mt-6 flex justify-center lg:justify-start">
+          <button id="ai-advisor-btn" 
+                  class="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-cafe-wood to-cafe-caramel text-white rounded-full font-medium shadow-lg hover:shadow-xl transition-all hover:scale-105">
+            <i class="fas fa-robot"></i>
+            <span>AIに講座を相談する</span>
+            <i class="fas fa-chevron-down text-sm transition-transform" id="ai-btn-icon"></i>
+          </button>
+        </div>
       </div>
     </section>
 
-    <!-- AI講座アドバイザー チャットボット -->
-    <section class="py-8 bg-gradient-to-br from-cafe-cream via-cafe-latte/30 to-nature-mint/20">
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-cafe-beige">
+    <!-- AI講座アドバイザー チャットボット（折りたたみ式） -->
+    <section id="chatbot-section" class="hidden bg-gradient-to-br from-cafe-cream via-cafe-latte/30 to-nature-mint/20 border-y border-cafe-beige">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-cafe-beige">
           <!-- チャットボットヘッダー -->
-          <div class="bg-gradient-to-r from-cafe-wood to-cafe-caramel p-6 text-white">
-            <div class="flex items-center gap-4">
-              <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                <i class="fas fa-robot text-2xl"></i>
+          <div class="bg-gradient-to-r from-cafe-wood to-cafe-caramel p-4 text-white">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <i class="fas fa-robot text-lg"></i>
               </div>
-              <div>
-                <h3 class="text-xl font-bold flex items-center gap-2">
-                  <span>☕</span> mionのAI講座アドバイザー
-                </h3>
-                <p class="text-white/80 text-sm">あなたにぴったりの講座を一緒に探しましょう</p>
+              <div class="flex-1">
+                <h3 class="text-base font-bold">☕ mionのAI講座アドバイザー</h3>
+                <p class="text-white/80 text-xs">あなたにぴったりの講座を一緒に探します</p>
               </div>
-              <button id="chatbot-toggle" class="ml-auto text-white/80 hover:text-white transition p-2">
-                <i class="fas fa-chevron-up text-lg" id="chatbot-toggle-icon"></i>
+              <button id="chatbot-close" class="text-white/80 hover:text-white transition p-2">
+                <i class="fas fa-times text-lg"></i>
               </button>
             </div>
           </div>
@@ -108,30 +159,30 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
           <!-- チャットボット本体 -->
           <div id="chatbot-body" class="transition-all duration-300">
             <!-- チャット履歴 -->
-            <div id="chat-messages" class="p-6 max-h-96 overflow-y-auto space-y-4 bg-cafe-ivory/30">
+            <div id="chat-messages" class="p-4 max-h-72 overflow-y-auto space-y-3 bg-cafe-ivory/30">
               <!-- 初期メッセージ -->
               <div class="chat-message bot flex gap-3">
-                <div class="w-10 h-10 bg-cafe-wood rounded-full flex items-center justify-center flex-shrink-0">
-                  <i class="fas fa-robot text-white text-sm"></i>
+                <div class="w-8 h-8 bg-cafe-wood rounded-full flex items-center justify-center flex-shrink-0">
+                  <i class="fas fa-robot text-white text-xs"></i>
                 </div>
                 <div class="flex-1">
-                  <div class="bg-white rounded-2xl rounded-tl-sm p-4 shadow-sm border border-cafe-beige/50 max-w-lg">
-                    <p class="text-cafe-text">こんにちは！mirAIcafeの講座アドバイザーmionです😊</p>
-                    <p class="text-cafe-text mt-2">あなたにぴったりの講座を一緒に探しましょう！まず、どんな目的で学びたいですか？</p>
+                  <div class="bg-white rounded-2xl rounded-tl-sm p-3 shadow-sm border border-cafe-beige/50 max-w-lg">
+                    <p class="text-cafe-text text-sm">こんにちは！講座アドバイザーのmionです😊</p>
+                    <p class="text-cafe-text text-sm mt-1">どんな目的で学びたいですか？</p>
                   </div>
                   <!-- 初期選択肢 -->
-                  <div class="flex flex-wrap gap-2 mt-3" id="initial-options">
-                    <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="仕事でAIを活用して効率化したい">
-                      💼 仕事で効率化したい
+                  <div class="flex flex-wrap gap-2 mt-2" id="initial-options">
+                    <button class="chat-option px-3 py-1.5 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-xs font-medium transition-all border border-cafe-beige" data-value="仕事でAIを活用して効率化したい">
+                      💼 仕事で効率化
                     </button>
-                    <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="資格取得や勉強に役立てたい">
-                      📚 勉強・資格に役立てたい
+                    <button class="chat-option px-3 py-1.5 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-xs font-medium transition-all border border-cafe-beige" data-value="資格取得や勉強に役立てたい">
+                      📚 勉強・資格
                     </button>
-                    <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="教育現場でAIを活用したい">
-                      🏫 教育現場で活用したい
+                    <button class="chat-option px-3 py-1.5 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-xs font-medium transition-all border border-cafe-beige" data-value="教育現場でAIを活用したい">
+                      🏫 教育現場
                     </button>
-                    <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="趣味や興味でAIを学びたい">
-                      🎨 趣味・興味で学びたい
+                    <button class="chat-option px-3 py-1.5 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-xs font-medium transition-all border border-cafe-beige" data-value="趣味や興味でAIを学びたい">
+                      🎨 趣味・興味
                     </button>
                   </div>
                 </div>
@@ -139,13 +190,13 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
             </div>
             
             <!-- 入力エリア -->
-            <div class="p-4 border-t border-cafe-beige bg-white">
-              <div class="flex gap-3">
+            <div class="p-3 border-t border-cafe-beige bg-white">
+              <div class="flex gap-2">
                 <input type="text" id="chat-input" 
-                       class="flex-1 px-4 py-3 border border-cafe-beige rounded-full focus:border-cafe-wood focus:outline-none transition-colors bg-cafe-ivory/50"
-                       placeholder="または、自由に入力してください...">
-                <button id="chat-send" class="px-6 py-3 bg-cafe-wood hover:bg-cafe-caramel text-white rounded-full font-medium transition-all flex items-center gap-2">
-                  <i class="fas fa-paper-plane"></i>
+                       class="flex-1 px-3 py-2 border border-cafe-beige rounded-full focus:border-cafe-wood focus:outline-none transition-colors bg-cafe-ivory/50 text-sm"
+                       placeholder="自由に入力もできます...">
+                <button id="chat-send" class="px-4 py-2 bg-cafe-wood hover:bg-cafe-caramel text-white rounded-full font-medium transition-all flex items-center gap-1 text-sm">
+                  <i class="fas fa-paper-plane text-xs"></i>
                   <span class="hidden sm:inline">送信</span>
                 </button>
               </div>
@@ -701,19 +752,37 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
       const chatMessages = document.getElementById('chat-messages');
       const chatInput = document.getElementById('chat-input');
       const chatSend = document.getElementById('chat-send');
-      const chatbotToggle = document.getElementById('chatbot-toggle');
-      const chatbotBody = document.getElementById('chatbot-body');
-      const chatbotToggleIcon = document.getElementById('chatbot-toggle-icon');
+      const chatbotSection = document.getElementById('chatbot-section');
+      const aiAdvisorBtn = document.getElementById('ai-advisor-btn');
+      const aiBtnIcon = document.getElementById('ai-btn-icon');
+      const chatbotClose = document.getElementById('chatbot-close');
       
       let conversationHistory = [];
       let isLoading = false;
+      let isChatbotOpen = false;
       
-      // チャットボット開閉
-      if (chatbotToggle) {
-        chatbotToggle.addEventListener('click', function() {
-          chatbotBody.classList.toggle('hidden');
-          chatbotToggleIcon.classList.toggle('fa-chevron-up');
-          chatbotToggleIcon.classList.toggle('fa-chevron-down');
+      // AI相談ボタンでチャットボット開閉
+      if (aiAdvisorBtn && chatbotSection) {
+        aiAdvisorBtn.addEventListener('click', function() {
+          isChatbotOpen = !isChatbotOpen;
+          if (isChatbotOpen) {
+            chatbotSection.classList.remove('hidden');
+            aiBtnIcon.classList.add('rotate-180');
+            // スムーズスクロール
+            chatbotSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          } else {
+            chatbotSection.classList.add('hidden');
+            aiBtnIcon.classList.remove('rotate-180');
+          }
+        });
+      }
+      
+      // 閉じるボタン
+      if (chatbotClose && chatbotSection) {
+        chatbotClose.addEventListener('click', function() {
+          chatbotSection.classList.add('hidden');
+          aiBtnIcon.classList.remove('rotate-180');
+          isChatbotOpen = false;
         });
       }
       
@@ -743,26 +812,26 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
         conversationHistory = [];
         chatMessages.innerHTML = \`
           <div class="chat-message bot flex gap-3">
-            <div class="w-10 h-10 bg-cafe-wood rounded-full flex items-center justify-center flex-shrink-0">
-              <i class="fas fa-robot text-white text-sm"></i>
+            <div class="w-8 h-8 bg-cafe-wood rounded-full flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-robot text-white text-xs"></i>
             </div>
             <div class="flex-1">
-              <div class="bg-white rounded-2xl rounded-tl-sm p-4 shadow-sm border border-cafe-beige/50 max-w-lg">
-                <p class="text-cafe-text">こんにちは！mirAIcafeの講座アドバイザーmionです😊</p>
-                <p class="text-cafe-text mt-2">あなたにぴったりの講座を一緒に探しましょう！まず、どんな目的で学びたいですか？</p>
+              <div class="bg-white rounded-2xl rounded-tl-sm p-3 shadow-sm border border-cafe-beige/50 max-w-lg">
+                <p class="text-cafe-text text-sm">こんにちは！講座アドバイザーのmionです😊</p>
+                <p class="text-cafe-text text-sm mt-1">どんな目的で学びたいですか？</p>
               </div>
-              <div class="flex flex-wrap gap-2 mt-3" id="initial-options">
-                <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="仕事でAIを活用して効率化したい">
-                  💼 仕事で効率化したい
+              <div class="flex flex-wrap gap-2 mt-2" id="initial-options">
+                <button class="chat-option px-3 py-1.5 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-xs font-medium transition-all border border-cafe-beige" data-value="仕事でAIを活用して効率化したい">
+                  💼 仕事で効率化
                 </button>
-                <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="資格取得や勉強に役立てたい">
-                  📚 勉強・資格に役立てたい
+                <button class="chat-option px-3 py-1.5 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-xs font-medium transition-all border border-cafe-beige" data-value="資格取得や勉強に役立てたい">
+                  📚 勉強・資格
                 </button>
-                <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="教育現場でAIを活用したい">
-                  🏫 教育現場で活用したい
+                <button class="chat-option px-3 py-1.5 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-xs font-medium transition-all border border-cafe-beige" data-value="教育現場でAIを活用したい">
+                  🏫 教育現場
                 </button>
-                <button class="chat-option px-4 py-2 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-sm font-medium transition-all border border-cafe-beige" data-value="趣味や興味でAIを学びたい">
-                  🎨 趣味・興味で学びたい
+                <button class="chat-option px-3 py-1.5 bg-cafe-latte/50 hover:bg-cafe-wood hover:text-white text-cafe-text rounded-full text-xs font-medium transition-all border border-cafe-beige" data-value="趣味や興味でAIを学びたい">
+                  🎨 趣味・興味
                 </button>
               </div>
             </div>
