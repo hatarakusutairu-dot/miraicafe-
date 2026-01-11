@@ -176,74 +176,74 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
           </button>
         </div>
 
-        <!-- Filter Content - Desktop: Compact 2-row layout -->
-        <div id="filter-content" class="hidden lg:block">
-          <!-- Row 1: Search + Categories -->
-          <div class="flex items-center gap-4 mb-3">
-            <!-- Search Bar -->
-            <div class="relative w-80 flex-shrink-0">
+        <!-- Filter Content - Mobile: Collapsible, Desktop: Always visible -->
+        <div id="filter-content" class="filter-panel mt-4 lg:mt-0">
+          <!-- Search Bar -->
+          <div class="mb-4">
+            <div class="relative">
               <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-future-textLight"></i>
               <input type="text" id="search-input" 
-                class="w-full pl-11 pr-10 py-2.5 border border-future-sky rounded-xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light"
+                class="w-full lg:w-80 pl-11 pr-10 py-3 border border-future-sky rounded-xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light text-base"
                 placeholder="講座名で検索...">
-              <button id="search-clear" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-future-textLight hover:text-future-text hidden">
+              <button id="search-clear" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-future-textLight hover:text-future-text hidden p-2">
                 <i class="fas fa-times"></i>
               </button>
             </div>
+          </div>
 
-            <!-- Category Filter - Inline -->
-            <div class="flex items-center gap-3 flex-wrap" id="category-filters">
-              <span class="text-future-textLight font-medium">カテゴリ:</span>
-              <button class="filter-btn category-btn active px-5 py-2 rounded-full font-medium transition-all shadow-sm" data-category="all">すべて</button>
-              <button class="filter-btn category-btn px-5 py-2 rounded-full font-medium transition-all" data-category="AI基礎">AI基礎</button>
-              <button class="filter-btn category-btn px-5 py-2 rounded-full font-medium transition-all" data-category="AIツール活用">AIツール活用</button>
-              <button class="filter-btn category-btn px-5 py-2 rounded-full font-medium transition-all" data-category="データ分析">データ分析</button>
-              <button class="filter-btn category-btn px-5 py-2 rounded-full font-medium transition-all" data-category="資格対策">資格対策</button>
-              <button class="filter-btn category-btn px-5 py-2 rounded-full font-medium transition-all" data-category="教育者向け">教育者向け</button>
+          <!-- Category Filter -->
+          <div class="mb-4">
+            <span class="text-future-textLight font-medium text-sm block mb-2 lg:hidden">カテゴリ</span>
+            <div class="flex items-center gap-2 lg:gap-3 flex-wrap" id="category-filters">
+              <span class="text-future-textLight font-medium hidden lg:inline">カテゴリ:</span>
+              <button class="filter-btn category-btn active px-4 py-2 rounded-full font-medium transition-all shadow-sm text-sm" data-category="all">すべて</button>
+              <button class="filter-btn category-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-category="AI基礎">AI基礎</button>
+              <button class="filter-btn category-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-category="AIツール活用">AIツール活用</button>
+              <button class="filter-btn category-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-category="データ分析">データ分析</button>
+              <button class="filter-btn category-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-category="資格対策">資格対策</button>
+              <button class="filter-btn category-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-category="教育者向け">教育者向け</button>
             </div>
           </div>
 
-          <!-- Row 2: Price + Sort + Results -->
-          <div class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-6">
-              <!-- Price Filter - Inline -->
-              <div class="flex items-center gap-3" id="price-filters">
-                <span class="text-future-textLight font-medium">価格:</span>
-                <button class="filter-btn price-btn active px-5 py-2 rounded-full font-medium transition-all shadow-sm" data-price="all">すべて</button>
-                <button class="filter-btn price-btn px-5 py-2 rounded-full font-medium transition-all" data-price="free">無料</button>
-                <button class="filter-btn price-btn px-5 py-2 rounded-full font-medium transition-all" data-price="under5000">〜5千円</button>
-                <button class="filter-btn price-btn px-5 py-2 rounded-full font-medium transition-all" data-price="under10000">〜1万円</button>
-                <button class="filter-btn price-btn px-5 py-2 rounded-full font-medium transition-all" data-price="over10000">1万円〜</button>
-              </div>
-
-              <!-- Sort Dropdown -->
-              <div class="flex items-center gap-2">
-                <span class="text-future-textLight font-medium">並び替え:</span>
-                <select id="sort-select" class="px-4 py-2 border border-future-sky rounded-xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light text-future-text">
-                  <option value="newest">新着順</option>
-                  <option value="popular">人気順</option>
-                  <option value="price-asc">安い順</option>
-                  <option value="price-desc">高い順</option>
-                  <option value="rating">評価順</option>
-                </select>
-              </div>
-
-              <!-- Reset Filters -->
-              <button id="reset-filters" class="text-ai-blue font-medium hover:text-ai-purple transition-colors hidden">
-                <i class="fas fa-redo mr-1"></i>リセット
-              </button>
+          <!-- Price Filter -->
+          <div class="mb-4">
+            <span class="text-future-textLight font-medium text-sm block mb-2 lg:hidden">価格</span>
+            <div class="flex items-center gap-2 lg:gap-3 flex-wrap" id="price-filters">
+              <span class="text-future-textLight font-medium hidden lg:inline">価格:</span>
+              <button class="filter-btn price-btn active px-4 py-2 rounded-full font-medium transition-all shadow-sm text-sm" data-price="all">すべて</button>
+              <button class="filter-btn price-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-price="free">無料</button>
+              <button class="filter-btn price-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-price="under5000">〜5千円</button>
+              <button class="filter-btn price-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-price="under10000">〜1万円</button>
+              <button class="filter-btn price-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-price="over10000">1万円〜</button>
             </div>
-
-            <!-- Results Count -->
-            <p class="text-future-textLight">
-              全<span class="font-bold text-future-text">${courses.length}</span>件中<span class="font-bold text-future-text" id="filtered-count">${courses.length}</span>件
-            </p>
           </div>
+
+          <!-- Sort + Reset -->
+          <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 lg:gap-4">
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+              <span class="text-future-textLight font-medium text-sm">並び替え:</span>
+              <select id="sort-select" class="flex-1 sm:flex-none px-4 py-2 border border-future-sky rounded-xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light text-future-text text-sm min-h-[44px]">
+                <option value="newest">新着順</option>
+                <option value="popular">人気順</option>
+                <option value="price-asc">安い順</option>
+                <option value="price-desc">高い順</option>
+                <option value="rating">評価順</option>
+              </select>
+            </div>
+            <button id="reset-filters" class="text-ai-blue font-medium hover:text-ai-purple transition-colors hidden text-sm py-2">
+              <i class="fas fa-redo mr-1"></i>リセット
+            </button>
+          </div>
+
+          <!-- Results Count (Desktop) -->
+          <p class="text-future-textLight mt-4 hidden lg:block">
+            全<span class="font-bold text-future-text">${courses.length}</span>件中<span class="font-bold text-future-text" id="filtered-count">${courses.length}</span>件
+          </p>
         </div>
 
         <!-- Mobile: Results Count -->
-        <div class="lg:hidden mt-2 text-center">
-          <p class="text-future-textLight text-xs">
+        <div class="lg:hidden mt-3 text-center">
+          <p class="text-future-textLight text-sm">
             全<span class="font-bold text-future-text">${courses.length}</span>件中<span class="font-bold text-future-text" id="filtered-count-mobile">${courses.length}</span>件を表示
           </p>
         </div>
@@ -485,11 +485,16 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
       };
 
       // Mobile filter toggle
-      if (filterToggle) {
+      if (filterToggle && filterContent) {
         filterToggle.addEventListener('click', function() {
-          const isHidden = filterContent.classList.contains('hidden');
-          filterContent.classList.toggle('hidden');
-          filterToggleIcon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+          const isExpanded = filterContent.classList.contains('filter-expanded');
+          if (isExpanded) {
+            filterContent.classList.remove('filter-expanded');
+            filterToggleIcon.style.transform = 'rotate(0deg)';
+          } else {
+            filterContent.classList.add('filter-expanded');
+            filterToggleIcon.style.transform = 'rotate(180deg)';
+          }
         });
       }
 
@@ -1013,6 +1018,12 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
   const content = `
     <!-- Hero Section -->
     <section class="relative">
+      <!-- 戻るボタン（画像の上に固定） -->
+      <a href="/courses" class="absolute top-4 left-4 z-10 inline-flex items-center bg-white/90 backdrop-blur-sm text-future-textLight hover:text-ai-blue hover:bg-white transition-all px-4 py-2 rounded-full shadow-md min-h-[44px]">
+        <i class="fas fa-arrow-left mr-2"></i>
+        <span class="text-sm font-medium">講座一覧に戻る</span>
+      </a>
+      
       <div class="aspect-[3/1] max-h-96 overflow-hidden">
         <img src="${course.image}" alt="${course.title}" class="w-full h-full object-cover">
         <div class="absolute inset-0 bg-gradient-to-t from-future-text/90 via-future-text/50 to-transparent"></div>
@@ -1965,7 +1976,7 @@ export const renderSeriesDetailPage = (
   
   const content = `
     <!-- Hero Section -->
-    <section class="relative py-16 overflow-hidden">
+    <section class="relative py-12 sm:py-16 overflow-hidden">
       <div class="absolute inset-0 bg-gradient-to-br from-ai-purple/10 via-ai-blue/5 to-nature-mint/10"></div>
       ${series.image ? `
         <div class="absolute inset-0">
@@ -1974,6 +1985,12 @@ export const renderSeriesDetailPage = (
         </div>
       ` : ''}
       <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- 戻るボタン -->
+        <a href="/courses" class="inline-flex items-center text-future-textLight hover:text-ai-blue transition-colors mb-4 sm:mb-6 py-2">
+          <i class="fas fa-arrow-left mr-2"></i>
+          <span class="text-sm sm:text-base">講座一覧に戻る</span>
+        </a>
+        
         <div class="flex flex-col lg:flex-row gap-8 items-start">
           <!-- 左側: コース情報 -->
           <div class="flex-1">

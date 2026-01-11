@@ -129,6 +129,21 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       .gap-6 { gap: 1rem; }
     }
     
+    /* ========== Filter Panel Styles ========== */
+    .filter-panel {
+      display: none;
+    }
+    
+    .filter-panel.filter-expanded {
+      display: block;
+    }
+    
+    @media (min-width: 1024px) {
+      .filter-panel {
+        display: block !important;
+      }
+    }
+    
     /* ========== Universal Modal Styles ========== */
     .modal-overlay {
       position: fixed;

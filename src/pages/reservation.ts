@@ -76,20 +76,27 @@ export const renderReservationPage = (
   const priceLabel = getPriceLabel(pricingType || 'single', seriesInfo || null)
   const content = `
     <!-- Page Header -->
-    <section class="relative py-20 overflow-hidden">
+    <section class="relative py-12 sm:py-20 overflow-hidden">
       <div class="absolute inset-0 gradient-ai-light"></div>
       <div class="absolute inset-0">
         <div class="orb orb-1 opacity-30"></div>
         <div class="orb orb-2 opacity-20"></div>
       </div>
-      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <span class="inline-flex items-center gradient-ai text-white font-medium px-4 py-2 rounded-full text-sm mb-4">
-          <i class="fas fa-calendar-alt mr-2"></i>RESERVATION
-        </span>
-        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-future-text mb-3 sm:mb-4">講座予約</h1>
-        <p class="text-future-textLight text-base sm:text-lg max-w-xl mx-auto">
-          ご希望の講座と日程を選択して予約してください
-        </p>
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- 戻るボタン -->
+        <a href="/courses" class="inline-flex items-center text-future-textLight hover:text-ai-blue transition-colors mb-4 sm:mb-6 py-2">
+          <i class="fas fa-arrow-left mr-2"></i>
+          <span class="text-sm sm:text-base">講座一覧に戻る</span>
+        </a>
+        <div class="text-center">
+          <span class="inline-flex items-center gradient-ai text-white font-medium px-4 py-2 rounded-full text-sm mb-4">
+            <i class="fas fa-calendar-alt mr-2"></i>RESERVATION
+          </span>
+          <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-future-text mb-3 sm:mb-4">講座予約</h1>
+          <p class="text-future-textLight text-base sm:text-lg max-w-xl mx-auto">
+            ご希望の講座と日程を選択して予約してください
+          </p>
+        </div>
       </div>
     </section>
 
