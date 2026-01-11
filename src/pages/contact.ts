@@ -37,7 +37,7 @@ export const renderContactPage = () => {
             <!-- Contact Methods Section -->
             <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-lg border border-future-sky/50">
               <h2 class="text-sm sm:text-base font-bold text-future-text mb-3 sm:mb-4 flex items-center">
-                <i class="fas fa-info-circle gradient-ai-text mr-2 text-xs sm:text-sm"></i>その他のお問い合わせ方法
+                <i class="fas fa-info-circle gradient-ai-text mr-2 text-xs sm:text-sm flex-shrink-0"></i><span class="whitespace-nowrap">その他のお問い合わせ</span>
               </h2>
               
               <div class="space-y-3 sm:space-y-4">
@@ -232,9 +232,9 @@ export const renderContactPage = () => {
                 </div>
 
                 <!-- Privacy Policy Agreement -->
-                <div class="flex items-start glass rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                <div class="flex items-center glass rounded-xl sm:rounded-2xl p-3 sm:p-4">
                   <input type="checkbox" id="privacy-agree"
-                    class="mt-0.5 mr-2 sm:mr-3 w-4 h-4 sm:w-5 sm:h-5 accent-ai-blue rounded flex-shrink-0 cursor-pointer">
+                    class="mr-2 sm:mr-3 w-3.5 h-3.5 sm:w-4 sm:h-4 accent-ai-blue rounded flex-shrink-0 cursor-pointer">
                   <label for="privacy-agree" class="text-future-textLight text-xs sm:text-sm leading-relaxed cursor-pointer">
                     <a href="/privacy" class="gradient-ai-text hover:underline font-medium">プライバシーポリシー</a>に同意します <span class="text-red-500">*</span>
                   </label>
