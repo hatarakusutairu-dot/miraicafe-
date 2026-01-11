@@ -36,8 +36,8 @@ export const renderContactPage = () => {
             
             <!-- Contact Methods Section -->
             <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-lg border border-future-sky/50">
-              <h2 class="text-base sm:text-lg font-bold text-future-text mb-3 sm:mb-4 flex items-center">
-                <i class="fas fa-info-circle gradient-ai-text mr-2 text-sm sm:text-base"></i>その他のお問い合わせ方法
+              <h2 class="text-sm sm:text-base font-bold text-future-text mb-3 sm:mb-4 flex items-center">
+                <i class="fas fa-info-circle gradient-ai-text mr-2 text-xs sm:text-sm"></i>その他のお問い合わせ方法
               </h2>
               
               <div class="space-y-3 sm:space-y-4">
@@ -77,8 +77,8 @@ export const renderContactPage = () => {
 
             <!-- FAQ Section -->
             <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-lg border border-future-sky/50">
-              <h2 class="text-base sm:text-lg font-bold text-future-text mb-3 sm:mb-4 flex items-center">
-                <i class="fas fa-question-circle gradient-ai-text mr-2 text-sm sm:text-base"></i>よくある質問
+              <h2 class="text-sm sm:text-base font-bold text-future-text mb-3 sm:mb-4 flex items-center">
+                <i class="fas fa-question-circle gradient-ai-text mr-2 text-xs sm:text-sm"></i>よくある質問
               </h2>
               
               <div class="space-y-2 sm:space-y-3">
@@ -128,11 +128,11 @@ export const renderContactPage = () => {
           <!-- Contact Form -->
           <div class="lg:col-span-2">
             <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-lg border border-future-sky/50">
-              <h2 class="text-lg sm:text-xl md:text-2xl font-bold text-future-text mb-4 sm:mb-6 flex items-center">
-                <span class="w-10 h-10 sm:w-12 sm:h-12 gradient-ai rounded-lg sm:rounded-xl flex items-center justify-center mr-3 sm:mr-4 shadow">
-                  <i class="fas fa-paper-plane text-white text-sm sm:text-base"></i>
+              <h2 class="text-base sm:text-lg md:text-xl font-bold text-future-text mb-4 sm:mb-6 flex items-center">
+                <span class="w-8 h-8 sm:w-10 sm:h-10 gradient-ai rounded-lg sm:rounded-xl flex items-center justify-center mr-2 sm:mr-3 shadow flex-shrink-0">
+                  <i class="fas fa-paper-plane text-white text-xs sm:text-sm"></i>
                 </span>
-                お問い合わせフォーム
+                <span class="break-keep">お問い合わせフォーム</span>
               </h2>
               
               <form id="contact-form" class="space-y-4 sm:space-y-6" novalidate>
@@ -234,7 +234,7 @@ export const renderContactPage = () => {
                 <!-- Privacy Policy Agreement -->
                 <div class="flex items-start glass rounded-xl sm:rounded-2xl p-3 sm:p-4">
                   <input type="checkbox" id="privacy-agree"
-                    class="mt-0.5 mr-2 sm:mr-3 w-5 h-5 sm:w-6 sm:h-6 accent-ai-blue rounded flex-shrink-0 cursor-pointer">
+                    class="mt-0.5 mr-2 sm:mr-3 w-4 h-4 sm:w-5 sm:h-5 accent-ai-blue rounded flex-shrink-0 cursor-pointer">
                   <label for="privacy-agree" class="text-future-textLight text-xs sm:text-sm leading-relaxed cursor-pointer">
                     <a href="/privacy" class="gradient-ai-text hover:underline font-medium">プライバシーポリシー</a>に同意します <span class="text-red-500">*</span>
                   </label>
@@ -276,7 +276,7 @@ export const renderContactPage = () => {
           <div class="w-12 h-12 sm:w-16 sm:h-16 gradient-ai rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg pulse-glow">
             <i class="fas fa-globe text-white text-lg sm:text-2xl"></i>
           </div>
-          <h2 class="text-lg sm:text-2xl font-bold text-future-text mb-2">完全オンライン</h2>
+          <h2 class="text-base sm:text-xl font-bold text-future-text mb-2">完全オンライン</h2>
           <p class="text-future-textLight text-sm sm:text-base max-w-lg mx-auto">
             mirAIcafeは完全オンラインで運営しています。<br>
             日本全国どこからでもご参加いただけます。
