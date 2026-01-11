@@ -367,18 +367,29 @@ export const renderCourseSeriesForm = (
           
           <div id="termsList" class="space-y-3">
             ${(terms || []).map((t, i) => `
-              <div class="flex flex-wrap items-center gap-2 sm:gap-3 p-3 bg-gray-50 rounded-lg term-item" data-term-id="${t.id}">
-                <span class="bg-green-500 text-white px-2 py-1 rounded text-sm">${t.name}</span>
-                <span class="text-sm text-gray-600">${t.start_date} 〜 ${t.end_date}</span>
-                <span class="text-xs px-2 py-1 rounded ${t.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">${t.status === 'active' ? '募集中' : '終了'}</span>
-                ${t.early_bird_deadline ? `
-                  <span class="text-xs px-2 py-1 rounded bg-orange-100 text-orange-700">
-                    <i class="fas fa-clock mr-1"></i>早期〆${t.early_bird_deadline}
-                  </span>
-                ` : ''}
-                <button type="button" onclick="deleteTerm('${t.id}')" class="ml-auto text-red-500 hover:text-red-700">
-                  <i class="fas fa-trash"></i>
-                </button>
+              <div class="p-3 bg-gray-50 rounded-lg term-item" data-term-id="${t.id}">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <span class="bg-green-500 text-white px-2 py-1 rounded text-sm">${t.name}</span>
+                  <span class="text-sm text-gray-600">${t.start_date} 〜 ${t.end_date}</span>
+                  <span class="text-xs px-2 py-1 rounded ${t.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">${t.status === 'active' ? '募集中' : '終了'}</span>
+                  ${t.early_bird_deadline ? `
+                    <span class="text-xs px-2 py-1 rounded bg-orange-100 text-orange-700">
+                      <i class="fas fa-clock mr-1"></i>早期〆${t.early_bird_deadline}
+                    </span>
+                  ` : `
+                    <span class="text-xs px-2 py-1 rounded bg-gray-200 text-gray-500">
+                      <i class="fas fa-clock mr-1"></i>早期締切未設定
+                    </span>
+                  `}
+                  <div class="ml-auto flex items-center gap-2">
+                    <button type="button" onclick="editTerm('${t.id}', '${t.name}', '${t.start_date}', '${t.end_date}', '${t.early_bird_deadline || ''}')" class="text-blue-500 hover:text-blue-700" title="編集">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" onclick="deleteTerm('${t.id}')" class="text-red-500 hover:text-red-700" title="削除">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
               </div>
             `).join('')}
             ${(!terms || terms.length === 0) ? `
@@ -422,6 +433,52 @@ export const renderCourseSeriesForm = (
               <i class="fas fa-info-circle mr-1"></i>
               早期締切日: この日までの申込で早期割引が適用されます（通常は開始日の21日前）
             </p>
+          </div>
+        </div>
+
+        <!-- 開催期編集モーダル -->
+        <div id="editTermModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" onclick="if(event.target === this) closeEditTermModal()">
+          <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold text-lg text-gray-800">
+                <i class="fas fa-edit mr-2 text-blue-500"></i>開催期を編集
+              </h3>
+              <button onclick="closeEditTermModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+              </button>
+            </div>
+            <input type="hidden" id="editTermId">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">開催期名</label>
+                <input type="text" id="editTermName" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">開始日</label>
+                  <input type="date" id="editTermStartDate" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">終了日</label>
+                  <input type="date" id="editTermEndDate" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  <i class="fas fa-clock text-orange-500 mr-1"></i>早期締切日
+                </label>
+                <input type="date" id="editTermEarlyDeadline" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500">
+                <p class="text-xs text-gray-500 mt-1">この日までの申込で早期割引が適用されます</p>
+              </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+              <button onclick="closeEditTermModal()" class="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50 transition">
+                キャンセル
+              </button>
+              <button onclick="saveTermEdit()" class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
+                <i class="fas fa-save mr-1"></i>保存
+              </button>
+            </div>
           </div>
         </div>
 
@@ -776,9 +833,103 @@ export const renderCourseSeriesForm = (
         }
       }
       
+      // 開催期の編集
+      function editTerm(termId, name, startDate, endDate, earlyDeadline) {
+        document.getElementById('editTermId').value = termId;
+        document.getElementById('editTermName').value = name;
+        document.getElementById('editTermStartDate').value = startDate;
+        document.getElementById('editTermEndDate').value = endDate;
+        document.getElementById('editTermEarlyDeadline').value = earlyDeadline || '';
+        
+        const modal = document.getElementById('editTermModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+      
+      function closeEditTermModal() {
+        const modal = document.getElementById('editTermModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      
+      async function saveTermEdit() {
+        const termId = document.getElementById('editTermId').value;
+        const name = document.getElementById('editTermName').value.trim();
+        const startDate = document.getElementById('editTermStartDate').value;
+        const endDate = document.getElementById('editTermEndDate').value;
+        const earlyDeadline = document.getElementById('editTermEarlyDeadline').value;
+        
+        if (!name || !startDate || !endDate) {
+          alert('開催期名、開始日、終了日をすべて入力してください。');
+          return;
+        }
+        
+        if (new Date(startDate) > new Date(endDate)) {
+          alert('開始日は終了日より前の日付を指定してください。');
+          return;
+        }
+        
+        // 早期締切日が開始日より後の場合は警告
+        if (earlyDeadline && new Date(earlyDeadline) >= new Date(startDate)) {
+          alert('早期締切日は開始日より前の日付を指定してください。');
+          return;
+        }
+        
+        try {
+          const res = await fetch('/admin/api/course-terms/' + termId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: name,
+              start_date: startDate,
+              end_date: endDate,
+              early_bird_deadline: earlyDeadline || null
+            })
+          });
+          
+          const result = await res.json();
+          if (result.success) {
+            // UIを更新
+            const termEl = document.querySelector('.term-item[data-term-id="' + termId + '"]');
+            if (termEl) {
+              const earlyBadge = earlyDeadline 
+                ? '<span class="text-xs px-2 py-1 rounded bg-orange-100 text-orange-700"><i class="fas fa-clock mr-1"></i>早期〆' + earlyDeadline + '</span>'
+                : '<span class="text-xs px-2 py-1 rounded bg-gray-200 text-gray-500"><i class="fas fa-clock mr-1"></i>早期締切未設定</span>';
+              
+              termEl.innerHTML = \`
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <span class="bg-green-500 text-white px-2 py-1 rounded text-sm">\${name}</span>
+                  <span class="text-sm text-gray-600">\${startDate} 〜 \${endDate}</span>
+                  <span class="text-xs px-2 py-1 rounded bg-green-100 text-green-700">募集中</span>
+                  \${earlyBadge}
+                  <div class="ml-auto flex items-center gap-2">
+                    <button type="button" onclick="editTerm('\${termId}', '\${name}', '\${startDate}', '\${endDate}', '\${earlyDeadline || ''}')" class="text-blue-500 hover:text-blue-700" title="編集">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" onclick="deleteTerm('\${termId}')" class="text-red-500 hover:text-red-700" title="削除">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              \`;
+            }
+            
+            closeEditTermModal();
+          } else {
+            alert('開催期の更新に失敗しました: ' + (result.error || '不明なエラー'));
+          }
+        } catch (err) {
+          console.error(err);
+          alert('開催期の更新に失敗しました');
+        }
+      }
+      
       // グローバルスコープに登録
       window.addTerm = addTerm;
       window.deleteTerm = deleteTerm;
+      window.editTerm = editTerm;
+      window.closeEditTermModal = closeEditTermModal;
+      window.saveTermEdit = saveTermEdit;
       
       // 講座の紐付け
       function linkCourse() {

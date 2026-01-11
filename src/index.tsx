@@ -6458,6 +6458,34 @@ app.post('/admin/api/course-terms', async (c) => {
   }
 })
 
+// 開催期の更新
+app.put('/admin/api/course-terms/:id', async (c) => {
+  const termId = c.req.param('id')
+  
+  try {
+    const body = await c.req.json()
+    const { name, start_date, end_date, early_bird_deadline, status } = body
+    
+    if (!name || !start_date || !end_date) {
+      return c.json({ success: false, error: '必須項目が不足しています' }, 400)
+    }
+    
+    await c.env.DB.prepare(`
+      UPDATE course_terms 
+      SET name = ?, start_date = ?, end_date = ?, early_bird_deadline = ?, status = COALESCE(?, status)
+      WHERE id = ?
+    `).bind(name, start_date, end_date, early_bird_deadline || null, status || null, termId).run()
+    
+    return c.json({ 
+      success: true, 
+      term: { id: termId, name, start_date, end_date, early_bird_deadline, status } 
+    })
+  } catch (error) {
+    console.error('Update course term error:', error)
+    return c.json({ success: false, error: '開催期の更新に失敗しました' }, 500)
+  }
+})
+
 app.delete('/admin/api/course-terms/:id', async (c) => {
   const termId = c.req.param('id')
   
