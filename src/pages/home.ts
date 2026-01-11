@@ -1179,7 +1179,8 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 1rem;
+        /* モバイルで枠外タップしやすいように大きめの余白 */
+        padding: 2rem 1.5rem;
       }
       
       .workspace-modal-overlay.active {
@@ -1191,15 +1192,16 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       .workspace-modal {
         background: #fefce8;
         border-radius: 20px;
-        max-width: 500px;
-        width: 100%;
-        max-height: 85vh;
+        max-width: 420px;
+        width: calc(100% - 1rem);
+        max-height: 75vh;
         overflow-y: auto;
         transform: scale(0.95) translateY(10px);
         transition: transform 0.3s ease;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         position: relative;
         -webkit-overflow-scrolling: touch;
+        margin: auto;
       }
       
       .workspace-modal-overlay.active .workspace-modal {
@@ -1242,8 +1244,12 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       }
       
       @media (min-width: 640px) {
+        .workspace-modal-overlay {
+          padding: 3rem 2rem;
+        }
         .workspace-modal {
-          max-height: 90vh;
+          max-width: 480px;
+          max-height: 85vh;
           border-radius: 24px;
         }
         .cafe-door-frame {

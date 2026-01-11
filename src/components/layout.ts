@@ -136,11 +136,25 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     
     .filter-panel.filter-expanded {
       display: block;
+      max-height: 50vh;
+      overflow-y: auto;
+      padding-bottom: 0.5rem;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* フィルターセクション: モバイルではstickyを解除 */
+    @media (max-width: 1023px) {
+      .sticky.top-16 {
+        position: relative !important;
+        top: auto !important;
+      }
     }
     
     @media (min-width: 1024px) {
       .filter-panel {
         display: block !important;
+        max-height: none;
+        overflow-y: visible;
       }
     }
     

@@ -10,14 +10,21 @@ export const renderConsultationPage = (props: ConsultationPageProps = {}) => {
   const content = `
     <div class="min-h-screen bg-gradient-to-b from-pink-50 via-white to-pink-50">
       <!-- ヘッダー -->
-      <div class="bg-gradient-to-r from-pink-500 to-rose-500 text-white py-8 md:py-12">
-        <div class="max-w-4xl mx-auto px-4 text-center">
-          <h1 class="text-2xl md:text-4xl font-bold mb-4">
-            <i class="fas fa-comments mr-3"></i>個別相談予約
-          </h1>
-          <p class="text-pink-100 text-sm md:text-base">
-            AI活用・キャリア・メンタルのお悩みについて1対1でじっくりお話を伺います
-          </p>
+      <div class="bg-gradient-to-r from-pink-500 to-rose-500 text-white py-6 md:py-12">
+        <div class="max-w-4xl mx-auto px-4">
+          <!-- 戻るボタン -->
+          <a href="/" class="inline-flex items-center text-white/80 hover:text-white transition-colors mb-4 py-2">
+            <i class="fas fa-arrow-left mr-2"></i>
+            <span class="text-sm">ホームに戻る</span>
+          </a>
+          <div class="text-center">
+            <h1 class="text-2xl md:text-4xl font-bold mb-4">
+              <i class="fas fa-comments mr-3"></i>個別相談予約
+            </h1>
+            <p class="text-pink-100 text-sm md:text-base">
+              AI活用・キャリア・メンタルのお悩みについて1対1でじっくりお話を伺います
+            </p>
+          </div>
         </div>
       </div>
       

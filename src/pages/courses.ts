@@ -159,7 +159,7 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
     </section>
 
     <!-- Filter Section - Compact Layout -->
-    <section class="py-3 bg-white/95 backdrop-blur-sm sticky top-20 z-40 border-b border-future-sky shadow-sm">
+    <section class="py-3 bg-white/95 backdrop-blur-sm sticky top-16 z-40 border-b border-future-sky shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <!-- Mobile Filter Toggle -->
@@ -177,7 +177,7 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
         </div>
 
         <!-- Filter Content - Mobile: Collapsible, Desktop: Always visible -->
-        <div id="filter-content" class="filter-panel mt-4 lg:mt-0">
+        <div id="filter-content" class="filter-panel mt-3 lg:mt-0">
           <!-- Search Bar -->
           <div class="mb-4">
             <div class="relative">
