@@ -3,115 +3,122 @@ import { renderLayout } from '../components/layout'
 export const renderContactPage = () => {
   const content = `
     <!-- Page Header -->
-    <section class="relative py-20 overflow-hidden">
+    <section class="relative py-12 sm:py-20 overflow-hidden">
       <div class="absolute inset-0 gradient-ai-light"></div>
       <div class="absolute inset-0">
         <div class="orb orb-1 opacity-30"></div>
         <div class="orb orb-2 opacity-20"></div>
       </div>
-      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- 戻るボタン -->
+        <a href="/" class="inline-flex items-center text-future-textLight hover:text-ai-blue transition-colors mb-4 py-2">
+          <i class="fas fa-arrow-left mr-2"></i>
+          <span class="text-sm">ホームに戻る</span>
+        </a>
+        <div class="text-center">
         <span class="inline-flex items-center gradient-ai text-white font-medium px-4 py-2 rounded-full text-sm mb-4">
           <i class="fas fa-envelope mr-2"></i>CONTACT
         </span>
-        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-future-text mb-3 sm:mb-4">お問い合わせ</h1>
-        <p class="text-future-textLight text-base sm:text-lg max-w-xl mx-auto">
+        <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-future-text mb-2 sm:mb-4">お問い合わせ</h1>
+        <p class="text-future-textLight text-sm sm:text-base max-w-xl mx-auto">
           ご質問・ご相談はお気軽にどうぞ
         </p>
+        </div>
       </div>
     </section>
 
     <!-- Contact Section -->
-    <section class="py-12 bg-future-light">
+    <section class="py-8 sm:py-12 bg-future-light">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           <!-- Left Column: Contact Info & FAQ -->
           <div class="lg:col-span-1 space-y-6">
             
             <!-- Contact Methods Section -->
-            <div class="bg-white rounded-3xl p-6 shadow-lg border border-future-sky/50">
-              <h2 class="text-xl font-bold text-future-text mb-4 flex items-center">
-                <i class="fas fa-info-circle gradient-ai-text mr-2"></i>その他のお問い合わせ方法
+            <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-lg border border-future-sky/50">
+              <h2 class="text-base sm:text-lg font-bold text-future-text mb-3 sm:mb-4 flex items-center">
+                <i class="fas fa-info-circle gradient-ai-text mr-2 text-sm sm:text-base"></i>その他のお問い合わせ方法
               </h2>
               
-              <div class="space-y-4">
-                <div class="flex items-start glass rounded-2xl p-4">
-                  <div class="w-12 h-12 gradient-ai rounded-xl flex items-center justify-center mr-4 flex-shrink-0 shadow">
-                    <i class="fas fa-envelope text-white"></i>
+              <div class="space-y-3 sm:space-y-4">
+                <div class="flex items-start glass rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                  <div class="w-10 h-10 sm:w-12 sm:h-12 gradient-ai rounded-lg sm:rounded-xl flex items-center justify-center mr-3 sm:mr-4 flex-shrink-0 shadow">
+                    <i class="fas fa-envelope text-white text-sm sm:text-base"></i>
                   </div>
                   <div>
-                    <h3 class="font-medium text-future-text">Email</h3>
-                    <p class="gradient-ai-text text-sm font-medium">info@miraicafe.com</p>
-                    <p class="text-future-textLight text-xs mt-1">24時間受付</p>
+                    <h3 class="font-medium text-future-text text-sm sm:text-base">Email</h3>
+                    <p class="gradient-ai-text text-xs sm:text-sm font-medium break-all">info@miraicafe.com</p>
+                    <p class="text-future-textLight text-xs mt-0.5 sm:mt-1">24時間受付</p>
                   </div>
                 </div>
                 
-                <div class="flex items-start glass rounded-2xl p-4">
-                  <div class="w-12 h-12 gradient-ai rounded-xl flex items-center justify-center mr-4 flex-shrink-0 shadow">
-                    <i class="fas fa-clock text-white"></i>
+                <div class="flex items-start glass rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                  <div class="w-10 h-10 sm:w-12 sm:h-12 gradient-ai rounded-lg sm:rounded-xl flex items-center justify-center mr-3 sm:mr-4 flex-shrink-0 shadow">
+                    <i class="fas fa-clock text-white text-sm sm:text-base"></i>
                   </div>
                   <div>
-                    <h3 class="font-medium text-future-text">受付時間</h3>
-                    <p class="text-future-textLight text-sm">平日 10:00〜18:00</p>
-                    <p class="text-future-textLight text-xs mt-1">土日祝は翌営業日に対応</p>
+                    <h3 class="font-medium text-future-text text-sm sm:text-base">受付時間</h3>
+                    <p class="text-future-textLight text-xs sm:text-sm">平日 10:00〜18:00</p>
+                    <p class="text-future-textLight text-xs mt-0.5 sm:mt-1">土日祝は翌営業日に対応</p>
                   </div>
                 </div>
                 
-                <div class="flex items-start glass rounded-2xl p-4">
-                  <div class="w-12 h-12 gradient-ai rounded-xl flex items-center justify-center mr-4 flex-shrink-0 shadow">
-                    <i class="fas fa-reply text-white"></i>
+                <div class="flex items-start glass rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                  <div class="w-10 h-10 sm:w-12 sm:h-12 gradient-ai rounded-lg sm:rounded-xl flex items-center justify-center mr-3 sm:mr-4 flex-shrink-0 shadow">
+                    <i class="fas fa-reply text-white text-sm sm:text-base"></i>
                   </div>
                   <div>
-                    <h3 class="font-medium text-future-text">返信目安</h3>
-                    <p class="text-future-textLight text-sm">2営業日以内</p>
+                    <h3 class="font-medium text-future-text text-sm sm:text-base">返信目安</h3>
+                    <p class="text-future-textLight text-xs sm:text-sm">2営業日以内</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <!-- FAQ Section -->
-            <div class="bg-white rounded-3xl p-6 shadow-lg border border-future-sky/50">
-              <h2 class="text-xl font-bold text-future-text mb-4 flex items-center">
-                <i class="fas fa-question-circle gradient-ai-text mr-2"></i>よくある質問
+            <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-lg border border-future-sky/50">
+              <h2 class="text-base sm:text-lg font-bold text-future-text mb-3 sm:mb-4 flex items-center">
+                <i class="fas fa-question-circle gradient-ai-text mr-2 text-sm sm:text-base"></i>よくある質問
               </h2>
               
-              <div class="space-y-3">
-                <details class="group glass rounded-2xl overflow-hidden">
-                  <summary class="flex justify-between items-center cursor-pointer p-4 hover:bg-ai-blue/5 transition-colors">
-                    <span class="font-medium text-future-text text-sm">講座の受講に必要な準備は？</span>
-                    <i class="fas fa-chevron-down text-ai-blue group-open:rotate-180 transition-transform"></i>
+              <div class="space-y-2 sm:space-y-3">
+                <details class="group glass rounded-xl sm:rounded-2xl overflow-hidden">
+                  <summary class="flex justify-between items-center cursor-pointer p-3 sm:p-4 hover:bg-ai-blue/5 transition-colors min-h-[48px]">
+                    <span class="font-medium text-future-text text-xs sm:text-sm pr-2">講座の受講に必要な準備は？</span>
+                    <i class="fas fa-chevron-down text-ai-blue group-open:rotate-180 transition-transform text-sm flex-shrink-0"></i>
                   </summary>
-                  <div class="px-4 pb-4">
-                    <p class="text-future-textLight text-sm">PCとインターネット環境があれば参加できます。Google Meetを使用しますが、リンクをクリックするだけで参加できます（アカウント不要）。</p>
+                  <div class="px-3 sm:px-4 pb-3 sm:pb-4">
+                    <p class="text-future-textLight text-xs sm:text-sm leading-relaxed">PCとインターネット環境があれば参加できます。Google Meetを使用しますが、リンクをクリックするだけで参加できます（アカウント不要）。</p>
                   </div>
                 </details>
                 
-                <details class="group glass rounded-2xl overflow-hidden">
-                  <summary class="flex justify-between items-center cursor-pointer p-4 hover:bg-ai-blue/5 transition-colors">
-                    <span class="font-medium text-future-text text-sm">支払い方法を教えてください</span>
-                    <i class="fas fa-chevron-down text-ai-blue group-open:rotate-180 transition-transform"></i>
+                <details class="group glass rounded-xl sm:rounded-2xl overflow-hidden">
+                  <summary class="flex justify-between items-center cursor-pointer p-3 sm:p-4 hover:bg-ai-blue/5 transition-colors min-h-[48px]">
+                    <span class="font-medium text-future-text text-xs sm:text-sm pr-2">支払い方法を教えてください</span>
+                    <i class="fas fa-chevron-down text-ai-blue group-open:rotate-180 transition-transform text-sm flex-shrink-0"></i>
                   </summary>
-                  <div class="px-4 pb-4">
-                    <p class="text-future-textLight text-sm">クレジットカード（Visa, Mastercard, JCB, AMEX）でのお支払いに対応しています。</p>
+                  <div class="px-3 sm:px-4 pb-3 sm:pb-4">
+                    <p class="text-future-textLight text-xs sm:text-sm leading-relaxed">クレジットカード（Visa, Mastercard, JCB, AMEX）でのお支払いに対応しています。</p>
                   </div>
                 </details>
                 
-                <details class="group glass rounded-2xl overflow-hidden">
-                  <summary class="flex justify-between items-center cursor-pointer p-4 hover:bg-ai-blue/5 transition-colors">
-                    <span class="font-medium text-future-text text-sm">キャンセルは可能ですか？</span>
-                    <i class="fas fa-chevron-down text-ai-blue group-open:rotate-180 transition-transform"></i>
+                <details class="group glass rounded-xl sm:rounded-2xl overflow-hidden">
+                  <summary class="flex justify-between items-center cursor-pointer p-3 sm:p-4 hover:bg-ai-blue/5 transition-colors min-h-[48px]">
+                    <span class="font-medium text-future-text text-xs sm:text-sm pr-2">キャンセルは可能ですか？</span>
+                    <i class="fas fa-chevron-down text-ai-blue group-open:rotate-180 transition-transform text-sm flex-shrink-0"></i>
                   </summary>
-                  <div class="px-4 pb-4">
-                    <p class="text-future-textLight text-sm">講座開始の3日前までキャンセル可能です。全額返金いたします。</p>
+                  <div class="px-3 sm:px-4 pb-3 sm:pb-4">
+                    <p class="text-future-textLight text-xs sm:text-sm leading-relaxed">講座開始の3日前までキャンセル可能です。全額返金いたします。</p>
                   </div>
                 </details>
 
-                <details class="group glass rounded-2xl overflow-hidden">
-                  <summary class="flex justify-between items-center cursor-pointer p-4 hover:bg-ai-blue/5 transition-colors">
-                    <span class="font-medium text-future-text text-sm">法人での研修は対応していますか？</span>
-                    <i class="fas fa-chevron-down text-ai-blue group-open:rotate-180 transition-transform"></i>
+                <details class="group glass rounded-xl sm:rounded-2xl overflow-hidden">
+                  <summary class="flex justify-between items-center cursor-pointer p-3 sm:p-4 hover:bg-ai-blue/5 transition-colors min-h-[48px]">
+                    <span class="font-medium text-future-text text-xs sm:text-sm pr-2">法人での研修は対応していますか？</span>
+                    <i class="fas fa-chevron-down text-ai-blue group-open:rotate-180 transition-transform text-sm flex-shrink-0"></i>
                   </summary>
-                  <div class="px-4 pb-4">
-                    <p class="text-future-textLight text-sm">はい、法人研修も承っております。下記フォームの「法人研修のご相談」を選択してお問い合わせください。</p>
+                  <div class="px-3 sm:px-4 pb-3 sm:pb-4">
+                    <p class="text-future-textLight text-xs sm:text-sm leading-relaxed">はい、法人研修も承っております。下記フォームの「法人研修のご相談」を選択してお問い合わせください。</p>
                   </div>
                 </details>
               </div>
@@ -120,103 +127,103 @@ export const renderContactPage = () => {
 
           <!-- Contact Form -->
           <div class="lg:col-span-2">
-            <div class="bg-white rounded-3xl p-8 shadow-lg border border-future-sky/50">
-              <h2 class="text-2xl font-bold text-future-text mb-6 flex items-center">
-                <span class="w-12 h-12 gradient-ai rounded-xl flex items-center justify-center mr-4 shadow">
-                  <i class="fas fa-paper-plane text-white"></i>
+            <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-lg border border-future-sky/50">
+              <h2 class="text-lg sm:text-xl md:text-2xl font-bold text-future-text mb-4 sm:mb-6 flex items-center">
+                <span class="w-10 h-10 sm:w-12 sm:h-12 gradient-ai rounded-lg sm:rounded-xl flex items-center justify-center mr-3 sm:mr-4 shadow">
+                  <i class="fas fa-paper-plane text-white text-sm sm:text-base"></i>
                 </span>
                 お問い合わせフォーム
               </h2>
               
-              <form id="contact-form" class="space-y-6" novalidate>
+              <form id="contact-form" class="space-y-4 sm:space-y-6" novalidate>
                 <!-- Name and Email Row -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <div>
-                    <label class="block text-future-text text-sm font-medium mb-2">
+                    <label class="block text-future-text text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">
                       お名前 <span class="text-red-500">*</span>
                       <span class="text-future-textLight text-xs ml-1">(50文字以内)</span>
                     </label>
                     <input type="text" id="contact-name" maxlength="50"
-                      class="w-full p-4 border-2 border-future-sky rounded-2xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light"
+                      class="w-full p-3 sm:p-4 border-2 border-future-sky rounded-xl sm:rounded-2xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light text-sm sm:text-base"
                       placeholder="山田 太郎">
-                    <p id="name-error" class="text-red-500 text-sm mt-1 hidden"></p>
+                    <p id="name-error" class="text-red-500 text-xs sm:text-sm mt-1 hidden"></p>
                     <p id="name-count" class="text-future-textLight text-xs mt-1 text-right">0/50</p>
                   </div>
                   <div>
-                    <label class="block text-future-text text-sm font-medium mb-2">
+                    <label class="block text-future-text text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">
                       メールアドレス <span class="text-red-500">*</span>
                     </label>
                     <input type="email" id="contact-email"
-                      class="w-full p-4 border-2 border-future-sky rounded-2xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light"
+                      class="w-full p-3 sm:p-4 border-2 border-future-sky rounded-xl sm:rounded-2xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light text-sm sm:text-base"
                       placeholder="example@email.com">
-                    <p id="email-error" class="text-red-500 text-sm mt-1 hidden"></p>
+                    <p id="email-error" class="text-red-500 text-xs sm:text-sm mt-1 hidden"></p>
                   </div>
                 </div>
 
                 <!-- Phone (Optional) -->
                 <div>
-                  <label class="block text-future-text text-sm font-medium mb-2">
+                  <label class="block text-future-text text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">
                     電話番号 <span class="text-future-textLight text-xs">(任意)</span>
                   </label>
                   <input type="tel" id="contact-phone"
-                    class="w-full p-4 border-2 border-future-sky rounded-2xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light"
+                    class="w-full p-3 sm:p-4 border-2 border-future-sky rounded-xl sm:rounded-2xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light text-sm sm:text-base"
                     placeholder="090-1234-5678">
-                  <p id="phone-error" class="text-red-500 text-sm mt-1 hidden"></p>
+                  <p id="phone-error" class="text-red-500 text-xs sm:text-sm mt-1 hidden"></p>
                 </div>
 
                 <!-- Inquiry Type -->
                 <div>
-                  <label class="block text-future-text text-sm font-medium mb-2">
+                  <label class="block text-future-text text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">
                     お問い合わせ種別 <span class="text-red-500">*</span>
                   </label>
                   <select id="contact-type" 
-                    class="w-full p-4 border-2 border-future-sky rounded-2xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light">
+                    class="w-full p-3 sm:p-4 border-2 border-future-sky rounded-xl sm:rounded-2xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light text-sm sm:text-base">
                     <option value="">選択してください</option>
                     <option value="講座について">講座について</option>
                     <option value="予約について">予約について</option>
                     <option value="法人研修のご相談">法人研修のご相談</option>
                     <option value="その他">その他</option>
                   </select>
-                  <p id="type-error" class="text-red-500 text-sm mt-1 hidden"></p>
+                  <p id="type-error" class="text-red-500 text-xs sm:text-sm mt-1 hidden"></p>
                 </div>
 
                 <!-- Subject -->
                 <div>
-                  <label class="block text-future-text text-sm font-medium mb-2">
+                  <label class="block text-future-text text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">
                     件名 <span class="text-red-500">*</span>
                     <span class="text-future-textLight text-xs ml-1">(100文字以内)</span>
                   </label>
                   <input type="text" id="contact-subject" maxlength="100"
-                    class="w-full p-4 border-2 border-future-sky rounded-2xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light"
+                    class="w-full p-3 sm:p-4 border-2 border-future-sky rounded-xl sm:rounded-2xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light text-sm sm:text-base"
                     placeholder="お問い合わせの件名">
-                  <p id="subject-error" class="text-red-500 text-sm mt-1 hidden"></p>
+                  <p id="subject-error" class="text-red-500 text-xs sm:text-sm mt-1 hidden"></p>
                   <p id="subject-count" class="text-future-textLight text-xs mt-1 text-right">0/100</p>
                 </div>
 
                 <!-- Message -->
                 <div>
-                  <label class="block text-future-text text-sm font-medium mb-2">
+                  <label class="block text-future-text text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">
                     お問い合わせ内容 <span class="text-red-500">*</span>
                     <span class="text-future-textLight text-xs ml-1">(1000文字以内)</span>
-                    <span class="text-future-textLight text-xs ml-2"><i class="fas fa-microphone text-ai-blue"></i> 音声入力対応（Chrome/Edge推奨）</span>
+                    <span class="text-future-textLight text-xs ml-1 sm:ml-2 block sm:inline mt-1 sm:mt-0"><i class="fas fa-microphone text-ai-blue"></i> 音声入力対応</span>
                   </label>
                   <div class="relative">
-                    <textarea id="contact-message" rows="6" maxlength="1000"
-                      class="w-full p-4 pr-14 border-2 border-future-sky rounded-2xl focus:border-ai-blue focus:outline-none transition-colors resize-none bg-future-light"
+                    <textarea id="contact-message" rows="5" maxlength="1000"
+                      class="w-full p-3 sm:p-4 pr-12 sm:pr-14 border-2 border-future-sky rounded-xl sm:rounded-2xl focus:border-ai-blue focus:outline-none transition-colors resize-none bg-future-light text-sm sm:text-base leading-relaxed"
                       placeholder="お問い合わせ内容をご記入ください..."></textarea>
                     <!-- 音声入力ボタン -->
                     <button type="button" id="voice-input-btn" 
-                      class="absolute right-3 top-3 w-10 h-10 rounded-full bg-gradient-to-r from-ai-blue to-ai-purple text-white flex items-center justify-center hover:opacity-80 transition-all shadow-md"
+                      class="absolute right-2 sm:right-3 top-2 sm:top-3 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-ai-blue to-ai-purple text-white flex items-center justify-center hover:opacity-80 transition-all shadow-md"
                       title="音声入力">
-                      <i class="fas fa-microphone"></i>
+                      <i class="fas fa-microphone text-sm"></i>
                     </button>
                     <!-- 音声認識中インジケーター -->
-                    <div id="voice-indicator" class="hidden absolute right-3 top-3 w-10 h-10 rounded-full bg-red-500 text-white flex items-center justify-center animate-pulse shadow-md">
-                      <i class="fas fa-microphone"></i>
+                    <div id="voice-indicator" class="hidden absolute right-2 sm:right-3 top-2 sm:top-3 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-red-500 text-white flex items-center justify-center animate-pulse shadow-md">
+                      <i class="fas fa-microphone text-sm"></i>
                     </div>
                   </div>
                   <div class="flex justify-between items-center mt-1">
-                    <p id="message-error" class="text-red-500 text-sm hidden"></p>
+                    <p id="message-error" class="text-red-500 text-xs sm:text-sm hidden"></p>
                     <p id="voice-status" class="text-future-textLight text-xs hidden">
                       <i class="fas fa-circle text-red-500 animate-pulse mr-1"></i>音声認識中...
                     </p>
@@ -225,34 +232,34 @@ export const renderContactPage = () => {
                 </div>
 
                 <!-- Privacy Policy Agreement -->
-                <div class="flex items-start glass rounded-2xl p-4">
+                <div class="flex items-start glass rounded-xl sm:rounded-2xl p-3 sm:p-4">
                   <input type="checkbox" id="privacy-agree"
-                    class="mt-1 mr-3 w-5 h-5 accent-ai-blue rounded">
-                  <label for="privacy-agree" class="text-future-textLight text-sm">
-                    <a href="#" class="gradient-ai-text hover:underline font-medium">プライバシーポリシー</a>に同意します <span class="text-red-500">*</span>
+                    class="mt-0.5 mr-2 sm:mr-3 w-5 h-5 sm:w-6 sm:h-6 accent-ai-blue rounded flex-shrink-0 cursor-pointer">
+                  <label for="privacy-agree" class="text-future-textLight text-xs sm:text-sm leading-relaxed cursor-pointer">
+                    <a href="/privacy" class="gradient-ai-text hover:underline font-medium">プライバシーポリシー</a>に同意します <span class="text-red-500">*</span>
                   </label>
                 </div>
-                <p id="privacy-error" class="text-red-500 text-sm mt-1 hidden"></p>
+                <p id="privacy-error" class="text-red-500 text-xs sm:text-sm mt-1 hidden"></p>
 
                 <!-- Submit Button -->
                 <button type="submit" id="submit-btn"
-                  class="btn-ai w-full gradient-ai text-white py-4 rounded-full font-bold shadow-lg flex items-center justify-center text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed">
+                  class="btn-ai w-full gradient-ai text-white py-3 sm:py-4 rounded-full font-bold shadow-lg flex items-center justify-center text-base sm:text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]">
                   <i class="fas fa-paper-plane mr-2"></i>送信する
                 </button>
               </form>
 
               <!-- Success Message -->
-              <div id="success-message" class="hidden text-center py-12">
-                <div class="w-24 h-24 bg-green-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-                  <i class="fas fa-check text-white text-4xl"></i>
+              <div id="success-message" class="hidden text-center py-8 sm:py-12">
+                <div class="w-16 h-16 sm:w-24 sm:h-24 bg-green-500 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg">
+                  <i class="fas fa-check text-white text-2xl sm:text-4xl"></i>
                 </div>
-                <h3 class="text-2xl font-bold text-future-text mb-4">送信完了</h3>
-                <p class="text-future-textLight text-lg mb-8">
+                <h3 class="text-xl sm:text-2xl font-bold text-future-text mb-3 sm:mb-4">送信完了</h3>
+                <p class="text-future-textLight text-sm sm:text-base mb-6 sm:mb-8">
                   お問い合わせありがとうございます。<br>
                   <span class="font-medium text-future-text">2営業日以内に返信いたします。</span>
                 </p>
                 <button id="reset-btn" 
-                  class="btn-ai gradient-ai text-white px-8 py-3 rounded-full font-medium shadow-lg hover:opacity-90 transition-opacity">
+                  class="btn-ai gradient-ai text-white px-6 sm:px-8 py-3 rounded-full font-medium shadow-lg hover:opacity-90 transition-opacity text-sm sm:text-base min-h-[48px]">
                   <i class="fas fa-redo mr-2"></i>新しいお問い合わせを送る
                 </button>
               </div>
@@ -263,14 +270,14 @@ export const renderContactPage = () => {
     </section>
 
     <!-- Online Info -->
-    <section class="py-12 bg-white">
+    <section class="py-8 sm:py-12 bg-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="glass rounded-3xl p-8 text-center border border-ai-blue/20">
-          <div class="w-16 h-16 gradient-ai rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg pulse-glow">
-            <i class="fas fa-globe text-white text-2xl"></i>
+        <div class="glass rounded-2xl sm:rounded-3xl p-5 sm:p-8 text-center border border-ai-blue/20">
+          <div class="w-12 h-12 sm:w-16 sm:h-16 gradient-ai rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg pulse-glow">
+            <i class="fas fa-globe text-white text-lg sm:text-2xl"></i>
           </div>
-          <h2 class="text-2xl font-bold text-future-text mb-2">完全オンライン</h2>
-          <p class="text-future-textLight max-w-lg mx-auto">
+          <h2 class="text-lg sm:text-2xl font-bold text-future-text mb-2">完全オンライン</h2>
+          <p class="text-future-textLight text-sm sm:text-base max-w-lg mx-auto">
             mirAIcafeは完全オンラインで運営しています。<br>
             日本全国どこからでもご参加いただけます。
           </p>
