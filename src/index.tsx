@@ -282,11 +282,11 @@ app.get('/courses/:id', async (c) => {
   const course = allCourses.find((co: any) => co.id === id)
   if (!course) return c.notFound()
   
-  // DBからスケジュールを取得
+  // DBからスケジュールを取得（過去の日程は除外）
   let courseSchedules: any[] = []
   try {
     const result = await c.env.DB.prepare(`
-      SELECT * FROM schedules WHERE course_id = ? ORDER BY date ASC, start_time ASC
+      SELECT * FROM schedules WHERE course_id = ? AND date >= date('now') ORDER BY date ASC, start_time ASC
     `).bind(id).all()
     courseSchedules = (result.results || []).map((s: any) => ({
       id: s.id,
@@ -413,11 +413,11 @@ app.get('/reservation', async (c) => {
   const allCourses = await getAllCoursesForFront(c.env.DB)
   const course = courseId ? allCourses.find((co: any) => co.id === courseId) : null
   
-  // DBからスケジュールを取得
+  // DBからスケジュールを取得（過去の日程は除外）
   let allSchedules: any[] = []
   try {
     const result = await c.env.DB.prepare(`
-      SELECT * FROM schedules ORDER BY date ASC, start_time ASC
+      SELECT * FROM schedules WHERE date >= date('now') ORDER BY date ASC, start_time ASC
     `).all()
     allSchedules = (result.results || []).map((s: any) => ({
       id: s.id,
@@ -2368,16 +2368,15 @@ JSON形式で応答してください:`
   }
 })
 
-// Get schedules (from DB)
+// Get schedules (from DB) - 過去の日程は除外
 app.get('/api/schedules', async (c) => {
   const courseId = c.req.query('course')
   try {
-    let query = 'SELECT * FROM schedules ORDER BY date ASC, start_time ASC'
     let result
     if (courseId) {
-      result = await c.env.DB.prepare('SELECT * FROM schedules WHERE course_id = ? ORDER BY date ASC, start_time ASC').bind(courseId).all()
+      result = await c.env.DB.prepare('SELECT * FROM schedules WHERE course_id = ? AND date >= date(\'now\') ORDER BY date ASC, start_time ASC').bind(courseId).all()
     } else {
-      result = await c.env.DB.prepare(query).all()
+      result = await c.env.DB.prepare('SELECT * FROM schedules WHERE date >= date(\'now\') ORDER BY date ASC, start_time ASC').all()
     }
     // Map DB fields to expected format
     const dbSchedules = (result.results || []).map((s: any) => ({
