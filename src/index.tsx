@@ -848,8 +848,8 @@ app.get('/payment-complete', async (c) => {
                 INSERT INTO bookings (
                   course_id, course_name, customer_name, customer_email, customer_phone,
                   preferred_date, preferred_time, status, payment_status, amount,
-                  payment_type, series_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, 'single', ?)
+                  payment_type, series_id, source
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, 'single', ?, 'mirAIcafe')
               `).bind(
                 metadata.course_id,
                 courseResult?.title || metadata.course_title,
@@ -962,8 +962,8 @@ app.get('/payment-complete', async (c) => {
                   INSERT INTO bookings (
                     course_id, course_name, customer_name, customer_email, customer_phone,
                     preferred_date, preferred_time, status, payment_status, amount,
-                    payment_type, series_booking_id, series_id, term_id
-                  ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, ?, ?, ?, ?)
+                    payment_type, series_booking_id, series_id, term_id, source
+                  ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, ?, ?, ?, ?, 'mirAIcafe')
                 `).bind(
                   lc.id,
                   lc.title,
@@ -1069,8 +1069,8 @@ app.get('/payment-complete', async (c) => {
                 INSERT INTO bookings (
                   course_id, course_name, customer_name, customer_email, customer_phone,
                   preferred_date, preferred_time, status, payment_status, amount,
-                  payment_type
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, 'single')
+                  payment_type, source
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, 'single', 'mirAIcafe')
               `).bind(
                 metadata.course_id,
                 courseResult?.title || metadata.course_title,
@@ -2487,8 +2487,8 @@ app.post('/api/reservations', async (c) => {
           INSERT INTO bookings (
             course_id, course_name, customer_name, customer_email, customer_phone,
             preferred_date, preferred_time, status, payment_status, amount,
-            payment_type, series_booking_id, series_id, term_id
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', 0, ?, ?, ?, ?)
+            payment_type, series_booking_id, series_id, term_id, source
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', 0, ?, ?, ?, ?, 'mirAIcafe')
         `).bind(
           lc.id,
           lc.title,
@@ -2601,8 +2601,8 @@ app.post('/api/reservations', async (c) => {
     const result = await c.env.DB.prepare(`
       INSERT INTO bookings (
         course_id, course_name, customer_name, customer_email, customer_phone,
-        preferred_date, preferred_time, status, payment_status, amount
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', 0)
+        preferred_date, preferred_time, status, payment_status, amount, source
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', 0, 'mirAIcafe')
     `).bind(
       courseId,
       course.title,
@@ -3383,8 +3383,8 @@ app.post('/api/stripe/webhook', async (c) => {
                 INSERT INTO bookings (
                   course_id, course_name, customer_name, customer_email, customer_phone,
                   preferred_date, preferred_time, status, payment_status, amount,
-                  payment_type, series_booking_id, series_id, term_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, ?, ?, ?, ?)
+                  payment_type, series_booking_id, series_id, term_id, source
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, ?, ?, ?, ?, 'mirAIcafe')
               `).bind(
                 lc.id,
                 lc.title,
@@ -3453,8 +3453,8 @@ app.post('/api/stripe/webhook', async (c) => {
             const result = await c.env.DB.prepare(`
               INSERT INTO bookings (
                 course_id, course_name, customer_name, customer_email, customer_phone,
-                preferred_date, preferred_time, status, payment_status, amount
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?)
+                preferred_date, preferred_time, status, payment_status, amount, source
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, 'mirAIcafe')
             `).bind(
               courseId,
               course.title,
