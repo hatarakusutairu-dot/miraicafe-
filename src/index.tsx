@@ -5104,6 +5104,123 @@ app.get('/admin/bookings/:id', async (c) => {
   }
 })
 
+// 予約を手入力で追加
+app.post('/admin/api/bookings/manual', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { 
+      source, course_id, course_name, customer_name, customer_email, 
+      customer_phone, preferred_date, amount, payment_status, admin_note 
+    } = body
+    
+    if (!source || !course_id || !customer_name || !customer_email) {
+      return c.json({ success: false, error: '必須項目が不足しています' }, 400)
+    }
+    
+    // 備考に申込元を追加
+    const noteWithSource = admin_note 
+      ? `【${source}】${admin_note}`
+      : `【${source}】手入力で追加`
+    
+    await c.env.DB.prepare(`
+      INSERT INTO bookings (
+        course_id, course_name, customer_name, customer_email, customer_phone,
+        preferred_date, status, payment_status, amount, admin_note
+      ) VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?)
+    `).bind(
+      course_id,
+      course_name,
+      customer_name,
+      customer_email,
+      customer_phone || null,
+      preferred_date || null,
+      payment_status || 'paid',
+      amount || 0,
+      noteWithSource
+    ).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Manual booking error:', error)
+    return c.json({ success: false, error: '予約の登録に失敗しました' }, 500)
+  }
+})
+
+// CSV一括インポート
+app.post('/admin/api/bookings/import', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { bookings } = body
+    
+    if (!bookings || !Array.isArray(bookings) || bookings.length === 0) {
+      return c.json({ success: false, error: 'インポートデータがありません' }, 400)
+    }
+    
+    let successCount = 0
+    const errors: string[] = []
+    
+    for (const booking of bookings) {
+      try {
+        const { 
+          source, course_id, course_name, customer_name, customer_email, 
+          customer_phone, preferred_date, amount, ticket_info, admin_note 
+        } = booking
+        
+        if (!customer_name || !customer_email) {
+          errors.push(`${customer_name || '名前なし'}: 必須項目が不足`)
+          continue
+        }
+        
+        // 備考に申込元とチケット情報を追加
+        let note = `【${source || 'CSV'}】インポート`
+        if (ticket_info) note += ` / チケット: ${ticket_info}`
+        if (admin_note) note += ` / ${admin_note}`
+        
+        // 日付を正規化（様々なフォーマットに対応）
+        let normalizedDate = null
+        if (preferred_date) {
+          const dateStr = preferred_date.toString().trim()
+          // 2024/1/15、2024-01-15、2024年1月15日 などに対応
+          const match = dateStr.match(/(\d{4})[\/\-年](\d{1,2})[\/\-月](\d{1,2})/)
+          if (match) {
+            normalizedDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`
+          }
+        }
+        
+        await c.env.DB.prepare(`
+          INSERT INTO bookings (
+            course_id, course_name, customer_name, customer_email, customer_phone,
+            preferred_date, status, payment_status, amount, admin_note
+          ) VALUES (?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, ?)
+        `).bind(
+          course_id || null,
+          course_name || null,
+          customer_name,
+          customer_email,
+          customer_phone || null,
+          normalizedDate,
+          amount || 0,
+          note
+        ).run()
+        
+        successCount++
+      } catch (err) {
+        console.error('Import row error:', err)
+        errors.push(`${booking.customer_name || '不明'}: 登録失敗`)
+      }
+    }
+    
+    return c.json({ 
+      success: true, 
+      count: successCount,
+      errors: errors.length > 0 ? errors : undefined
+    })
+  } catch (error) {
+    console.error('CSV import error:', error)
+    return c.json({ success: false, error: 'インポートに失敗しました' }, 500)
+  }
+})
+
 // 予約ステータス変更
 app.post('/admin/bookings/:id/status', async (c) => {
   const id = c.req.param('id')

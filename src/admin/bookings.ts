@@ -72,7 +72,7 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
   const content = `
     <div class="bookings-container">
       <!-- ヘッダー -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <i class="fas fa-calendar-check text-indigo-500"></i>
@@ -80,10 +80,20 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
           </h1>
           <p class="text-slate-500 mt-1">講座予約の確認・管理</p>
         </div>
-        <button onclick="exportBookings()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg transition flex items-center gap-2">
-          <i class="fas fa-download"></i>
-          <span>エクスポート</span>
-        </button>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="openCsvImportModal()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
+            <i class="fas fa-file-csv"></i>
+            <span>CSVインポート</span>
+          </button>
+          <button onclick="openManualBookingModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
+            <i class="fas fa-plus"></i>
+            <span>手入力</span>
+          </button>
+          <button onclick="exportBookings()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg transition flex items-center gap-2">
+            <i class="fas fa-download"></i>
+            <span>エクスポート</span>
+          </button>
+        </div>
       </div>
 
       <!-- タブ -->
@@ -149,6 +159,266 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
         <div id="empty-state" class="hidden p-12 text-center">
           <i class="fas fa-calendar-times text-slate-300 text-5xl mb-4"></i>
           <p class="text-slate-500">該当する予約がありません</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 手入力モーダル -->
+    <div id="manual-booking-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" onclick="if(event.target === this) closeManualBookingModal()">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white border-b border-slate-200 p-4 flex items-center justify-between rounded-t-2xl">
+          <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+            <i class="fas fa-plus-circle text-indigo-500"></i>
+            予約を手入力で追加
+          </h3>
+          <button onclick="closeManualBookingModal()" class="text-slate-400 hover:text-slate-600 transition">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+        
+        <form id="manual-booking-form" class="p-6 space-y-4">
+          <!-- 申込元 -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              申込元 <span class="text-red-500">*</span>
+            </label>
+            <select id="mb-source" required class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+              <option value="">選択してください</option>
+              <option value="こくちーず">こくちーず</option>
+              <option value="Peatix">Peatix</option>
+              <option value="直接申込">直接申込（メール等）</option>
+              <option value="その他">その他</option>
+            </select>
+          </div>
+          
+          <!-- 講座選択 -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              講座 <span class="text-red-500">*</span>
+            </label>
+            <select id="mb-course" required class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+              <option value="">選択してください</option>
+            </select>
+          </div>
+          
+          <!-- 予約者名 -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              予約者名 <span class="text-red-500">*</span>
+            </label>
+            <input type="text" id="mb-name" required
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              placeholder="山田 太郎">
+          </div>
+          
+          <!-- メールアドレス -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              メールアドレス <span class="text-red-500">*</span>
+            </label>
+            <input type="email" id="mb-email" required
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              placeholder="example@email.com">
+          </div>
+          
+          <!-- 電話番号 -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              電話番号 <span class="text-slate-400 text-xs">（任意）</span>
+            </label>
+            <input type="tel" id="mb-phone"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              placeholder="090-1234-5678">
+          </div>
+          
+          <!-- 受講日 -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              受講日 <span class="text-slate-400 text-xs">（任意）</span>
+            </label>
+            <input type="date" id="mb-date"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+          </div>
+          
+          <!-- 金額 -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              金額 <span class="text-slate-400 text-xs">（任意・0で無料）</span>
+            </label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">¥</span>
+              <input type="number" id="mb-amount" value="0" min="0"
+                class="w-full pl-8 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="0">
+            </div>
+          </div>
+          
+          <!-- 支払い状態 -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              支払い状態
+            </label>
+            <select id="mb-payment-status" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+              <option value="paid">支払い済み</option>
+              <option value="unpaid">未払い</option>
+            </select>
+          </div>
+          
+          <!-- 備考 -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              備考・メモ <span class="text-slate-400 text-xs">（任意）</span>
+            </label>
+            <textarea id="mb-note" rows="3"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+              placeholder="こくちーず申込No.123 など"></textarea>
+          </div>
+          
+          <!-- 送信ボタン -->
+          <div class="flex gap-3 pt-4">
+            <button type="button" onclick="closeManualBookingModal()" 
+              class="flex-1 px-4 py-3 border border-slate-300 rounded-lg hover:bg-slate-50 transition font-medium">
+              キャンセル
+            </button>
+            <button type="submit" id="mb-submit-btn"
+              class="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition font-medium flex items-center justify-center gap-2">
+              <i class="fas fa-save"></i>
+              登録する
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- CSVインポートモーダル -->
+    <div id="csv-import-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" onclick="if(event.target === this) closeCsvImportModal()">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white border-b border-slate-200 p-4 flex items-center justify-between rounded-t-2xl z-10">
+          <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+            <i class="fas fa-file-csv text-green-500"></i>
+            CSVインポート
+          </h3>
+          <button onclick="closeCsvImportModal()" class="text-slate-400 hover:text-slate-600 transition">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+        
+        <div class="p-6">
+          <!-- ステップ1: ファイル選択 -->
+          <div id="csv-step1">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-slate-700 mb-2">
+                申込元 <span class="text-red-500">*</span>
+              </label>
+              <select id="csv-source" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                <option value="こくちーず">こくちーず</option>
+                <option value="Peatix">Peatix</option>
+                <option value="その他">その他</option>
+              </select>
+            </div>
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-slate-700 mb-2">
+                登録先の講座 <span class="text-red-500">*</span>
+              </label>
+              <select id="csv-course" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                <option value="">選択してください</option>
+              </select>
+            </div>
+            
+            <div class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-green-400 transition cursor-pointer" id="csv-dropzone">
+              <input type="file" id="csv-file-input" accept=".csv" class="hidden">
+              <i class="fas fa-cloud-upload-alt text-4xl text-slate-300 mb-3"></i>
+              <p class="text-slate-600 font-medium">CSVファイルをドラッグ&ドロップ</p>
+              <p class="text-slate-400 text-sm mt-1">または<span class="text-green-600 underline">クリックして選択</span></p>
+              <p class="text-slate-400 text-xs mt-3">こくちーず・Peatixからエクスポートしたファイルに対応</p>
+            </div>
+            
+            <div id="csv-file-info" class="hidden mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+              <i class="fas fa-file-csv text-green-500 text-xl"></i>
+              <div class="flex-1">
+                <p class="font-medium text-green-800" id="csv-file-name"></p>
+                <p class="text-sm text-green-600" id="csv-file-size"></p>
+              </div>
+              <button onclick="clearCsvFile()" class="text-slate-400 hover:text-red-500">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <button onclick="parseCsvFile()" id="csv-parse-btn" disabled
+              class="w-full mt-4 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-slate-300 text-white rounded-lg transition font-medium flex items-center justify-center gap-2">
+              <i class="fas fa-arrow-right"></i>
+              次へ：列のマッピング
+            </button>
+          </div>
+          
+          <!-- ステップ2: 列マッピング -->
+          <div id="csv-step2" class="hidden">
+            <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p class="text-sm text-blue-800">
+                <i class="fas fa-info-circle mr-1"></i>
+                CSVの列を予約データの項目に紐付けてください
+              </p>
+            </div>
+            
+            <div class="space-y-3" id="csv-mapping-fields">
+              <!-- 動的に生成 -->
+            </div>
+            
+            <div class="flex gap-3 mt-6">
+              <button onclick="backToStep1()" class="flex-1 px-4 py-3 border border-slate-300 rounded-lg hover:bg-slate-50 transition font-medium">
+                <i class="fas fa-arrow-left mr-1"></i> 戻る
+              </button>
+              <button onclick="previewCsvData()" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition font-medium">
+                次へ：プレビュー <i class="fas fa-arrow-right ml-1"></i>
+              </button>
+            </div>
+          </div>
+          
+          <!-- ステップ3: プレビュー -->
+          <div id="csv-step3" class="hidden">
+            <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p class="text-sm text-green-800">
+                <i class="fas fa-check-circle mr-1"></i>
+                <span id="csv-preview-count">0</span>件のデータをインポートします
+              </p>
+            </div>
+            
+            <div class="overflow-x-auto border rounded-lg max-h-64">
+              <table class="w-full text-sm">
+                <thead class="bg-slate-50 sticky top-0">
+                  <tr id="csv-preview-header">
+                    <!-- 動的に生成 -->
+                  </tr>
+                </thead>
+                <tbody id="csv-preview-body" class="divide-y">
+                  <!-- 動的に生成 -->
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="flex gap-3 mt-6">
+              <button onclick="backToStep2()" class="flex-1 px-4 py-3 border border-slate-300 rounded-lg hover:bg-slate-50 transition font-medium">
+                <i class="fas fa-arrow-left mr-1"></i> 戻る
+              </button>
+              <button onclick="importCsvData()" id="csv-import-btn" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition font-medium flex items-center justify-center gap-2">
+                <i class="fas fa-upload"></i>
+                インポート実行
+              </button>
+            </div>
+          </div>
+          
+          <!-- 完了 -->
+          <div id="csv-step4" class="hidden text-center py-8">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-check text-green-500 text-2xl"></i>
+            </div>
+            <h4 class="text-xl font-bold text-slate-800 mb-2">インポート完了！</h4>
+            <p class="text-slate-600 mb-6"><span id="csv-imported-count">0</span>件の予約を登録しました</p>
+            <button onclick="closeCsvImportModal(); location.reload();" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition font-medium">
+              閉じる
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -564,6 +834,411 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
         document.body.appendChild(toast);
         setTimeout(function() { toast.remove(); }, 3000);
       }
+
+      // ===== 手入力モーダル =====
+      var manualBookingModal = document.getElementById('manual-booking-modal');
+      var manualBookingForm = document.getElementById('manual-booking-form');
+      var mbCourseSelect = document.getElementById('mb-course');
+      
+      // モーダルを開く
+      window.openManualBookingModal = function() {
+        // 講座リストを設定
+        mbCourseSelect.innerHTML = '<option value="">選択してください</option>';
+        courses.forEach(function(course) {
+          var option = document.createElement('option');
+          option.value = course.id;
+          option.textContent = course.title;
+          mbCourseSelect.appendChild(option);
+        });
+        
+        manualBookingModal.classList.remove('hidden');
+        manualBookingModal.classList.add('flex');
+      };
+      
+      // モーダルを閉じる
+      window.closeManualBookingModal = function() {
+        manualBookingModal.classList.add('hidden');
+        manualBookingModal.classList.remove('flex');
+        manualBookingForm.reset();
+      };
+      
+      // フォーム送信
+      manualBookingForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        var submitBtn = document.getElementById('mb-submit-btn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 登録中...';
+        
+        var courseId = document.getElementById('mb-course').value;
+        var courseOption = mbCourseSelect.querySelector('option[value="' + courseId + '"]');
+        var courseName = courseOption ? courseOption.textContent : '';
+        
+        var data = {
+          source: document.getElementById('mb-source').value,
+          course_id: courseId,
+          course_name: courseName,
+          customer_name: document.getElementById('mb-name').value,
+          customer_email: document.getElementById('mb-email').value,
+          customer_phone: document.getElementById('mb-phone').value || null,
+          preferred_date: document.getElementById('mb-date').value || null,
+          amount: parseInt(document.getElementById('mb-amount').value) || 0,
+          payment_status: document.getElementById('mb-payment-status').value,
+          admin_note: document.getElementById('mb-note').value || null
+        };
+        
+        try {
+          var res = await fetch('/admin/api/bookings/manual', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          
+          var result = await res.json();
+          
+          if (result.success) {
+            showToast('予約を登録しました', 'success');
+            closeManualBookingModal();
+            // ページをリロードして新しい予約を表示
+            setTimeout(function() { location.reload(); }, 500);
+          } else {
+            showToast(result.error || '登録に失敗しました', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          showToast('登録に失敗しました', 'error');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fas fa-save"></i> 登録する';
+        }
+      });
+      
+      // ===== CSVインポート機能 =====
+      var csvImportModal = document.getElementById('csv-import-modal');
+      var csvFileInput = document.getElementById('csv-file-input');
+      var csvDropzone = document.getElementById('csv-dropzone');
+      var csvFileInfo = document.getElementById('csv-file-info');
+      var csvParseBtn = document.getElementById('csv-parse-btn');
+      var csvCourseSelect = document.getElementById('csv-course');
+      
+      // CSVデータ格納用
+      var csvHeaders = [];
+      var csvRows = [];
+      var columnMapping = {};
+      
+      // モーダルを開く
+      window.openCsvImportModal = function() {
+        // 講座リストを設定
+        csvCourseSelect.innerHTML = '<option value="">選択してください</option>';
+        courses.forEach(function(course) {
+          var option = document.createElement('option');
+          option.value = course.id;
+          option.textContent = course.title;
+          csvCourseSelect.appendChild(option);
+        });
+        
+        resetCsvImport();
+        csvImportModal.classList.remove('hidden');
+        csvImportModal.classList.add('flex');
+      };
+      
+      // モーダルを閉じる
+      window.closeCsvImportModal = function() {
+        csvImportModal.classList.add('hidden');
+        csvImportModal.classList.remove('flex');
+        resetCsvImport();
+      };
+      
+      // リセット
+      function resetCsvImport() {
+        document.getElementById('csv-step1').classList.remove('hidden');
+        document.getElementById('csv-step2').classList.add('hidden');
+        document.getElementById('csv-step3').classList.add('hidden');
+        document.getElementById('csv-step4').classList.add('hidden');
+        csvFileInfo.classList.add('hidden');
+        csvParseBtn.disabled = true;
+        csvFileInput.value = '';
+        csvHeaders = [];
+        csvRows = [];
+        columnMapping = {};
+      }
+      
+      // ファイル選択
+      csvDropzone.addEventListener('click', function() {
+        csvFileInput.click();
+      });
+      
+      csvDropzone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        csvDropzone.classList.add('border-green-400', 'bg-green-50');
+      });
+      
+      csvDropzone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        csvDropzone.classList.remove('border-green-400', 'bg-green-50');
+      });
+      
+      csvDropzone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        csvDropzone.classList.remove('border-green-400', 'bg-green-50');
+        if (e.dataTransfer.files.length > 0) {
+          handleCsvFile(e.dataTransfer.files[0]);
+        }
+      });
+      
+      csvFileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+          handleCsvFile(e.target.files[0]);
+        }
+      });
+      
+      function handleCsvFile(file) {
+        if (!file.name.endsWith('.csv')) {
+          showToast('CSVファイルを選択してください', 'error');
+          return;
+        }
+        
+        document.getElementById('csv-file-name').textContent = file.name;
+        document.getElementById('csv-file-size').textContent = (file.size / 1024).toFixed(1) + ' KB';
+        csvFileInfo.classList.remove('hidden');
+        csvParseBtn.disabled = false;
+        
+        // ファイルを読み込む
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          parseCSV(e.target.result);
+        };
+        reader.readAsText(file, 'UTF-8');
+      }
+      
+      window.clearCsvFile = function() {
+        csvFileInput.value = '';
+        csvFileInfo.classList.add('hidden');
+        csvParseBtn.disabled = true;
+        csvHeaders = [];
+        csvRows = [];
+      };
+      
+      // CSVパース
+      function parseCSV(text) {
+        var lines = text.split(/\\r?\\n/).filter(function(line) { return line.trim(); });
+        if (lines.length < 2) {
+          showToast('CSVにデータがありません', 'error');
+          return;
+        }
+        
+        // ヘッダー取得（カンマまたはタブ区切りを自動検出）
+        var delimiter = lines[0].includes('\\t') ? '\\t' : ',';
+        csvHeaders = parseCSVLine(lines[0], delimiter);
+        
+        // データ行を取得
+        csvRows = [];
+        for (var i = 1; i < lines.length; i++) {
+          var row = parseCSVLine(lines[i], delimiter);
+          if (row.length === csvHeaders.length) {
+            csvRows.push(row);
+          }
+        }
+        
+        console.log('CSVパース完了:', csvHeaders.length + '列, ' + csvRows.length + '行');
+      }
+      
+      // CSV行をパース（引用符対応）
+      function parseCSVLine(line, delimiter) {
+        var result = [];
+        var current = '';
+        var inQuotes = false;
+        
+        for (var i = 0; i < line.length; i++) {
+          var char = line[i];
+          
+          if (char === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+              current += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if ((char === ',' || char === '\\t') && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim());
+        
+        return result;
+      }
+      
+      // ステップ2へ
+      window.parseCsvFile = function() {
+        if (csvHeaders.length === 0) {
+          showToast('CSVファイルを読み込んでください', 'error');
+          return;
+        }
+        
+        if (!csvCourseSelect.value) {
+          showToast('講座を選択してください', 'error');
+          return;
+        }
+        
+        document.getElementById('csv-step1').classList.add('hidden');
+        document.getElementById('csv-step2').classList.remove('hidden');
+        
+        // マッピングフィールドを生成
+        var mappingFields = document.getElementById('csv-mapping-fields');
+        var targetFields = [
+          { key: 'name', label: '予約者名', required: true, keywords: ['名前', '氏名', 'お名前', 'name', 'Name', '参加者', 'ニックネーム'] },
+          { key: 'email', label: 'メールアドレス', required: true, keywords: ['メール', 'email', 'mail', 'Email', 'E-mail', 'Eメール', 'メールアドレス'] },
+          { key: 'phone', label: '電話番号', required: false, keywords: ['電話', 'tel', 'phone', 'Tel', '携帯'] },
+          { key: 'date', label: '申込日/受講日', required: false, keywords: ['日付', '日時', '申込日', '注文日', 'date', 'Date', '申込み日'] },
+          { key: 'amount', label: '金額', required: false, keywords: ['金額', '価格', '料金', '合計', 'price', 'amount', '単価'] },
+          { key: 'ticket', label: 'チケット情報', required: false, keywords: ['チケット', 'ticket', 'Ticket', 'チケット名', 'チケット種類'] },
+          { key: 'note', label: '備考/その他', required: false, keywords: ['備考', 'メモ', 'note', 'アンケート', '回答'] }
+        ];
+        
+        mappingFields.innerHTML = targetFields.map(function(field) {
+          // 自動マッピング候補を探す
+          var autoMatch = '';
+          for (var i = 0; i < csvHeaders.length; i++) {
+            var header = csvHeaders[i].toLowerCase();
+            for (var j = 0; j < field.keywords.length; j++) {
+              if (header.includes(field.keywords[j].toLowerCase())) {
+                autoMatch = i.toString();
+                break;
+              }
+            }
+            if (autoMatch) break;
+          }
+          
+          return '<div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">' +
+            '<div class="w-32 flex-shrink-0">' +
+              '<span class="font-medium text-slate-700">' + field.label + '</span>' +
+              (field.required ? '<span class="text-red-500 ml-1">*</span>' : '') +
+            '</div>' +
+            '<i class="fas fa-arrow-right text-slate-300"></i>' +
+            '<select class="flex-1 px-3 py-2 border border-slate-300 rounded-lg" data-target="' + field.key + '">' +
+              '<option value="">-- 対応なし --</option>' +
+              csvHeaders.map(function(h, idx) {
+                return '<option value="' + idx + '"' + (autoMatch === idx.toString() ? ' selected' : '') + '>' + escapeHtml(h) + '</option>';
+              }).join('') +
+            '</select>' +
+          '</div>';
+        }).join('');
+      };
+      
+      window.backToStep1 = function() {
+        document.getElementById('csv-step1').classList.remove('hidden');
+        document.getElementById('csv-step2').classList.add('hidden');
+      };
+      
+      // ステップ3へ（プレビュー）
+      window.previewCsvData = function() {
+        // マッピングを収集
+        columnMapping = {};
+        var mappingSelects = document.querySelectorAll('#csv-mapping-fields select');
+        mappingSelects.forEach(function(select) {
+          var target = select.dataset.target;
+          var value = select.value;
+          if (value !== '') {
+            columnMapping[target] = parseInt(value);
+          }
+        });
+        
+        // 必須フィールドチェック
+        if (columnMapping.name === undefined || columnMapping.email === undefined) {
+          showToast('予約者名とメールアドレスは必須です', 'error');
+          return;
+        }
+        
+        document.getElementById('csv-step2').classList.add('hidden');
+        document.getElementById('csv-step3').classList.remove('hidden');
+        
+        // プレビュー表示
+        document.getElementById('csv-preview-count').textContent = csvRows.length;
+        
+        var previewHeader = document.getElementById('csv-preview-header');
+        previewHeader.innerHTML = '<th class="px-3 py-2 text-left">予約者名</th>' +
+          '<th class="px-3 py-2 text-left">メール</th>' +
+          '<th class="px-3 py-2 text-left">電話</th>' +
+          '<th class="px-3 py-2 text-left">日付</th>' +
+          '<th class="px-3 py-2 text-left">金額</th>';
+        
+        var previewBody = document.getElementById('csv-preview-body');
+        previewBody.innerHTML = csvRows.slice(0, 10).map(function(row) {
+          return '<tr class="border-b">' +
+            '<td class="px-3 py-2">' + escapeHtml(row[columnMapping.name] || '-') + '</td>' +
+            '<td class="px-3 py-2">' + escapeHtml(row[columnMapping.email] || '-') + '</td>' +
+            '<td class="px-3 py-2">' + escapeHtml(columnMapping.phone !== undefined ? row[columnMapping.phone] : '-') + '</td>' +
+            '<td class="px-3 py-2">' + escapeHtml(columnMapping.date !== undefined ? row[columnMapping.date] : '-') + '</td>' +
+            '<td class="px-3 py-2">' + escapeHtml(columnMapping.amount !== undefined ? row[columnMapping.amount] : '-') + '</td>' +
+          '</tr>';
+        }).join('');
+        
+        if (csvRows.length > 10) {
+          previewBody.innerHTML += '<tr><td colspan="5" class="px-3 py-2 text-center text-slate-400">...他 ' + (csvRows.length - 10) + '件</td></tr>';
+        }
+      };
+      
+      window.backToStep2 = function() {
+        document.getElementById('csv-step2').classList.remove('hidden');
+        document.getElementById('csv-step3').classList.add('hidden');
+      };
+      
+      // インポート実行
+      window.importCsvData = async function() {
+        var importBtn = document.getElementById('csv-import-btn');
+        importBtn.disabled = true;
+        importBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> インポート中...';
+        
+        var source = document.getElementById('csv-source').value;
+        var courseId = csvCourseSelect.value;
+        var courseOption = csvCourseSelect.querySelector('option[value="' + courseId + '"]');
+        var courseName = courseOption ? courseOption.textContent : '';
+        
+        // インポートデータを構築
+        var importData = csvRows.map(function(row) {
+          return {
+            source: source,
+            course_id: courseId,
+            course_name: courseName,
+            customer_name: row[columnMapping.name] || '',
+            customer_email: row[columnMapping.email] || '',
+            customer_phone: columnMapping.phone !== undefined ? row[columnMapping.phone] : null,
+            preferred_date: columnMapping.date !== undefined ? row[columnMapping.date] : null,
+            amount: columnMapping.amount !== undefined ? parseInt(row[columnMapping.amount].replace(/[^0-9]/g, '')) || 0 : 0,
+            ticket_info: columnMapping.ticket !== undefined ? row[columnMapping.ticket] : null,
+            admin_note: columnMapping.note !== undefined ? row[columnMapping.note] : null
+          };
+        }).filter(function(item) {
+          return item.customer_name && item.customer_email;
+        });
+        
+        try {
+          var res = await fetch('/admin/api/bookings/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookings: importData })
+          });
+          
+          var result = await res.json();
+          
+          if (result.success) {
+            document.getElementById('csv-step3').classList.add('hidden');
+            document.getElementById('csv-step4').classList.remove('hidden');
+            document.getElementById('csv-imported-count').textContent = result.count || importData.length;
+          } else {
+            showToast(result.error || 'インポートに失敗しました', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          showToast('インポートに失敗しました', 'error');
+        } finally {
+          importBtn.disabled = false;
+          importBtn.innerHTML = '<i class="fas fa-upload"></i> インポート実行';
+        }
+      };
     </script>
   `
 
