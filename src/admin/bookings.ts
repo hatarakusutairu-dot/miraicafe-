@@ -16,6 +16,7 @@ export interface Booking {
   payment_status: 'unpaid' | 'paid' | 'refunded'
   amount: number
   admin_note: string | null
+  source: string | null  // 流入サイト（mirAIcafe / こくちーず / Peatix / その他）
   created_at: string
   updated_at: string
 }
@@ -145,6 +146,7 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
               <th class="px-4 py-4 text-left font-bold text-slate-700 hidden md:table-cell">連絡先</th>
               <th class="px-4 py-4 text-left font-bold text-slate-700 hidden lg:table-cell">希望日時</th>
               <th class="px-4 py-4 text-left font-bold text-slate-700 hidden md:table-cell">金額</th>
+              <th class="px-4 py-4 text-center font-bold text-slate-700 hidden sm:table-cell">流入</th>
               <th class="px-4 py-4 text-center font-bold text-slate-700">ステータス</th>
               <th class="px-4 py-4 text-left font-bold text-slate-700 hidden lg:table-cell">予約日</th>
               <th class="px-4 py-4 text-center font-bold text-slate-700">操作</th>
@@ -719,6 +721,7 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
               '<div class="text-xs text-slate-400">' + escapeHtml(booking.preferred_time || '-') + '</div>' +
             '</td>' +
             '<td class="px-4 py-4 hidden md:table-cell text-slate-700">¥' + (booking.amount || 0).toLocaleString() + '</td>' +
+            '<td class="px-4 py-4 text-center hidden sm:table-cell">' + getSourceBadge(booking.source) + '</td>' +
             '<td class="px-4 py-4 text-center">' +
               '<span class="status-badge status-' + booking.status + '">' +
                 '<i class="fas ' + getStatusIcon(booking.status) + '"></i>' +
@@ -798,6 +801,18 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
         };
         return icons[status] || 'fa-question';
       }
+      
+      function getSourceBadge(source) {
+        if (!source) return '<span class="text-slate-300">-</span>';
+        var config = {
+          'mirAIcafe': { bg: 'bg-indigo-100', text: 'text-indigo-700', icon: 'fa-home', label: 'mirAI' },
+          'こくちーず': { bg: 'bg-green-100', text: 'text-green-700', icon: 'fa-users', label: 'こくち' },
+          'Peatix': { bg: 'bg-orange-100', text: 'text-orange-700', icon: 'fa-ticket-alt', label: 'Peatix' }
+        };
+        var c = config[source] || { bg: 'bg-slate-100', text: 'text-slate-700', icon: 'fa-globe', label: source.substring(0, 4) };
+        return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ' + c.bg + ' ' + c.text + '">' +
+          '<i class="fas ' + c.icon + '"></i>' + c.label + '</span>';
+      }
 
       function formatDate(dateStr) {
         if (!dateStr) return '-';
@@ -844,7 +859,7 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
       window.openManualBookingModal = function() {
         // 講座リストを設定
         mbCourseSelect.innerHTML = '<option value="">選択してください</option>';
-        courses.forEach(function(course) {
+        coursesData.forEach(function(course) {
           var option = document.createElement('option');
           option.value = course.id;
           option.textContent = course.title;
@@ -930,7 +945,7 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
       window.openCsvImportModal = function() {
         // 講座リストを設定
         csvCourseSelect.innerHTML = '<option value="">選択してください</option>';
-        courses.forEach(function(course) {
+        coursesData.forEach(function(course) {
           var option = document.createElement('option');
           option.value = course.id;
           option.textContent = course.title;
@@ -1306,6 +1321,27 @@ export function renderBookingDetail(booking: Booking): string {
               <div>
                 <p class="text-sm text-slate-500 mb-1">電話番号</p>
                 <p class="font-medium text-slate-800">${escapeHtml(booking.customer_phone) || '-'}</p>
+              </div>
+              <div>
+                <p class="text-sm text-slate-500 mb-1">流入サイト</p>
+                <p class="font-medium">
+                  ${booking.source ? `
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      booking.source === 'mirAIcafe' ? 'bg-indigo-100 text-indigo-700' :
+                      booking.source === 'こくちーず' ? 'bg-green-100 text-green-700' :
+                      booking.source === 'Peatix' ? 'bg-orange-100 text-orange-700' :
+                      'bg-slate-100 text-slate-700'
+                    }">
+                      <i class="fas ${
+                        booking.source === 'mirAIcafe' ? 'fa-home' :
+                        booking.source === 'こくちーず' ? 'fa-users' :
+                        booking.source === 'Peatix' ? 'fa-ticket-alt' :
+                        'fa-globe'
+                      }"></i>
+                      ${escapeHtml(booking.source)}
+                    </span>
+                  ` : '<span class="text-slate-400">-</span>'}
+                </p>
               </div>
             </div>
           </div>

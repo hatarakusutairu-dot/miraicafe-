@@ -5117,16 +5117,11 @@ app.post('/admin/api/bookings/manual', async (c) => {
       return c.json({ success: false, error: '必須項目が不足しています' }, 400)
     }
     
-    // 備考に申込元を追加
-    const noteWithSource = admin_note 
-      ? `【${source}】${admin_note}`
-      : `【${source}】手入力で追加`
-    
     await c.env.DB.prepare(`
       INSERT INTO bookings (
         course_id, course_name, customer_name, customer_email, customer_phone,
-        preferred_date, status, payment_status, amount, admin_note
-      ) VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?)
+        preferred_date, status, payment_status, amount, admin_note, source
+      ) VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?)
     `).bind(
       course_id,
       course_name,
@@ -5136,7 +5131,8 @@ app.post('/admin/api/bookings/manual', async (c) => {
       preferred_date || null,
       payment_status || 'paid',
       amount || 0,
-      noteWithSource
+      admin_note || null,
+      source
     ).run()
     
     return c.json({ success: true })
@@ -5171,10 +5167,9 @@ app.post('/admin/api/bookings/import', async (c) => {
           continue
         }
         
-        // 備考に申込元とチケット情報を追加
-        let note = `【${source || 'CSV'}】インポート`
-        if (ticket_info) note += ` / チケット: ${ticket_info}`
-        if (admin_note) note += ` / ${admin_note}`
+        // 備考にチケット情報を追加
+        let note = ticket_info ? `チケット: ${ticket_info}` : null
+        if (admin_note) note = note ? `${note} / ${admin_note}` : admin_note
         
         // 日付を正規化（様々なフォーマットに対応）
         let normalizedDate = null
@@ -5190,8 +5185,8 @@ app.post('/admin/api/bookings/import', async (c) => {
         await c.env.DB.prepare(`
           INSERT INTO bookings (
             course_id, course_name, customer_name, customer_email, customer_phone,
-            preferred_date, status, payment_status, amount, admin_note
-          ) VALUES (?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, ?)
+            preferred_date, status, payment_status, amount, admin_note, source
+          ) VALUES (?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, ?, ?)
         `).bind(
           course_id || null,
           course_name || null,
@@ -5200,7 +5195,8 @@ app.post('/admin/api/bookings/import', async (c) => {
           customer_phone || null,
           normalizedDate,
           amount || 0,
-          note
+          note,
+          source || 'CSV'
         ).run()
         
         successCount++
