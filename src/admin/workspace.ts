@@ -91,55 +91,103 @@ export function renderWorkspaceAdmin(schedules: WorkspaceSchedule[], bookings: W
 
         <!-- スケジュール一覧 -->
         <div id="panel-schedules" class="tab-panel p-6">
-          ${schedules.length === 0 ? `
-            <div class="text-center py-12">
-              <i class="fas fa-coffee text-6xl text-gray-300 mb-4"></i>
-              <p class="text-gray-500">まだスケジュールがありません</p>
-              <button onclick="openScheduleModal()" class="mt-4 text-amber-600 hover:text-amber-700 font-medium">
-                <i class="fas fa-plus mr-1"></i>最初のスケジュールを追加
-              </button>
-            </div>
-          ` : `
-            <div class="grid gap-4">
-              ${schedules.map(schedule => {
-                const remaining = schedule.capacity - schedule.enrolled
-                const isFull = remaining <= 0
-                const isPast = new Date(schedule.date) < new Date(new Date().toDateString())
-                return `
-                  <div class="border rounded-xl p-4 ${isPast ? 'bg-gray-50 opacity-70' : 'bg-white'} hover:shadow-md transition-all">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div class="flex-1">
-                        <div class="flex items-center gap-3 mb-2">
-                          <span class="text-2xl">☕</span>
-                          <h3 class="font-bold text-gray-800">${escapeHtml(schedule.title)}</h3>
-                          ${schedule.status === 'cancelled' ? '<span class="px-2 py-1 bg-red-100 text-red-600 text-xs rounded-full">キャンセル</span>' : ''}
-                          ${isPast ? '<span class="px-2 py-1 bg-gray-200 text-gray-600 text-xs rounded-full">終了</span>' : ''}
-                        </div>
-                        <div class="flex flex-wrap gap-4 text-sm text-gray-600">
-                          <span><i class="fas fa-calendar-day text-amber-500 mr-1"></i>${formatDate(schedule.date)}</span>
-                          <span><i class="fas fa-clock text-amber-500 mr-1"></i>${schedule.start_time} 〜 ${schedule.end_time}</span>
-                          <span><i class="fas fa-users text-amber-500 mr-1"></i>${schedule.enrolled}/${schedule.capacity}名</span>
-                          <span><i class="fas fa-yen-sign text-amber-500 mr-1"></i>${schedule.price.toLocaleString()}円</span>
-                        </div>
-                        ${schedule.description ? `<p class="text-sm text-gray-500 mt-2">${escapeHtml(schedule.description)}</p>` : ''}
+          ${(() => {
+            if (schedules.length === 0) {
+              return `
+                <div class="text-center py-12">
+                  <i class="fas fa-coffee text-6xl text-gray-300 mb-4"></i>
+                  <p class="text-gray-500">まだスケジュールがありません</p>
+                  <button onclick="openScheduleModal()" class="mt-4 text-amber-600 hover:text-amber-700 font-medium">
+                    <i class="fas fa-plus mr-1"></i>最初のスケジュールを追加
+                  </button>
+                </div>
+              `
+            }
+            
+            const today = new Date(new Date().toDateString())
+            const futureSchedules = schedules.filter(s => new Date(s.date) >= today)
+            const pastSchedules = schedules.filter(s => new Date(s.date) < today)
+            
+            const renderScheduleCard = (schedule: WorkspaceSchedule, isPast: boolean) => {
+              const remaining = schedule.capacity - schedule.enrolled
+              const isFull = remaining <= 0
+              return `
+                <div class="border rounded-xl p-4 ${isPast ? 'bg-gray-50 opacity-70' : 'bg-white'} hover:shadow-md transition-all">
+                  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex-1">
+                      <div class="flex items-center gap-3 mb-2">
+                        <span class="text-2xl">☕</span>
+                        <h3 class="font-bold text-gray-800">${escapeHtml(schedule.title)}</h3>
+                        ${schedule.status === 'cancelled' ? '<span class="px-2 py-1 bg-red-100 text-red-600 text-xs rounded-full">キャンセル</span>' : ''}
+                        ${isPast ? '<span class="px-2 py-1 bg-gray-200 text-gray-600 text-xs rounded-full">終了</span>' : ''}
                       </div>
-                      <div class="flex items-center gap-2">
-                        <span class="px-3 py-1 rounded-full text-sm font-medium ${isFull ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}">
-                          ${isFull ? '満席' : `残り${remaining}席`}
-                        </span>
-                        <button onclick="editSchedule('${schedule.id}')" class="p-2 text-gray-400 hover:text-amber-500 transition-colors">
-                          <i class="fas fa-edit"></i>
-                        </button>
-                        <button onclick="deleteSchedule('${schedule.id}')" class="p-2 text-gray-400 hover:text-red-500 transition-colors">
-                          <i class="fas fa-trash"></i>
-                        </button>
+                      <div class="flex flex-wrap gap-4 text-sm text-gray-600">
+                        <span><i class="fas fa-calendar-day text-amber-500 mr-1"></i>${formatDate(schedule.date)}</span>
+                        <span><i class="fas fa-clock text-amber-500 mr-1"></i>${schedule.start_time} 〜 ${schedule.end_time}</span>
+                        <span><i class="fas fa-users text-amber-500 mr-1"></i>${schedule.enrolled}/${schedule.capacity}名</span>
+                        <span><i class="fas fa-yen-sign text-amber-500 mr-1"></i>${schedule.price.toLocaleString()}円</span>
                       </div>
+                      ${schedule.description ? `<p class="text-sm text-gray-500 mt-2">${escapeHtml(schedule.description)}</p>` : ''}
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="px-3 py-1 rounded-full text-sm font-medium ${isFull ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}">
+                        ${isFull ? '満席' : `残り${remaining}席`}
+                      </span>
+                      <button onclick="editSchedule('${schedule.id}')" class="p-2 text-gray-400 hover:text-amber-500 transition-colors">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button onclick="deleteSchedule('${schedule.id}')" class="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                        <i class="fas fa-trash"></i>
+                      </button>
                     </div>
                   </div>
-                `
-              }).join('')}
-            </div>
-          `}
+                </div>
+              `
+            }
+            
+            let html = ''
+            
+            // これからの日程
+            if (futureSchedules.length > 0) {
+              html += `
+                <div class="mb-4">
+                  <h3 class="text-sm font-bold text-gray-600 mb-3 flex items-center">
+                    <i class="fas fa-calendar-check text-green-500 mr-2"></i>これからの日程（${futureSchedules.length}件）
+                  </h3>
+                  <div class="grid gap-4">
+                    ${futureSchedules.map(s => renderScheduleCard(s, false)).join('')}
+                  </div>
+                </div>
+              `
+            } else {
+              html += `
+                <div class="text-center py-8 bg-gray-50 rounded-xl mb-4">
+                  <i class="fas fa-calendar-plus text-4xl text-gray-300 mb-3"></i>
+                  <p class="text-gray-500">これからの日程はありません</p>
+                  <button onclick="openScheduleModal()" class="mt-3 text-amber-600 hover:text-amber-700 font-medium text-sm">
+                    <i class="fas fa-plus mr-1"></i>新しい日程を追加
+                  </button>
+                </div>
+              `
+            }
+            
+            // 過去の日程（アーカイブ）
+            if (pastSchedules.length > 0) {
+              html += `
+                <div class="border-t pt-4 mt-6">
+                  <button onclick="toggleWorkspaceArchive()" class="text-gray-500 hover:text-gray-700 text-sm flex items-center mb-3">
+                    <i class="fas fa-archive mr-2"></i>過去の日程（${pastSchedules.length}件）
+                    <i class="fas fa-chevron-down ml-2" id="ws-archive-icon"></i>
+                  </button>
+                  <div id="ws-archive-schedules" class="hidden grid gap-3">
+                    ${pastSchedules.map(s => renderScheduleCard(s, true)).join('')}
+                  </div>
+                </div>
+              `
+            }
+            
+            return html
+          })()}
         </div>
 
         <!-- 予約一覧 -->
@@ -298,6 +346,21 @@ export function renderWorkspaceAdmin(schedules: WorkspaceSchedule[], bookings: W
         document.getElementById('tab-' + tabName).classList.add('active', 'border-amber-500', 'text-amber-600');
         document.getElementById('tab-' + tabName).classList.remove('border-transparent', 'text-gray-500');
         document.getElementById('panel-' + tabName).classList.remove('hidden');
+      }
+      
+      // アーカイブの表示切替
+      function toggleWorkspaceArchive() {
+        const archive = document.getElementById('ws-archive-schedules');
+        const icon = document.getElementById('ws-archive-icon');
+        if (archive.classList.contains('hidden')) {
+          archive.classList.remove('hidden');
+          icon.classList.remove('fa-chevron-down');
+          icon.classList.add('fa-chevron-up');
+        } else {
+          archive.classList.add('hidden');
+          icon.classList.remove('fa-chevron-up');
+          icon.classList.add('fa-chevron-down');
+        }
       }
       
       function openScheduleModal(scheduleId = null) {

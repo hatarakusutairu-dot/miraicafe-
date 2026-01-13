@@ -433,46 +433,85 @@ export const renderCourseForm = (course?: Course, error?: string) => {
         <p class="text-sm text-gray-500 mb-4">講座の開催日時を設定できます。複数の日程を追加可能です。</p>
         
         <div id="schedule-container" class="space-y-3">
-          ${(course?.schedules && course.schedules.length > 0) ? course.schedules.map((sch: any, index: number) => `
-            <div class="schedule-item p-4 border border-gray-200 rounded-lg bg-gray-50">
-              <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-                <div>
-                  <label class="text-xs text-gray-500 block mb-1">日付</label>
-                  <input type="date" name="schedule_date[]" value="${sch.date || ''}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+          ${(() => {
+            if (!course?.schedules || course.schedules.length === 0) {
+              return '<!-- 日程項目はJavaScriptで動的に追加 -->'
+            }
+            const today = new Date().toISOString().split('T')[0]
+            const futureSchedules = course.schedules.filter((sch: any) => sch.date >= today)
+            const pastSchedules = course.schedules.filter((sch: any) => sch.date < today)
+            
+            let html = ''
+            // 未来の日程
+            html += futureSchedules.map((sch: any) => `
+              <div class="schedule-item p-4 border border-gray-200 rounded-lg bg-gray-50">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">日付</label>
+                    <input type="date" name="schedule_date[]" value="${sch.date || ''}"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">開始時間</label>
+                    <input type="time" name="schedule_start[]" value="${sch.startTime || ''}"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">終了時間</label>
+                    <input type="time" name="schedule_end[]" value="${sch.endTime || ''}"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">定員</label>
+                    <input type="number" name="schedule_capacity[]" min="1" max="100" value="${sch.capacity || 10}"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">場所</label>
+                    <input type="text" name="schedule_location[]" value="${escapeAttr(sch.location || 'オンライン')}"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                  </div>
                 </div>
-                <div>
-                  <label class="text-xs text-gray-500 block mb-1">開始時間</label>
-                  <input type="time" name="schedule_start[]" value="${sch.startTime || ''}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
-                </div>
-                <div>
-                  <label class="text-xs text-gray-500 block mb-1">終了時間</label>
-                  <input type="time" name="schedule_end[]" value="${sch.endTime || ''}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
-                </div>
-                <div>
-                  <label class="text-xs text-gray-500 block mb-1">定員</label>
-                  <input type="number" name="schedule_capacity[]" min="1" max="100" value="${sch.capacity || 10}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
-                </div>
-                <div>
-                  <label class="text-xs text-gray-500 block mb-1">場所</label>
-                  <input type="text" name="schedule_location[]" value="${escapeAttr(sch.location || 'オンライン')}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                <div class="flex justify-between items-center mt-3">
+                  <a href="#" onclick="addToCalendar('${sch.date}', '${sch.startTime}', '${sch.endTime}', '${escapeAttr(course?.title || '')}', '${escapeAttr(course?.online_url || '')}', '${escapeAttr(sch.location || 'オンライン')}'); return false;" 
+                     class="text-green-600 hover:text-green-800 text-sm flex items-center">
+                    <i class="fab fa-google mr-1"></i>Googleカレンダーに追加
+                  </a>
+                  <button type="button" onclick="removeSchedule(this)" class="text-red-500 hover:text-red-700 text-sm">
+                    <i class="fas fa-trash mr-1"></i>削除
+                  </button>
                 </div>
               </div>
-              <div class="flex justify-between items-center mt-3">
-                <a href="#" onclick="addToCalendar('${sch.date}', '${sch.startTime}', '${sch.endTime}', '${escapeAttr(course?.title || '')}', '${escapeAttr(course?.online_url || '')}', '${escapeAttr(sch.location || 'オンライン')}'); return false;" 
-                   class="text-green-600 hover:text-green-800 text-sm flex items-center">
-                  <i class="fab fa-google mr-1"></i>Googleカレンダーに追加
-                </a>
-                <button type="button" onclick="removeSchedule(this)" class="text-red-500 hover:text-red-700 text-sm">
-                  <i class="fas fa-trash mr-1"></i>削除
-                </button>
-              </div>
-            </div>
-          `).join('') : '<!-- 日程項目はJavaScriptで動的に追加 -->'}
+            `).join('')
+            
+            // 過去の日程（アーカイブ）
+            if (pastSchedules.length > 0) {
+              html += `
+                <div class="mt-6 pt-4 border-t border-gray-200">
+                  <button type="button" onclick="toggleArchive()" class="text-gray-500 hover:text-gray-700 text-sm flex items-center mb-3">
+                    <i class="fas fa-archive mr-2"></i>過去の日程（${pastSchedules.length}件）
+                    <i class="fas fa-chevron-down ml-2" id="archive-icon"></i>
+                  </button>
+                  <div id="archive-schedules" class="hidden space-y-2">
+                    ${pastSchedules.map((sch: any) => `
+                      <div class="p-3 border border-gray-200 rounded-lg bg-gray-100 opacity-60">
+                        <div class="flex items-center justify-between">
+                          <div class="flex items-center gap-4 text-sm text-gray-500">
+                            <span><i class="fas fa-calendar mr-1"></i>${sch.date}</span>
+                            <span><i class="fas fa-clock mr-1"></i>${sch.startTime} - ${sch.endTime}</span>
+                            <span><i class="fas fa-map-marker-alt mr-1"></i>${sch.location || 'オンライン'}</span>
+                            <span><i class="fas fa-users mr-1"></i>定員${sch.capacity}名</span>
+                          </div>
+                          <span class="text-xs bg-gray-300 text-gray-600 px-2 py-1 rounded">終了</span>
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              `
+            }
+            return html
+          })()}
         </div>
         <button type="button" onclick="addSchedule()" class="mt-4 text-blue-600 hover:text-blue-800 text-sm flex items-center">
           <i class="fas fa-plus mr-1"></i>日程を追加
@@ -653,6 +692,21 @@ export const renderCourseForm = (course?: Course, error?: string) => {
 
       function removeSchedule(btn) {
         btn.closest('.schedule-item').remove();
+      }
+      
+      // アーカイブの表示切替
+      function toggleArchive() {
+        const archive = document.getElementById('archive-schedules');
+        const icon = document.getElementById('archive-icon');
+        if (archive.classList.contains('hidden')) {
+          archive.classList.remove('hidden');
+          icon.classList.remove('fa-chevron-down');
+          icon.classList.add('fa-chevron-up');
+        } else {
+          archive.classList.add('hidden');
+          icon.classList.remove('fa-chevron-up');
+          icon.classList.add('fa-chevron-down');
+        }
       }
       
       // Googleカレンダーに追加
