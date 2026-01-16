@@ -1180,7 +1180,8 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         align-items: center;
         justify-content: center;
         /* モバイルで枠外タップしやすいように大きめの余白 */
-        padding: 2rem 1.5rem;
+        padding: 1rem;
+        overflow: hidden;
       }
       
       .workspace-modal-overlay.active {
@@ -1194,8 +1195,9 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         border-radius: 20px;
         max-width: 420px;
         width: calc(100% - 1rem);
-        max-height: 75vh;
+        max-height: 85vh;
         overflow-y: auto;
+        overscroll-behavior: contain;
         transform: scale(0.95) translateY(10px);
         transition: transform 0.3s ease;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
@@ -1213,7 +1215,8 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         border: 6px solid #92400e;
         border-radius: 16px;
         position: relative;
-        overflow: hidden;
+        overflow-x: hidden;
+        overflow-y: auto;
       }
       
       .cafe-door-frame::before {
@@ -1243,13 +1246,24 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         background: white;
       }
       
+      /* モバイル用追加スタイル */
+      @media (max-width: 639px) {
+        .workspace-modal {
+          max-height: 90vh;
+          margin: 0.5rem;
+        }
+        .cafe-door-content {
+          padding-bottom: 2rem;
+        }
+      }
+      
       @media (min-width: 640px) {
         .workspace-modal-overlay {
-          padding: 3rem 2rem;
+          padding: 2rem;
         }
         .workspace-modal {
           max-width: 480px;
-          max-height: 85vh;
+          max-height: 90vh;
           border-radius: 24px;
         }
         .cafe-door-frame {
