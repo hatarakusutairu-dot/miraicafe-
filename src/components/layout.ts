@@ -88,12 +88,16 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       font-size: 16px;
       -webkit-text-size-adjust: 100%;
       -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
     }
     
     body {
       font-size: 1rem;
       line-height: 1.7;
       letter-spacing: 0.02em;
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100vw;
     }
     
     /* Mobile typography adjustments */
@@ -1113,7 +1117,7 @@ export const renderLayout = (title: string, content: string, activeNav: string =
   `}
 
   <!-- Main Content -->
-  <main class="flex-grow relative z-20">
+  <main class="flex-grow relative z-20 overflow-x-hidden">
     ${content}
   </main>
 
