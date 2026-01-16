@@ -5112,8 +5112,9 @@ app.post('/admin/api/bookings/manual', async (c) => {
       customer_phone, preferred_date, amount, payment_status, admin_note 
     } = body
     
-    if (!source || !course_id || !customer_name || !customer_email) {
-      return c.json({ success: false, error: '必須項目が不足しています' }, 400)
+    // 手入力・CSVインポートではメールアドレスは任意（mirAIcafe経由の予約のみ必須）
+    if (!source || !course_id || !customer_name) {
+      return c.json({ success: false, error: '必須項目が不足しています（申込元、講座、予約者名）' }, 400)
     }
     
     await c.env.DB.prepare(`
@@ -5161,8 +5162,9 @@ app.post('/admin/api/bookings/import', async (c) => {
           customer_phone, preferred_date, amount, ticket_info, admin_note 
         } = booking
         
-        if (!customer_name || !customer_email) {
-          errors.push(`${customer_name || '名前なし'}: 必須項目が不足`)
+        // CSVインポートでは名前のみ必須（メールアドレスは任意）
+        if (!customer_name) {
+          errors.push(`行${bookings.indexOf(booking) + 1}: 予約者名が必要です`)
           continue
         }
         
@@ -5190,7 +5192,7 @@ app.post('/admin/api/bookings/import', async (c) => {
           course_id || null,
           course_name || null,
           customer_name,
-          customer_email,
+          customer_email || null,
           customer_phone || null,
           normalizedDate,
           amount || 0,

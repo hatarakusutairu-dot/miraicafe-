@@ -216,9 +216,9 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
           <!-- メールアドレス -->
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">
-              メールアドレス <span class="text-red-500">*</span>
+              メールアドレス <span class="text-slate-400 text-xs">（任意）</span>
             </label>
-            <input type="email" id="mb-email" required
+            <input type="email" id="mb-email"
               class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               placeholder="example@email.com">
           </div>
@@ -1105,7 +1105,7 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
         var mappingFields = document.getElementById('csv-mapping-fields');
         var targetFields = [
           { key: 'name', label: '予約者名', required: true, keywords: ['名前', '氏名', 'お名前', 'name', 'Name', '参加者', 'ニックネーム'] },
-          { key: 'email', label: 'メールアドレス', required: true, keywords: ['メール', 'email', 'mail', 'Email', 'E-mail', 'Eメール', 'メールアドレス'] },
+          { key: 'email', label: 'メールアドレス', required: false, keywords: ['メール', 'email', 'mail', 'Email', 'E-mail', 'Eメール', 'メールアドレス'] },
           { key: 'phone', label: '電話番号', required: false, keywords: ['電話', 'tel', 'phone', 'Tel', '携帯'] },
           { key: 'date', label: '申込日/受講日', required: false, keywords: ['日付', '日時', '申込日', '注文日', 'date', 'Date', '申込み日'] },
           { key: 'amount', label: '金額', required: false, keywords: ['金額', '価格', '料金', '合計', 'price', 'amount', '単価'] },
@@ -1161,9 +1161,9 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
           }
         });
         
-        // 必須フィールドチェック
-        if (columnMapping.name === undefined || columnMapping.email === undefined) {
-          showToast('予約者名とメールアドレスは必須です', 'error');
+        // 必須フィールドチェック（名前のみ必須、メールは任意）
+        if (columnMapping.name === undefined) {
+          showToast('予約者名は必須です', 'error');
           return;
         }
         
