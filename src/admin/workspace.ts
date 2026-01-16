@@ -111,6 +111,7 @@ export function renderWorkspaceAdmin(schedules: WorkspaceSchedule[], bookings: W
             const renderScheduleCard = (schedule: WorkspaceSchedule, isPast: boolean) => {
               const remaining = schedule.capacity - schedule.enrolled
               const isFull = remaining <= 0
+              const bookingUrl = `/workspace?schedule=${schedule.id}`
               return `
                 <div class="border rounded-xl p-4 ${isPast ? 'bg-gray-50 opacity-70' : 'bg-white'} hover:shadow-md transition-all">
                   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -128,6 +129,19 @@ export function renderWorkspaceAdmin(schedules: WorkspaceSchedule[], bookings: W
                         <span><i class="fas fa-yen-sign text-amber-500 mr-1"></i>${schedule.price.toLocaleString()}円</span>
                       </div>
                       ${schedule.description ? `<p class="text-sm text-gray-500 mt-2">${escapeHtml(schedule.description)}</p>` : ''}
+                      ${!isPast ? `
+                        <div class="mt-3 flex flex-wrap items-center gap-3">
+                          <a href="${bookingUrl}" target="_blank" class="inline-flex items-center text-amber-600 hover:text-amber-700 text-sm font-medium">
+                            <i class="fas fa-external-link-alt mr-1"></i>予約ページを開く
+                          </a>
+                          <button onclick="copyBookingUrl('${bookingUrl}')" class="inline-flex items-center text-gray-500 hover:text-gray-700 text-sm">
+                            <i class="fas fa-copy mr-1"></i>URLをコピー
+                          </button>
+                          <button onclick="addToGoogleCalendar('${schedule.id}')" class="inline-flex items-center text-blue-500 hover:text-blue-700 text-sm">
+                            <i class="fab fa-google mr-1"></i>カレンダーに追加
+                          </button>
+                        </div>
+                      ` : ''}
                     </div>
                     <div class="flex items-center gap-2">
                       <span class="px-3 py-1 rounded-full text-sm font-medium ${isFull ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}">
@@ -501,6 +515,57 @@ export function renderWorkspaceAdmin(schedules: WorkspaceSchedule[], bookings: W
       document.getElementById('schedule-modal').addEventListener('click', function(e) {
         if (e.target === this) closeScheduleModal();
       });
+      
+      // 予約URLをコピー
+      function copyBookingUrl(path) {
+        const fullUrl = window.location.origin + path;
+        navigator.clipboard.writeText(fullUrl).then(() => {
+          showToast('URLをコピーしました');
+        }).catch(() => {
+          // フォールバック
+          const textarea = document.createElement('textarea');
+          textarea.value = fullUrl;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+          showToast('URLをコピーしました');
+        });
+      }
+      
+      // Googleカレンダーに追加
+      function addToGoogleCalendar(scheduleId) {
+        const schedule = schedulesData.find(s => s.id === scheduleId);
+        if (!schedule) return;
+        
+        const startDate = schedule.date.replace(/-/g, '');
+        const startTime = schedule.start_time.replace(/:/g, '') + '00';
+        const endTime = schedule.end_time.replace(/:/g, '') + '00';
+        
+        const params = new URLSearchParams({
+          action: 'TEMPLATE',
+          text: schedule.title,
+          dates: startDate + 'T' + startTime + '/' + startDate + 'T' + endTime,
+          ctz: 'Asia/Tokyo',
+          details: schedule.description || 'mirAIcafe ワークスペース',
+          location: schedule.meet_url || 'mirAIcafe'
+        });
+        
+        window.open('https://calendar.google.com/calendar/render?' + params.toString(), '_blank');
+      }
+      
+      // トースト表示
+      function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          toast.style.transition = 'opacity 0.3s';
+          setTimeout(() => toast.remove(), 300);
+        }, 2000);
+      }
     </script>
   `
 
