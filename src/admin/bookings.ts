@@ -323,9 +323,22 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
               <label class="block text-sm font-medium text-slate-700 mb-2">
                 登録先の講座 <span class="text-red-500">*</span>
               </label>
-              <select id="csv-course" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+              <select id="csv-course" onchange="updateCsvScheduleOptions()" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
                 <option value="">選択してください</option>
               </select>
+            </div>
+            
+            <div class="mb-4" id="csv-schedule-container" style="display: none;">
+              <label class="block text-sm font-medium text-slate-700 mb-2">
+                開催日程 <span class="text-slate-400 text-xs">（残席に反映されます）</span>
+              </label>
+              <select id="csv-schedule" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                <option value="">日程を選択（任意）</option>
+              </select>
+              <p class="text-xs text-slate-500 mt-1">
+                <i class="fas fa-info-circle mr-1"></i>
+                日程を選択すると、その日程の残席数が自動的に減ります
+              </p>
             </div>
             
             <div class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-green-400 transition cursor-pointer" id="csv-dropzone">
@@ -935,11 +948,52 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
       var csvFileInfo = document.getElementById('csv-file-info');
       var csvParseBtn = document.getElementById('csv-parse-btn');
       var csvCourseSelect = document.getElementById('csv-course');
+      var csvScheduleSelect = document.getElementById('csv-schedule');
+      var csvScheduleContainer = document.getElementById('csv-schedule-container');
       
       // CSVデータ格納用
       var csvHeaders = [];
       var csvRows = [];
       var columnMapping = {};
+      var selectedScheduleId = null;
+      
+      // 講座選択時に日程を取得
+      window.updateCsvScheduleOptions = async function() {
+        var courseId = csvCourseSelect.value;
+        csvScheduleSelect.innerHTML = '<option value="">日程を選択（任意）</option>';
+        selectedScheduleId = null;
+        
+        if (!courseId) {
+          csvScheduleContainer.style.display = 'none';
+          return;
+        }
+        
+        try {
+          var res = await fetch('/api/schedules?course=' + courseId);
+          var schedules = await res.json();
+          
+          if (schedules && schedules.length > 0) {
+            csvScheduleContainer.style.display = 'block';
+            schedules.forEach(function(s) {
+              var option = document.createElement('option');
+              option.value = s.id;
+              var remaining = s.capacity - s.enrolled;
+              var dateStr = new Date(s.date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+              option.textContent = dateStr + ' ' + s.startTime + '〜' + s.endTime + '（残' + remaining + '席）';
+              csvScheduleSelect.appendChild(option);
+            });
+          } else {
+            csvScheduleContainer.style.display = 'none';
+          }
+        } catch (e) {
+          console.error('Schedule fetch error:', e);
+          csvScheduleContainer.style.display = 'none';
+        }
+      };
+      
+      csvScheduleSelect.addEventListener('change', function() {
+        selectedScheduleId = csvScheduleSelect.value || null;
+      });
       
       // モーダルを開く
       window.openCsvImportModal = function() {
@@ -1211,6 +1265,7 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
         var courseId = csvCourseSelect.value;
         var courseOption = csvCourseSelect.querySelector('option[value="' + courseId + '"]');
         var courseName = courseOption ? courseOption.textContent : '';
+        var scheduleId = selectedScheduleId;
         
         // インポートデータを構築
         var importData = csvRows.map(function(row) {
@@ -1218,8 +1273,9 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
             source: source,
             course_id: courseId,
             course_name: courseName,
+            schedule_id: scheduleId,
             customer_name: row[columnMapping.name] || '',
-            customer_email: row[columnMapping.email] || '',
+            customer_email: columnMapping.email !== undefined ? row[columnMapping.email] : null,
             customer_phone: columnMapping.phone !== undefined ? row[columnMapping.phone] : null,
             preferred_date: columnMapping.date !== undefined ? row[columnMapping.date] : null,
             amount: columnMapping.amount !== undefined ? parseInt(row[columnMapping.amount].replace(/[^0-9]/g, '')) || 0 : 0,
@@ -1227,14 +1283,14 @@ export function renderBookingsList(bookings: Booking[], currentTab: string = 'al
             admin_note: columnMapping.note !== undefined ? row[columnMapping.note] : null
           };
         }).filter(function(item) {
-          return item.customer_name && item.customer_email;
+          return item.customer_name; // 名前のみ必須
         });
         
         try {
           var res = await fetch('/admin/api/bookings/import', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bookings: importData })
+            body: JSON.stringify({ bookings: importData, schedule_id: scheduleId })
           });
           
           var result = await res.json();

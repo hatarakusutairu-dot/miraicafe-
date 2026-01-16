@@ -5146,7 +5146,7 @@ app.post('/admin/api/bookings/manual', async (c) => {
 app.post('/admin/api/bookings/import', async (c) => {
   try {
     const body = await c.req.json()
-    const { bookings } = body
+    const { bookings, schedule_id } = body
     
     if (!bookings || !Array.isArray(bookings) || bookings.length === 0) {
       return c.json({ success: false, error: 'インポートデータがありません' }, 400)
@@ -5154,6 +5154,17 @@ app.post('/admin/api/bookings/import', async (c) => {
     
     let successCount = 0
     const errors: string[] = []
+    
+    // スケジュールの日付を取得（選択されている場合）
+    let scheduleDate: string | null = null
+    if (schedule_id) {
+      const scheduleResult = await c.env.DB.prepare(`
+        SELECT date, start_time, end_time FROM schedules WHERE id = ?
+      `).bind(schedule_id).first() as { date: string; start_time: string; end_time: string } | null
+      if (scheduleResult) {
+        scheduleDate = scheduleResult.date
+      }
+    }
     
     for (const booking of bookings) {
       try {
@@ -5172,9 +5183,9 @@ app.post('/admin/api/bookings/import', async (c) => {
         let note = ticket_info ? `チケット: ${ticket_info}` : null
         if (admin_note) note = note ? `${note} / ${admin_note}` : admin_note
         
-        // 日付を正規化（様々なフォーマットに対応）
-        let normalizedDate = null
-        if (preferred_date) {
+        // 日付を正規化（スケジュールが選択されていればその日付を使用）
+        let normalizedDate = scheduleDate
+        if (!normalizedDate && preferred_date) {
           const dateStr = preferred_date.toString().trim()
           // 2024/1/15、2024-01-15、2024年1月15日 などに対応
           const match = dateStr.match(/(\d{4})[\/\-年](\d{1,2})[\/\-月](\d{1,2})/)
@@ -5204,6 +5215,18 @@ app.post('/admin/api/bookings/import', async (c) => {
       } catch (err) {
         console.error('Import row error:', err)
         errors.push(`${booking.customer_name || '不明'}: 登録失敗`)
+      }
+    }
+    
+    // スケジュールが選択されていれば、enrolled数を更新
+    if (schedule_id && successCount > 0) {
+      try {
+        await c.env.DB.prepare(`
+          UPDATE schedules SET enrolled = enrolled + ? WHERE id = ?
+        `).bind(successCount, schedule_id).run()
+        console.log(`Updated schedule ${schedule_id} enrolled count by ${successCount}`)
+      } catch (err) {
+        console.error('Failed to update enrolled count:', err)
       }
     }
     
