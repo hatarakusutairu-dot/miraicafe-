@@ -1865,17 +1865,28 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
             container.innerHTML = '<p class="text-center text-future-textLight py-6 text-sm">まだレビューがありません。最初のレビューを投稿してみませんか？</p>';
             return;
           }
+          
+          // コメントを整形（【質問】を見出しとして強調、改行を反映）
+          function formatComment(comment) {
+            if (!comment) return '';
+            // 【】で囲まれた部分を強調表示
+            var formatted = escapeHtml(comment)
+              .replace(/【([^】]+)】/g, '</p><p class="font-medium text-future-text mt-3 mb-1 text-sm">$1</p><p class="text-future-textLight text-sm">')
+              .replace(/\\n\\n/g, '</p><p class="text-future-textLight text-sm mt-2">')
+              .replace(/\\n/g, '<br>');
+            return '<p class="text-future-textLight text-sm">' + formatted + '</p>';
+          }
 
           container.innerHTML = reviews.map(function(review) {
             return '<div class="bg-future-light rounded-xl p-4">' +
-              '<div class="flex items-start justify-between mb-2">' +
+              '<div class="flex items-start justify-between mb-3">' +
               '<div>' +
               '<h4 class="font-bold text-future-text text-sm">' + escapeHtml(review.reviewer_name) + '</h4>' +
               '<div class="flex items-center gap-2 mt-0.5">' +
               '<div class="flex text-sm">' + renderStars(review.rating) + '</div>' +
               '<span class="text-xs text-future-textLight">' + formatDate(review.created_at) + '</span>' +
               '</div></div></div>' +
-              '<p class="text-future-textLight text-sm">' + escapeHtml(review.comment) + '</p>' +
+              '<div class="space-y-1">' + formatComment(review.comment) + '</div>' +
               '</div>';
           }).join('');
         }
