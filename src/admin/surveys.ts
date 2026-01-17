@@ -1826,8 +1826,9 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
           // 口コミ用の回答を取得（質問テキスト付き）
           let comment = '';
           reviewQuestions.forEach(q => {
-            if (answers[q.id]) {
-              comment += (comment ? '\\n\\n' : '') + '【' + q.text + '】\\n' + answers[q.id];
+            const answer = answers[String(q.id)];
+            if (answer && String(answer).trim() !== '') {
+              comment += (comment ? '\\n\\n' : '') + '【' + q.text + '】\\n' + String(answer);
             }
           });
           
@@ -1916,21 +1917,27 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
         // 回答選択チェックボックスを生成
         const container = document.getElementById('answer-checkboxes');
         const selectionContainer = document.getElementById('answer-selection-container');
-        const availableAnswers = reviewQuestions.filter(q => answers[q.id]);
+        // キーは文字列なので String(q.id) で比較
+        const availableAnswers = reviewQuestions.filter(q => {
+          const answer = answers[String(q.id)];
+          return answer && String(answer).trim() !== '';
+        });
         
         if (availableAnswers.length > 1) {
           // 複数回答がある場合はチェックボックスを表示
           selectionContainer.classList.remove('hidden');
-          container.innerHTML = availableAnswers.map((q, idx) => \`
+          container.innerHTML = availableAnswers.map((q, idx) => {
+            const answerText = String(answers[String(q.id)] || '');
+            return \`
             <label class="flex items-start gap-2 p-2 bg-white rounded-lg border border-gray-100 hover:border-green-300 cursor-pointer transition">
               <input type="checkbox" class="answer-checkbox mt-1 w-4 h-4 text-green-500 rounded focus:ring-green-500" 
                      data-qid="\${q.id}" data-qtext="\${q.text}" checked onchange="updateCommentFromCheckboxes()">
               <div class="flex-1 min-w-0">
                 <p class="text-xs font-medium text-gray-600">\${q.text}</p>
-                <p class="text-sm text-gray-800 mt-1 line-clamp-2">\${answers[q.id].substring(0, 100)}\${answers[q.id].length > 100 ? '...' : ''}</p>
+                <p class="text-sm text-gray-800 mt-1 line-clamp-2">\${answerText.substring(0, 100)}\${answerText.length > 100 ? '...' : ''}</p>
               </div>
             </label>
-          \`).join('');
+          \`}).join('');
         } else {
           // 1つ以下の場合は非表示
           selectionContainer.classList.add('hidden');
@@ -1939,7 +1946,8 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
         // 口コミ用の回答を取得（質問テキスト付き）
         let comment = '';
         availableAnswers.forEach(q => {
-          comment += (comment ? '\\n\\n' : '') + '【' + q.text + '】\\n' + answers[q.id];
+          const answerText = String(answers[String(q.id)] || '');
+          comment += (comment ? '\\n\\n' : '') + '【' + q.text + '】\\n' + answerText;
         });
         
         document.getElementById('edit-response-id').value = responseId;
@@ -1978,9 +1986,10 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
         checkboxes.forEach(cb => {
           const qid = cb.dataset.qid;
           const qtext = cb.dataset.qtext;
-          const answer = currentAnswers[qid];
-          if (answer) {
-            comment += (comment ? '\\n\\n' : '') + '【' + qtext + '】\\n' + answer;
+          // キーは文字列
+          const answer = currentAnswers[String(qid)];
+          if (answer && String(answer).trim() !== '') {
+            comment += (comment ? '\\n\\n' : '') + '【' + qtext + '】\\n' + String(answer);
           }
         });
         
