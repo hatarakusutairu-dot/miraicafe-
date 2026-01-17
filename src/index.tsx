@@ -9504,14 +9504,14 @@ app.post('/admin/api/surveys/publish-reviews', async (c) => {
       // コメントがない場合はスキップ
       if (!review.comment || !review.comment.trim()) continue
       
-      // 口コミを作成
+      // 口コミを作成（reviewer_emailはNOT NULLなので空文字を設定）
       const result = await c.env.DB.prepare(`
         INSERT INTO reviews (course_id, reviewer_name, reviewer_email, rating, comment, status, created_at)
         VALUES (?, ?, ?, ?, ?, 'approved', datetime('now'))
       `).bind(
         review.course_name || 'general',
         review.reviewer_name || '匿名',
-        null, // メールアドレスは公開しない
+        '', // メールアドレスは公開しない（NOT NULL制約のため空文字）
         review.rating || 5,
         review.comment.trim()
       ).run()

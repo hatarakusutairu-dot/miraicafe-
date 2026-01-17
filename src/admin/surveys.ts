@@ -1565,7 +1565,7 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
                                data-consent="${r.publish_consent}"
                                data-rating="${r.overall_rating || 0}"
                                data-course="${escapeHtml(r.course_name) || ''}"
-                               data-answers='${escapeHtml(JSON.stringify(answers))}'>
+                               data-answers='${JSON.stringify(answers).replace(/'/g, "&#39;")}'>
                       </label>
                     ` : ''}
                     <div class="flex text-yellow-400 text-lg">
@@ -1905,7 +1905,10 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
       // 個別公開
       function openSinglePublishModal(responseId) {
         const checkbox = document.querySelector(\`.publish-checkbox[data-id="\${responseId}"]\`);
-        if (!checkbox) return;
+        if (!checkbox) {
+          console.error('checkbox not found for responseId:', responseId);
+          return;
+        }
         
         const answers = JSON.parse(checkbox.dataset.answers || '{}');
         currentAnswers = answers;
@@ -1914,14 +1917,26 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
         const rating = parseInt(checkbox.dataset.rating) || 5;
         const course = checkbox.dataset.course;
         
+        console.log('DEBUG openSinglePublishModal:', { responseId, answers, reviewQuestions });
+        
         // 回答選択チェックボックスを生成
         const container = document.getElementById('answer-checkboxes');
         const selectionContainer = document.getElementById('answer-selection-container');
+        
+        if (!container || !selectionContainer) {
+          console.error('Container elements not found:', { container, selectionContainer });
+          return;
+        }
+        
         // キーは文字列なので String(q.id) で比較
         const availableAnswers = reviewQuestions.filter(q => {
           const answer = answers[String(q.id)];
-          return answer && String(answer).trim() !== '';
+          const hasAnswer = answer && String(answer).trim() !== '';
+          console.log('Checking question', q.id, ':', { answer, hasAnswer });
+          return hasAnswer;
         });
+        
+        console.log('availableAnswers:', availableAnswers);
         
         if (availableAnswers.length >= 1) {
           // 回答がある場合はチェックボックスを表示
