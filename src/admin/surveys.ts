@@ -1923,24 +1923,25 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
           return answer && String(answer).trim() !== '';
         });
         
-        if (availableAnswers.length > 1) {
-          // 複数回答がある場合はチェックボックスを表示
+        if (availableAnswers.length >= 1) {
+          // 回答がある場合はチェックボックスを表示
           selectionContainer.classList.remove('hidden');
           container.innerHTML = availableAnswers.map((q, idx) => {
             const answerText = String(answers[String(q.id)] || '');
             return \`
-            <label class="flex items-start gap-2 p-2 bg-white rounded-lg border border-gray-100 hover:border-green-300 cursor-pointer transition">
-              <input type="checkbox" class="answer-checkbox mt-1 w-4 h-4 text-green-500 rounded focus:ring-green-500" 
+            <label class="flex items-start gap-2 p-3 bg-white rounded-lg border border-gray-200 hover:border-green-400 cursor-pointer transition shadow-sm">
+              <input type="checkbox" class="answer-checkbox mt-0.5 w-5 h-5 text-green-500 rounded focus:ring-green-500" 
                      data-qid="\${q.id}" data-qtext="\${q.text}" checked onchange="updateCommentFromCheckboxes()">
               <div class="flex-1 min-w-0">
-                <p class="text-xs font-medium text-gray-600">\${q.text}</p>
-                <p class="text-sm text-gray-800 mt-1 line-clamp-2">\${answerText.substring(0, 100)}\${answerText.length > 100 ? '...' : ''}</p>
+                <p class="text-sm font-medium text-green-700 mb-1">\${q.text}</p>
+                <p class="text-sm text-gray-700">\${answerText.substring(0, 150)}\${answerText.length > 150 ? '...' : ''}</p>
               </div>
             </label>
           \`}).join('');
         } else {
-          // 1つ以下の場合は非表示
+          // 回答がない場合は非表示
           selectionContainer.classList.add('hidden');
+          container.innerHTML = '<p class="text-sm text-gray-500 text-center py-2">口コミ用の回答がありません</p>';
         }
         
         // 口コミ用の回答を取得（質問テキスト付き）
