@@ -1730,11 +1730,23 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
                        placeholder="講座名（任意）">
               </div>
               
+              <!-- 掲載する回答の選択 -->
+              <div id="answer-selection-container" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  <i class="fas fa-check-square text-green-500 mr-1"></i>掲載する回答を選択
+                </label>
+                <div id="answer-checkboxes" class="space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded-xl p-3 bg-gray-50">
+                  <!-- 動的に生成 -->
+                </div>
+                <p class="text-xs text-gray-400 mt-1">選択した回答が口コミ内容に反映されます</p>
+              </div>
+              
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">口コミ内容 <span class="text-red-500">*</span></label>
                 <textarea name="comment" id="edit-comment" rows="5" required oninput="updateReviewPreview()"
                           class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-none"
                           placeholder="口コミ内容を入力してください"></textarea>
+                <p class="text-xs text-gray-400 mt-1">上のチェックボックスで選択するか、直接編集できます</p>
               </div>
             </form>
             
@@ -1886,23 +1898,48 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
         }
       }
       
+      // 現在の回答データを保持
+      let currentAnswers = {};
+      
       // 個別公開
       function openSinglePublishModal(responseId) {
         const checkbox = document.querySelector(\`.publish-checkbox[data-id="\${responseId}"]\`);
         if (!checkbox) return;
         
         const answers = JSON.parse(checkbox.dataset.answers || '{}');
+        currentAnswers = answers;
         const consent = checkbox.dataset.consent;
         const name = consent === 'yes' ? (checkbox.dataset.name || '') : '匿名';
         const rating = parseInt(checkbox.dataset.rating) || 5;
         const course = checkbox.dataset.course;
         
+        // 回答選択チェックボックスを生成
+        const container = document.getElementById('answer-checkboxes');
+        const selectionContainer = document.getElementById('answer-selection-container');
+        const availableAnswers = reviewQuestions.filter(q => answers[q.id]);
+        
+        if (availableAnswers.length > 1) {
+          // 複数回答がある場合はチェックボックスを表示
+          selectionContainer.classList.remove('hidden');
+          container.innerHTML = availableAnswers.map((q, idx) => \`
+            <label class="flex items-start gap-2 p-2 bg-white rounded-lg border border-gray-100 hover:border-green-300 cursor-pointer transition">
+              <input type="checkbox" class="answer-checkbox mt-1 w-4 h-4 text-green-500 rounded focus:ring-green-500" 
+                     data-qid="\${q.id}" data-qtext="\${q.text}" checked onchange="updateCommentFromCheckboxes()">
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-medium text-gray-600">\${q.text}</p>
+                <p class="text-sm text-gray-800 mt-1 line-clamp-2">\${answers[q.id].substring(0, 100)}\${answers[q.id].length > 100 ? '...' : ''}</p>
+              </div>
+            </label>
+          \`).join('');
+        } else {
+          // 1つ以下の場合は非表示
+          selectionContainer.classList.add('hidden');
+        }
+        
         // 口コミ用の回答を取得（質問テキスト付き）
         let comment = '';
-        reviewQuestions.forEach(q => {
-          if (answers[q.id]) {
-            comment += (comment ? '\\n\\n' : '') + '【' + q.text + '】\\n' + answers[q.id];
-          }
+        availableAnswers.forEach(q => {
+          comment += (comment ? '\\n\\n' : '') + '【' + q.text + '】\\n' + answers[q.id];
         });
         
         document.getElementById('edit-response-id').value = responseId;
@@ -1930,6 +1967,24 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
           star.classList.toggle('text-yellow-400', starRating <= rating);
           star.classList.toggle('text-gray-300', starRating > rating);
         });
+        updateReviewPreview();
+      }
+      
+      // チェックボックスの変更でコメントを更新
+      function updateCommentFromCheckboxes() {
+        const checkboxes = document.querySelectorAll('.answer-checkbox:checked');
+        let comment = '';
+        
+        checkboxes.forEach(cb => {
+          const qid = cb.dataset.qid;
+          const qtext = cb.dataset.qtext;
+          const answer = currentAnswers[qid];
+          if (answer) {
+            comment += (comment ? '\\n\\n' : '') + '【' + qtext + '】\\n' + answer;
+          }
+        });
+        
+        document.getElementById('edit-comment').value = comment;
         updateReviewPreview();
       }
       
