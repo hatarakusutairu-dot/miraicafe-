@@ -3729,6 +3729,7 @@ app.get('/api/ai-news', async (c) => {
 // ===== Reviews API =====
 
 // Get reviews for a course (only approved ones)
+// courseId が 'all' の場合は全ての口コミを取得
 app.get('/api/reviews/:courseId', async (c) => {
   const courseId = c.req.param('courseId')
   const page = parseInt(c.req.query('page') || '1')
@@ -3736,34 +3737,70 @@ app.get('/api/reviews/:courseId', async (c) => {
   const offset = (page - 1) * limit
 
   try {
+    // 講座タイトルを取得（部分一致検索用）
+    let courseTitle = ''
+    if (courseId !== 'all') {
+      const course = await c.env.DB.prepare(`
+        SELECT title FROM courses WHERE id = ?
+      `).bind(courseId).first() as { title: string } | null
+      courseTitle = course?.title || ''
+    }
+    
     // Get approved reviews with pagination
-    const reviews = await c.env.DB.prepare(`
-      SELECT id, course_id, reviewer_name, rating, comment, created_at
-      FROM reviews 
-      WHERE course_id = ? AND status = 'approved'
-      ORDER BY created_at DESC
-      LIMIT ? OFFSET ?
-    `).bind(courseId, limit, offset).all()
+    // course_id が講座ID、講座名、または'general'の場合にマッチ
+    const reviews = courseId === 'all' 
+      ? await c.env.DB.prepare(`
+          SELECT id, course_id, reviewer_name, rating, comment, created_at
+          FROM reviews 
+          WHERE status = 'approved'
+          ORDER BY created_at DESC
+          LIMIT ? OFFSET ?
+        `).bind(limit, offset).all()
+      : await c.env.DB.prepare(`
+          SELECT id, course_id, reviewer_name, rating, comment, created_at
+          FROM reviews 
+          WHERE (course_id = ? OR course_id = ? OR course_id LIKE ? OR course_id = 'general') AND status = 'approved'
+          ORDER BY created_at DESC
+          LIMIT ? OFFSET ?
+        `).bind(courseId, courseTitle, `%${courseTitle.substring(0, 20)}%`, limit, offset).all()
 
     // Get total count
-    const countResult = await c.env.DB.prepare(`
-      SELECT COUNT(*) as total FROM reviews 
-      WHERE course_id = ? AND status = 'approved'
-    `).bind(courseId).first()
+    const countResult = courseId === 'all'
+      ? await c.env.DB.prepare(`
+          SELECT COUNT(*) as total FROM reviews 
+          WHERE status = 'approved'
+        `).first()
+      : await c.env.DB.prepare(`
+          SELECT COUNT(*) as total FROM reviews 
+          WHERE (course_id = ? OR course_id = ? OR course_id LIKE ? OR course_id = 'general') AND status = 'approved'
+        `).bind(courseId, courseTitle, `%${courseTitle.substring(0, 20)}%`).first()
 
     // Get rating stats
-    const statsResult = await c.env.DB.prepare(`
-      SELECT 
-        AVG(rating) as average,
-        COUNT(*) as total,
-        SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as star5,
-        SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as star4,
-        SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as star3,
-        SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as star2,
-        SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as star1
-      FROM reviews 
-      WHERE course_id = ? AND status = 'approved'
-    `).bind(courseId).first()
+    const statsResult = courseId === 'all'
+      ? await c.env.DB.prepare(`
+          SELECT 
+            AVG(rating) as average,
+            COUNT(*) as total,
+            SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as star5,
+            SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as star4,
+            SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as star3,
+            SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as star2,
+            SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as star1
+          FROM reviews 
+          WHERE status = 'approved'
+        `).first()
+      : await c.env.DB.prepare(`
+          SELECT 
+            AVG(rating) as average,
+            COUNT(*) as total,
+            SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as star5,
+            SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as star4,
+            SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as star3,
+            SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as star2,
+            SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as star1
+          FROM reviews 
+          WHERE (course_id = ? OR course_id = ? OR course_id LIKE ? OR course_id = 'general') AND status = 'approved'
+        `).bind(courseId, courseTitle, `%${courseTitle.substring(0, 20)}%`).first()
 
     const total = (countResult as any)?.total || 0
     const totalPages = Math.ceil(total / limit)
