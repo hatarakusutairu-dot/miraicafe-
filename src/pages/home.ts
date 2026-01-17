@@ -810,14 +810,23 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           <p class="text-amber-700 mt-1 sm:mt-2 text-sm sm:text-base">みんなでAIツールを触る時間☕</p>
         </div>
         <div class="cafe-door-content">
-          <div class="mb-6">
+          <div class="mb-4">
             <p class="text-gray-600 text-sm leading-relaxed">
               講座のアフターフォローとして、受講者の皆様と一緒にAIツールを触る時間です。
               「ここどうやるの？」「こんな使い方あるよ！」など気軽に交流しましょう☕
             </p>
           </div>
           
-          <div class="bg-amber-50 rounded-xl p-4 mb-6">
+          <!-- 注意書き -->
+          <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4">
+            <p class="text-blue-800 text-xs leading-relaxed">
+              <i class="fas fa-info-circle mr-1"></i>
+              <strong>ご注意：</strong>こちらは気軽にAIを楽しむ交流の場です。<br>
+              じっくり相談されたい方は<a href="/consultation" class="text-blue-600 underline font-medium hover:text-blue-800">個別相談</a>をご利用ください。
+            </p>
+          </div>
+          
+          <div class="bg-amber-50 rounded-xl p-4 mb-4">
             <div class="flex items-center justify-between text-sm">
               <span class="text-amber-800"><i class="fas fa-clock mr-2"></i>約1時間</span>
               <span class="text-amber-800"><i class="fas fa-users mr-2"></i>定員6名</span>
