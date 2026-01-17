@@ -9175,6 +9175,24 @@ app.post('/api/survey/submit', async (c) => {
       publish_consent: string
     }>()
     
+    // 講座名を決定：
+    // 1. 明示的に渡された course_name を優先
+    // 2. なければ、講座選択質問（category='course'）の回答から取得
+    let courseName = body.course_name || null
+    if (!courseName && body.answers) {
+      // 講座選択質問のIDを取得
+      const courseQuestion = await c.env.DB.prepare(`
+        SELECT id FROM survey_questions WHERE question_category = 'course' AND question_type = 'dropdown' LIMIT 1
+      `).first() as { id: number } | null
+      
+      if (courseQuestion) {
+        const courseAnswer = body.answers[String(courseQuestion.id)]
+        if (courseAnswer && typeof courseAnswer === 'string' && courseAnswer.trim()) {
+          courseName = courseAnswer.trim()
+        }
+      }
+    }
+    
     await c.env.DB.prepare(`
       INSERT INTO survey_responses (booking_id, respondent_name, respondent_email, course_name, answers, overall_rating, publish_consent)
       VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -9182,7 +9200,7 @@ app.post('/api/survey/submit', async (c) => {
       body.booking_id || null,
       body.respondent_name || null,
       body.respondent_email || null,
-      body.course_name || null,
+      courseName,
       JSON.stringify(body.answers),
       body.overall_rating,
       body.publish_consent || 'no'
