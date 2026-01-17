@@ -3746,23 +3746,29 @@ app.get('/api/reviews/:courseId', async (c) => {
       courseTitle = course?.title || ''
     }
     
+    console.log('Reviews API Debug:', { courseId, courseTitle })
+    
     // Get approved reviews with pagination
-    // course_id が講座ID、講座名、または'general'の場合にマッチ
-    const reviews = courseId === 'all' 
-      ? await c.env.DB.prepare(`
-          SELECT id, course_id, reviewer_name, rating, comment, created_at
-          FROM reviews 
-          WHERE status = 'approved'
-          ORDER BY created_at DESC
-          LIMIT ? OFFSET ?
-        `).bind(limit, offset).all()
-      : await c.env.DB.prepare(`
-          SELECT id, course_id, reviewer_name, rating, comment, created_at
-          FROM reviews 
-          WHERE (course_id = ? OR course_id = ? OR course_id LIKE ? OR course_id = 'general') AND status = 'approved'
-          ORDER BY created_at DESC
-          LIMIT ? OFFSET ?
-        `).bind(courseId, courseTitle, `%${courseTitle.substring(0, 20)}%`, limit, offset).all()
+    // 全ての講座で general の口コミを表示する（シンプル化）
+    let reviews
+    if (courseId === 'all') {
+      reviews = await c.env.DB.prepare(`
+        SELECT id, course_id, reviewer_name, rating, comment, created_at
+        FROM reviews 
+        WHERE status = 'approved'
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?
+      `).bind(limit, offset).all()
+    } else {
+      // general の口コミは全講座で表示 + 特定講座の口コミ
+      reviews = await c.env.DB.prepare(`
+        SELECT id, course_id, reviewer_name, rating, comment, created_at
+        FROM reviews 
+        WHERE status = 'approved' AND (course_id = 'general' OR course_id = ?)
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?
+      `).bind(courseId, limit, offset).all()
+    }
 
     // Get total count
     const countResult = courseId === 'all'
@@ -3772,8 +3778,8 @@ app.get('/api/reviews/:courseId', async (c) => {
         `).first()
       : await c.env.DB.prepare(`
           SELECT COUNT(*) as total FROM reviews 
-          WHERE (course_id = ? OR course_id = ? OR course_id LIKE ? OR course_id = 'general') AND status = 'approved'
-        `).bind(courseId, courseTitle, `%${courseTitle.substring(0, 20)}%`).first()
+          WHERE status = 'approved' AND (course_id = 'general' OR course_id = ?)
+        `).bind(courseId).first()
 
     // Get rating stats
     const statsResult = courseId === 'all'
@@ -3799,8 +3805,8 @@ app.get('/api/reviews/:courseId', async (c) => {
             SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as star2,
             SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as star1
           FROM reviews 
-          WHERE (course_id = ? OR course_id = ? OR course_id LIKE ? OR course_id = 'general') AND status = 'approved'
-        `).bind(courseId, courseTitle, `%${courseTitle.substring(0, 20)}%`).first()
+          WHERE status = 'approved' AND (course_id = 'general' OR course_id = ?)
+        `).bind(courseId).first()
 
     const total = (countResult as any)?.total || 0
     const totalPages = Math.ceil(total / limit)
