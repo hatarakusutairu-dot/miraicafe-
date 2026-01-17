@@ -57,12 +57,12 @@ export const renderAIWriterPage = () => {
                 <i class="fas fa-file-alt text-blue-500 mr-1"></i>記事の種類
               </label>
               <select id="articleType" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition">
-                <option value="how-to">使い方ガイド</option>
-                <option value="tutorial">チュートリアル</option>
-                <option value="case-study">事例紹介</option>
-                <option value="news">ニュース解説</option>
-                <option value="opinion">コラム・意見</option>
-                <option value="comparison">比較記事</option>
+                <option value="how-to" selected>体験談・発見シェア</option>
+                <option value="tutorial">試してみた</option>
+                <option value="case-study">活用事例</option>
+                <option value="news">AIニュース紹介</option>
+                <option value="opinion">コラム・思ったこと</option>
+                <option value="comparison">使い比べ</option>
               </select>
             </div>
             
@@ -82,10 +82,10 @@ export const renderAIWriterPage = () => {
                 <i class="fas fa-comment text-orange-500 mr-1"></i>トーン
               </label>
               <select id="tone" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition">
-                <option value="friendly" selected>親しみやすい</option>
-                <option value="professional">プロフェッショナル</option>
-                <option value="casual">カジュアル</option>
-                <option value="educational">教育的</option>
+                <option value="casual" selected>カジュアル・日記風</option>
+                <option value="friendly">親しみやすい</option>
+                <option value="professional">少しきちんと</option>
+                <option value="educational">分かりやすく</option>
               </select>
             </div>
           </div>
