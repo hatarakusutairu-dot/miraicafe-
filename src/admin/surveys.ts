@@ -1787,8 +1787,8 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
     </div>
 
     <script>
-      // 口コミ用の質問ID
-      const reviewQuestionIds = [${reviewQuestions.map(q => q.id).join(',')}];
+      // 口コミ用の質問（IDとテキスト）
+      const reviewQuestions = ${JSON.stringify(reviewQuestions.map(q => ({ id: q.id, text: q.question_text })))};
       
       function exportResponses() {
         window.location.href = '/admin/api/surveys/export';
@@ -1811,11 +1811,11 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
           const rating = parseInt(cb.dataset.rating) || 0;
           const course = cb.dataset.course;
           
-          // 口コミ用の回答を取得
+          // 口コミ用の回答を取得（質問テキスト付き）
           let comment = '';
-          reviewQuestionIds.forEach(qId => {
-            if (answers[qId]) {
-              comment += (comment ? '\\n\\n' : '') + answers[qId];
+          reviewQuestions.forEach(q => {
+            if (answers[q.id]) {
+              comment += (comment ? '\\n\\n' : '') + '【' + q.text + '】\\n' + answers[q.id];
             }
           });
           
@@ -1897,11 +1897,11 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
         const rating = parseInt(checkbox.dataset.rating) || 5;
         const course = checkbox.dataset.course;
         
-        // 口コミ用の回答を取得
+        // 口コミ用の回答を取得（質問テキスト付き）
         let comment = '';
-        reviewQuestionIds.forEach(qId => {
-          if (answers[qId]) {
-            comment += (comment ? '\\n\\n' : '') + answers[qId];
+        reviewQuestions.forEach(q => {
+          if (answers[q.id]) {
+            comment += (comment ? '\\n\\n' : '') + '【' + q.text + '】\\n' + answers[q.id];
           }
         });
         
