@@ -1677,7 +1677,7 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
     
     <!-- 個別公開モーダル -->
     <div id="single-publish-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4 overflow-auto">
-      <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl">
+      <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
         <div class="p-6 bg-gradient-to-r from-green-500 to-emerald-500 text-white">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -1695,42 +1695,85 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
           </div>
         </div>
         
-        <form id="single-publish-form" class="p-6 space-y-4">
-          <input type="hidden" name="response_id" id="edit-response-id">
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">表示名</label>
-            <input type="text" name="reviewer_name" id="edit-reviewer-name"
-                   class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none">
-            <p class="text-xs text-gray-400 mt-1">匿名希望の場合は「匿名」と表示されます</p>
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">評価</label>
-            <div class="flex gap-2" id="edit-rating-stars">
-              ${[1,2,3,4,5].map(n => `
-                <button type="button" onclick="setEditRating(${n})" class="text-3xl text-gray-300 hover:text-yellow-400 transition edit-star" data-rating="${n}">
-                  <i class="fas fa-star"></i>
-                </button>
-              `).join('')}
+        <div class="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- 編集フォーム -->
+            <form id="single-publish-form" class="space-y-4">
+              <h4 class="font-bold text-gray-800 flex items-center gap-2 mb-4">
+                <i class="fas fa-edit text-green-500"></i>編集
+              </h4>
+              <input type="hidden" name="response_id" id="edit-response-id">
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">表示名</label>
+                <input type="text" name="reviewer_name" id="edit-reviewer-name" oninput="updateReviewPreview()"
+                       class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none">
+                <p class="text-xs text-gray-400 mt-1">匿名希望の場合は「匿名」と表示されます</p>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">評価</label>
+                <div class="flex gap-2" id="edit-rating-stars">
+                  ${[1,2,3,4,5].map(n => `
+                    <button type="button" onclick="setEditRating(${n})" class="text-3xl text-gray-300 hover:text-yellow-400 transition edit-star" data-rating="${n}">
+                      <i class="fas fa-star"></i>
+                    </button>
+                  `).join('')}
+                </div>
+                <input type="hidden" name="rating" id="edit-rating" value="5">
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">講座名</label>
+                <input type="text" name="course_name" id="edit-course-name" oninput="updateReviewPreview()"
+                       class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                       placeholder="講座名（任意）">
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">口コミ内容 <span class="text-red-500">*</span></label>
+                <textarea name="comment" id="edit-comment" rows="5" required oninput="updateReviewPreview()"
+                          class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-none"
+                          placeholder="口コミ内容を入力してください"></textarea>
+              </div>
+            </form>
+            
+            <!-- プレビュー -->
+            <div>
+              <h4 class="font-bold text-gray-800 flex items-center gap-2 mb-4">
+                <i class="fas fa-eye text-blue-500"></i>公開時のプレビュー
+              </h4>
+              <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-4 border border-amber-200">
+                <div id="review-preview-card" class="bg-white rounded-xl p-5 shadow-sm">
+                  <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-400 flex items-center justify-center text-white font-bold text-lg flex-shrink-0" id="preview-avatar">
+                      匿
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center justify-between mb-1">
+                        <span class="font-bold text-gray-800" id="preview-name">匿名</span>
+                        <div class="flex text-yellow-400 text-sm" id="preview-stars">
+                          <i class="fas fa-star"></i>
+                          <i class="fas fa-star"></i>
+                          <i class="fas fa-star"></i>
+                          <i class="fas fa-star"></i>
+                          <i class="fas fa-star"></i>
+                        </div>
+                      </div>
+                      <p class="text-sm text-amber-600 mb-3" id="preview-course">
+                        <i class="fas fa-book mr-1"></i><span>講座名</span>
+                      </p>
+                      <p class="text-gray-700 leading-relaxed whitespace-pre-wrap" id="preview-comment">口コミ内容がここに表示されます</p>
+                    </div>
+                  </div>
+                </div>
+                <p class="text-xs text-amber-600 mt-3 text-center">
+                  <i class="fas fa-info-circle mr-1"></i>口コミページでの表示イメージです
+                </p>
+              </div>
             </div>
-            <input type="hidden" name="rating" id="edit-rating" value="5">
           </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">講座名</label>
-            <input type="text" name="course_name" id="edit-course-name"
-                   class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                   placeholder="講座名（任意）">
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">口コミ内容 <span class="text-red-500">*</span></label>
-            <textarea name="comment" id="edit-comment" rows="5" required
-                      class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-none"
-                      placeholder="口コミ内容を入力してください"></textarea>
-          </div>
-        </form>
+        </div>
         
         <div class="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
           <button onclick="closeSinglePublishModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 transition">
@@ -1869,6 +1912,7 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
         document.getElementById('edit-comment').value = comment;
         
         setEditRating(rating);
+        updateReviewPreview();
         
         document.getElementById('single-publish-modal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
@@ -1886,6 +1930,39 @@ export function renderSurveyResponses(responses: SurveyResponse[], questions: Su
           star.classList.toggle('text-yellow-400', starRating <= rating);
           star.classList.toggle('text-gray-300', starRating > rating);
         });
+        updateReviewPreview();
+      }
+      
+      // プレビュー更新
+      function updateReviewPreview() {
+        const name = document.getElementById('edit-reviewer-name').value || '匿名';
+        const rating = parseInt(document.getElementById('edit-rating').value) || 5;
+        const course = document.getElementById('edit-course-name').value;
+        const comment = document.getElementById('edit-comment').value || '口コミ内容がここに表示されます';
+        
+        // アバター
+        const avatar = document.getElementById('preview-avatar');
+        avatar.textContent = name.charAt(0) || '匿';
+        
+        // 名前
+        document.getElementById('preview-name').textContent = name;
+        
+        // 星評価
+        const starsHtml = '<i class="fas fa-star"></i>'.repeat(rating) + 
+                          '<i class="far fa-star text-gray-300"></i>'.repeat(5 - rating);
+        document.getElementById('preview-stars').innerHTML = starsHtml;
+        
+        // 講座名
+        const courseEl = document.getElementById('preview-course');
+        if (course) {
+          courseEl.style.display = 'block';
+          courseEl.querySelector('span').textContent = course;
+        } else {
+          courseEl.style.display = 'none';
+        }
+        
+        // コメント
+        document.getElementById('preview-comment').textContent = comment;
       }
       
       async function submitSinglePublish() {
