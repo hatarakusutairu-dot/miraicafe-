@@ -3749,7 +3749,7 @@ app.get('/api/reviews/:courseId', async (c) => {
     console.log('Reviews API Debug:', { courseId, courseTitle })
     
     // Get approved reviews with pagination
-    // 全ての講座で general の口コミを表示する（シンプル化）
+    // 講座IDに紐づいた口コミのみ表示
     let reviews
     if (courseId === 'all') {
       reviews = await c.env.DB.prepare(`
@@ -3760,11 +3760,11 @@ app.get('/api/reviews/:courseId', async (c) => {
         LIMIT ? OFFSET ?
       `).bind(limit, offset).all()
     } else {
-      // general の口コミは全講座で表示 + 特定講座の口コミ
+      // 特定講座の口コミのみ
       reviews = await c.env.DB.prepare(`
         SELECT id, course_id, reviewer_name, rating, comment, created_at
         FROM reviews 
-        WHERE status = 'approved' AND (course_id = 'general' OR course_id = ?)
+        WHERE status = 'approved' AND course_id = ?
         ORDER BY created_at DESC
         LIMIT ? OFFSET ?
       `).bind(courseId, limit, offset).all()
@@ -3778,7 +3778,7 @@ app.get('/api/reviews/:courseId', async (c) => {
         `).first()
       : await c.env.DB.prepare(`
           SELECT COUNT(*) as total FROM reviews 
-          WHERE status = 'approved' AND (course_id = 'general' OR course_id = ?)
+          WHERE status = 'approved' AND course_id = ?
         `).bind(courseId).first()
 
     // Get rating stats
@@ -3805,7 +3805,7 @@ app.get('/api/reviews/:courseId', async (c) => {
             SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as star2,
             SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as star1
           FROM reviews 
-          WHERE status = 'approved' AND (course_id = 'general' OR course_id = ?)
+          WHERE status = 'approved' AND course_id = ?
         `).bind(courseId).first()
 
     const total = (countResult as any)?.total || 0
