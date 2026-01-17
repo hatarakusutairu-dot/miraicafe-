@@ -7,6 +7,7 @@ interface DashboardStats {
   reviews: { total: number; pending: number; avgRating: number }
   contacts: { total: number; new: number }
   bookings: { total: number; pending: number; confirmed: number }
+  surveyAvgRating?: number  // アンケートの平均満足度（5段階）
 }
 
 interface SiteStats {
@@ -32,7 +33,9 @@ interface RecentActivity {
 export const renderDashboard = (stats: DashboardStats, recent: RecentActivity, siteStats?: SiteStats, studentCountAuto: number = 0) => {
   // 計算値
   const courseCount = siteStats?.course_count_auto ? stats.courses : (siteStats?.course_count_manual || 0)
-  const satisfactionRate = siteStats?.satisfaction_auto ? Math.round(stats.reviews.avgRating * 20) : (siteStats?.satisfaction_manual || 0)
+  // アンケートの平均満足度を使用（5段階評価 → パーセント変換）
+  const surveyRating = stats.surveyAvgRating || 0
+  const satisfactionRate = siteStats?.satisfaction_auto ? Math.round(surveyRating * 20) : (siteStats?.satisfaction_manual || 0)
   const studentCountExtra = siteStats?.student_count_extra || 0
   const studentCountTotal = studentCountAuto + studentCountExtra
   const content = `
@@ -413,7 +416,7 @@ export const renderDashboard = (stats: DashboardStats, recent: RecentActivity, s
             <span class="text-gray-700">%</span>
             <span class="text-gray-500 text-sm" id="satisfaction-auto-value">${siteStats?.satisfaction_auto ? `(自動: ${satisfactionRate}%)` : ''}</span>
           </div>
-          <p class="text-xs text-gray-400 mt-2">自動: 口コミ平均×20%</p>
+          <p class="text-xs text-gray-400 mt-2">自動: アンケート平均満足度×20%</p>
         </div>
       </div>
       

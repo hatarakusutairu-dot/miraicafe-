@@ -4077,6 +4077,17 @@ app.get('/admin', async (c) => {
       LIMIT 5
     `).all()
     
+    // アンケートの平均満足度を取得
+    let surveyAvgRating = 0
+    try {
+      const surveyAvg = await c.env.DB.prepare(`
+        SELECT AVG(overall_rating) as avg FROM survey_responses WHERE overall_rating IS NOT NULL
+      `).first()
+      surveyAvgRating = (surveyAvg as any)?.avg || 0
+    } catch (e) {
+      // テーブルがなければスキップ
+    }
+    
     // サイト実績設定を取得
     let siteStats = null
     try {
@@ -4115,7 +4126,8 @@ app.get('/admin', async (c) => {
         total: (bookingsResult as any)?.total || 0,
         pending: (bookingsResult as any)?.pending || 0,
         confirmed: (bookingsResult as any)?.confirmed || 0
-      }
+      },
+      surveyAvgRating: surveyAvgRating
     }
     
     const recent = {
