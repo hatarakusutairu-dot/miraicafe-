@@ -9559,12 +9559,23 @@ app.post('/admin/api/surveys/publish-reviews', async (c) => {
       // コメントがない場合はスキップ
       if (!review.comment || !review.comment.trim()) continue
       
+      // 講座名から講座IDを取得
+      let courseId = 'general'
+      if (review.course_name) {
+        const course = await c.env.DB.prepare(`
+          SELECT id FROM courses WHERE title = ? OR title LIKE ?
+        `).bind(review.course_name, `%${review.course_name.substring(0, 30)}%`).first() as { id: string } | null
+        if (course) {
+          courseId = course.id
+        }
+      }
+      
       // 口コミを作成（reviewer_emailはNOT NULLなので空文字を設定）
       const result = await c.env.DB.prepare(`
         INSERT INTO reviews (course_id, reviewer_name, reviewer_email, rating, comment, status, created_at)
         VALUES (?, ?, ?, ?, ?, 'approved', datetime('now'))
       `).bind(
-        review.course_name || 'general',
+        courseId,
         review.reviewer_name || '匿名',
         '', // メールアドレスは公開しない（NOT NULL制約のため空文字）
         review.rating || 5,

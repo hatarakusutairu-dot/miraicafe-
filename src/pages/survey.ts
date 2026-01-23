@@ -1056,12 +1056,18 @@ export const renderSurveyPage = (
               overallRating = parseInt(checked.value);
             }
           }
-        } else if (type === 'choice' || type === 'multi_choice') {
+        } else if (type === 'choice' || type === 'multi_choice' || type === 'multiple_choice') {
           const checked = document.querySelectorAll('input[name="q_' + qId + '"]:checked');
           answers[qId] = Array.from(checked).map(c => c.value);
+        } else if (type === 'single_choice') {
+          const checked = document.querySelector('input[name="q_' + qId + '"]:checked');
+          if (checked) answers[qId] = [checked.value];
         } else if (type === 'text') {
           const textarea = document.querySelector('textarea[name="q_' + qId + '"]');
           if (textarea) answers[qId] = textarea.value;
+        } else if (type === 'dropdown') {
+          const select = document.querySelector('select[name="q_' + qId + '"]');
+          if (select && select.value) answers[qId] = select.value;
         }
       });
       
