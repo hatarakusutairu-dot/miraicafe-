@@ -1,6 +1,28 @@
 import { renderLayout } from '../components/layout'
 import { Course, Schedule } from '../data'
 
+// HTMLタグを除去してプレーンテキストにする関数
+function stripHtml(html: string | undefined | null): string {
+  if (!html) return ''
+  return html
+    .replace(/<[^>]*>/g, ' ')  // HTMLタグを空白に置換
+    .replace(/&nbsp;/g, ' ')   // &nbsp;を空白に
+    .replace(/&lt;/g, '<')     // HTMLエンティティを元に戻す
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')      // 連続する空白を1つに
+    .trim()
+}
+
+// テキストを指定文字数で切り詰める関数
+function truncateText(text: string | undefined | null, maxLength: number): string {
+  const plainText = stripHtml(text)
+  if (plainText.length <= maxLength) return plainText
+  return plainText.substring(0, maxLength) + '...'
+}
+
 // コースシリーズ情報の型定義
 interface SeriesInfo {
   id: string
@@ -360,7 +382,7 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
                   <span><i class="fas fa-calendar-alt mr-1 text-ai-purple"></i>全${series.total_sessions}回</span>
                 </div>
                 
-                ${series.description ? `<p class="text-future-textLight text-sm mb-4 line-clamp-2">${series.description}</p>` : ''}
+                ${series.description ? `<p class="text-future-textLight text-sm mb-4 line-clamp-2">${truncateText(series.description, 100)}</p>` : ''}
                 
                 <!-- 価格情報 -->
                 <div class="bg-future-light rounded-xl p-4 mb-4">
@@ -462,7 +484,7 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
                   <i class="fas fa-user mr-2 text-ai-purple"></i>${course.instructor}
                 </div>
                 <h3 class="text-xl font-bold text-future-text mb-2">${course.title}</h3>
-                <p class="text-future-textLight text-sm mb-4 line-clamp-2">${course.description}</p>
+                <p class="text-future-textLight text-sm mb-4 line-clamp-2">${truncateText(course.description, 100)}</p>
                 
                 <div class="flex flex-wrap gap-2 mb-4">
                   ${course.features.slice(0, 2).map(feature => `
@@ -1136,7 +1158,7 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
                 </span>
                 この講座について
               </h2>
-              <p class="text-future-textLight leading-relaxed">${course.longDescription}</p>
+              <div class="text-future-textLight leading-relaxed prose prose-sm max-w-none prose-p:my-2 prose-ul:my-2 prose-li:my-1">${course.longDescription}</div>
             </div>
 
             <!-- こんな方におすすめ -->
@@ -1681,7 +1703,7 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <div class="glass rounded-3xl p-8 border border-ai-blue/20">
           <h2 class="text-2xl font-bold text-future-text mb-4">今すぐ学び始めませんか？</h2>
-          <p class="text-future-textLight mb-6">${course.catchphrase || course.description}</p>
+          <p class="text-future-textLight mb-6">${truncateText(course.catchphrase || course.description, 150)}</p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="/reservation?course=${course.id}" class="btn-ai text-white px-8 py-4 rounded-full font-bold shadow-lg" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
               <i class="fas fa-calendar-check mr-2"></i>今すぐ予約する
@@ -2099,7 +2121,7 @@ export const renderSeriesDetailPage = (
             
             <h1 class="text-3xl lg:text-4xl font-bold text-future-text mb-4 leading-tight">${series.title}</h1>
             ${series.subtitle ? `<p class="text-lg text-future-textLight mb-4">${series.subtitle}</p>` : ''}
-            ${series.description ? `<p class="text-future-textLight leading-relaxed">${series.description}</p>` : ''}
+            ${series.description ? `<div class="text-future-textLight leading-relaxed prose prose-sm max-w-none">${series.description}</div>` : ''}
             
             <div class="flex flex-wrap items-center gap-6 mt-6 text-sm text-future-textLight">
               <span><i class="fas fa-clock text-ai-blue mr-2"></i>${series.duration_minutes}分/回</span>
@@ -2287,7 +2309,7 @@ export const renderSeriesDetailPage = (
                 <!-- コンテンツ -->
                 <div class="flex-1 p-4">
                   <h4 class="font-bold text-future-text mb-2 group-hover:text-ai-blue transition line-clamp-2 text-sm">${course.title}</h4>
-                  ${course.description ? `<p class="text-xs text-future-textLight line-clamp-2">${course.description}</p>` : ''}
+                  ${course.description ? `<p class="text-xs text-future-textLight line-clamp-2">${truncateText(course.description, 80)}</p>` : ''}
                 </div>
               </div>
             </a>

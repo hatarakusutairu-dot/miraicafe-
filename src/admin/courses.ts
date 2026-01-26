@@ -213,10 +213,25 @@ export const renderCourseForm = (course?: Course, error?: string) => {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">講座説明 <span class="text-red-500">*</span></label>
-            <textarea name="description" rows="4" required
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-              placeholder="講座の内容を詳しく説明してください">${escapeAttr(course?.description || '')}</textarea>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              講座説明 <span class="text-red-500">*</span>
+              <span class="text-xs text-gray-500 ml-2">（HTMLタグ使用可）</span>
+            </label>
+            <textarea name="description" id="description-input" rows="6" required
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none font-mono text-sm"
+              placeholder="講座の内容を詳しく説明してください"
+              oninput="updateDescriptionPreview()">${escapeAttr(course?.description || '')}</textarea>
+            <div class="mt-2 flex flex-wrap gap-2 text-xs">
+              <button type="button" onclick="insertHtmlTag('p')" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded">&lt;p&gt;段落&lt;/p&gt;</button>
+              <button type="button" onclick="insertHtmlTag('br')" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded">&lt;br&gt;改行</button>
+              <button type="button" onclick="insertHtmlTag('strong')" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded">&lt;strong&gt;太字&lt;/strong&gt;</button>
+              <button type="button" onclick="insertHtmlTag('ul')" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded">&lt;ul&gt;リスト&lt;/ul&gt;</button>
+              <button type="button" onclick="insertHtmlTag('li')" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded">&lt;li&gt;項目&lt;/li&gt;</button>
+            </div>
+            <div class="mt-3">
+              <div class="text-xs text-gray-500 mb-1">プレビュー:</div>
+              <div id="description-preview" class="p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm prose prose-sm max-w-none min-h-[60px]"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -1194,6 +1209,49 @@ export const renderCourseForm = (course?: Course, error?: string) => {
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 2000);
       }
+      
+      // 説明文プレビュー更新
+      function updateDescriptionPreview() {
+        const input = document.getElementById('description-input');
+        const preview = document.getElementById('description-preview');
+        if (input && preview) {
+          // HTMLをそのまま表示（XSS対策: script, onイベントを除去）
+          let html = input.value
+            .replace(/<script[^>]*>.*?<\\/script>/gi, '')
+            .replace(/on\\w+\\s*=/gi, 'data-removed=');
+          preview.innerHTML = html || '<span class="text-gray-400">プレビューがここに表示されます</span>';
+        }
+      }
+      
+      // HTMLタグ挿入
+      function insertHtmlTag(tag) {
+        const input = document.getElementById('description-input');
+        if (!input) return;
+        
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        const text = input.value;
+        const selectedText = text.substring(start, end);
+        
+        let insertText = '';
+        if (tag === 'br') {
+          insertText = '<br>\\n';
+        } else if (tag === 'ul') {
+          insertText = '<ul>\\n  <li>' + (selectedText || '項目1') + '</li>\\n  <li>項目2</li>\\n</ul>';
+        } else {
+          insertText = '<' + tag + '>' + (selectedText || '') + '</' + tag + '>';
+        }
+        
+        input.value = text.substring(0, start) + insertText + text.substring(end);
+        input.focus();
+        input.selectionStart = input.selectionEnd = start + insertText.length;
+        updateDescriptionPreview();
+      }
+      
+      // 初期プレビュー表示
+      document.addEventListener('DOMContentLoaded', function() {
+        updateDescriptionPreview();
+      });
     </script>
   `
 
