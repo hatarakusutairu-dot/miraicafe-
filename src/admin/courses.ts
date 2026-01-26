@@ -12,6 +12,31 @@ function escapeAttr(text: string): string {
     .replace(/>/g, '&gt;')
 }
 
+// HTMLタグを除去する関数
+function stripHtmlTags(html: string): string {
+  if (!html) return ''
+  return html
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/p>/gi, ' ')
+    .replace(/<\/li>/gi, ' ')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// 文字数を制限する関数
+function truncateText(text: string, maxLength: number): string {
+  if (!text) return ''
+  const stripped = stripHtmlTags(text)
+  if (stripped.length <= maxLength) return stripped
+  return stripped.substring(0, maxLength) + '...'
+}
+
 // 講座一覧ページ
 export const renderCoursesList = (courses: Course[]) => {
   const content = `
@@ -44,7 +69,7 @@ export const renderCoursesList = (courses: Course[]) => {
           </div>
           <div class="p-4">
             <h3 class="font-bold text-gray-800 mb-2 line-clamp-2">${course.title}</h3>
-            <p class="text-sm text-gray-500 line-clamp-2 mb-3">${course.description}</p>
+            <p class="text-sm text-gray-500 line-clamp-2 mb-3">${truncateText(course.description, 60)}</p>
             
             <div class="flex items-center justify-between text-sm text-gray-600 mb-4">
               <span><i class="fas fa-clock mr-1"></i>${course.duration || '未設定'}</span>
