@@ -16,6 +16,17 @@ function stripHtml(html: string | undefined | null): string {
     .trim()
 }
 
+// HTML属性値用のエスケープ関数
+function escapeAttr(text: string | undefined | null): string {
+  if (!text) return ''
+  return stripHtml(text)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 // テキストを指定文字数で切り詰める関数
 function truncateText(text: string | undefined | null, maxLength: number): string {
   const plainText = stripHtml(text)
@@ -452,11 +463,11 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="courses-grid">
           ${courses.map((course, index) => `
             <div class="bg-white overflow-hidden shadow-lg border border-future-sky/50 course-card rounded-2xl" 
-                 data-level="${course.level}" 
-                 data-category="${course.category}"
+                 data-level="${escapeAttr(course.level)}" 
+                 data-category="${escapeAttr(course.category)}"
                  data-price="${course.price}"
-                 data-title="${course.title}"
-                 data-description="${course.description}"
+                 data-title="${escapeAttr(course.title)}"
+                 data-description="${escapeAttr(course.description)}"
                  data-index="${index}"
                  data-course-id="${course.id}"
                  onclick="window.location.href='/courses/${course.id}'">
