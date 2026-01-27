@@ -1565,8 +1565,8 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
                     </div>
                   </label>
                   
-                  <!-- 早期申込 -->
-                  ${seriesInfo.early_bird_deadline ? `
+                  <!-- 早期申込（期限内のみ表示） -->
+                  ${seriesInfo.early_bird_deadline && new Date(seriesInfo.early_bird_deadline) > new Date() ? `
                   <label class="pricing-option block cursor-pointer">
                     <input type="radio" name="pricing_type" value="early" class="hidden">
                     <div class="border-2 border-future-sky rounded-xl p-3 hover:border-ai-blue transition-all pricing-card relative">
