@@ -8198,7 +8198,8 @@ ${truncatedContent}
               }],
               generationConfig: {
                 temperature: 0.5,
-                maxOutputTokens: 256
+                maxOutputTokens: 512,
+                responseMimeType: 'application/json'
               }
             })
           }
@@ -8259,13 +8260,26 @@ ${truncatedContent}
             // 成功したらループを抜ける
             break
           } catch (parseError) {
-            // JSON解析失敗時はテキストをそのままメタディスクリプションとして使用
-            metaDescription = generatedText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
-            if (metaDescription.length > 120) {
-              metaDescription = metaDescription.substring(0, 117) + '...'
+            console.error('JSON parse error:', parseError, 'Text:', generatedText.substring(0, 200))
+            // JSON解析失敗時は、JSONっぽいテキストは使わない
+            // もしJSON形式のテキストならフォールバックを使用
+            if (generatedText.includes('{') && generatedText.includes('"meta_description"')) {
+              // JSONパースに失敗したが、JSON形式のテキストなのでフォールバック
+              console.log('JSON-like text but parse failed, using fallback')
+              metaDescription = createFallbackMeta(title, content)
+              keywords = createFallbackKeywords(title, content)
+            } else {
+              // 純粋なテキストならそのまま使用
+              metaDescription = generatedText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
+              // JSONコードが混じっていないか確認
+              if (metaDescription.includes('{') || metaDescription.includes('"keywords"')) {
+                metaDescription = createFallbackMeta(title, content)
+              }
+              if (metaDescription.length > 120) {
+                metaDescription = metaDescription.substring(0, 117) + '...'
+              }
+              keywords = createFallbackKeywords(title, content)
             }
-            // キーワードはフォールバックで生成
-            keywords = createFallbackKeywords(title, content)
             break
           }
         }
