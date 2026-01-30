@@ -8153,25 +8153,21 @@ app.post('/admin/api/ai/generate-meta', async (c) => {
     // コンテンツを800文字に制限
     const truncatedContent = (content || '').substring(0, 800)
     
-    const prompt = `あなたはSEOの専門家です。以下の記事のタイトルとコンテンツから、メタディスクリプションとSEOキーワードを作成してください。
+    // HTMLタグを除去
+    const cleanContent = truncatedContent.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
+    
+    const prompt = `以下の記事からSEO用のメタディスクリプションとキーワードを作成してください。
 
-【タイトル】
-${title || '未設定'}
+【タイトル】${title || '未設定'}
 
-【コンテンツ】
-${truncatedContent}
+【内容】${cleanContent.substring(0, 500)}
 
-【出力形式】
-必ず以下のJSON形式で出力してください：
-{
-  "meta_description": "120文字以内のメタディスクリプション",
-  "keywords": "キーワード1, キーワード2, キーワード3, キーワード4, キーワード5"
-}
+【出力ルール】
+- meta_description: 記事の要点を120文字以内で説明（HTMLタグ禁止、純粋なテキストのみ）
+- keywords: SEO用の単語を3〜5個、カンマ区切り（例: AI, 講座, オンライン学習）
 
-【条件】
-- meta_description: 120文字以内、記事の要点を簡潔に、読者の興味を引く
-- keywords: 3〜5個のSEOキーワードをカンマ区切り、重要度の高い順
-- JSON以外の説明文は不要`
+【出力形式】JSON形式のみ
+{"meta_description": "説明文", "keywords": "単語1, 単語2, 単語3"}`
 
     // 使用するモデルのリスト（フォールバック順）
     const models = [
@@ -8197,9 +8193,12 @@ ${truncatedContent}
                 parts: [{ text: prompt }]
               }],
               generationConfig: {
-                temperature: 0.5,
-                maxOutputTokens: 512,
-                responseMimeType: 'application/json'
+                temperature: 0.3,
+                maxOutputTokens: 1024,
+                responseMimeType: 'application/json',
+                thinkingConfig: {
+                  thinkingBudget: 0
+                }
               }
             })
           }
@@ -8249,8 +8248,13 @@ ${truncatedContent}
             }
             
             const parsed = JSON.parse(jsonStr) as { meta_description?: string; keywords?: string }
-            metaDescription = parsed.meta_description || ''
-            keywords = parsed.keywords || ''
+            metaDescription = (parsed.meta_description || '')
+              .replace(/<[^>]*>/g, '')  // HTMLタグを除去
+              .replace(/&nbsp;/g, ' ')
+              .trim()
+            keywords = (parsed.keywords || '')
+              .replace(/<[^>]*>/g, '')  // HTMLタグを除去
+              .trim()
             
             // メタディスクリプションを120文字に制限
             if (metaDescription.length > 120) {
