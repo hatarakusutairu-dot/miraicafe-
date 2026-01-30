@@ -2339,7 +2339,7 @@ ${message}
 JSON形式で応答してください:`
 
     // Gemini API呼び出し
-    const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-pro']
+    const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro']
     let responseText = ''
     let success = false
 
@@ -8037,7 +8037,7 @@ ${(content || '').substring(0, 1500)}
 - より魅力的な表現への変更`
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${c.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${c.env.GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -8175,10 +8175,9 @@ ${truncatedContent}
 
     // 使用するモデルのリスト（フォールバック順）
     const models = [
-      'gemini-2.0-flash-exp',
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-flash',
-      'gemini-pro'
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-2.0-flash'
     ]
     
     let metaDescription = ''
@@ -8472,7 +8471,7 @@ ${additionalInstructions ? `【追加の指示】\n${additionalInstructions}\n` 
 `
 
     // Gemini API呼び出し
-    const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-pro']
+    const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro']
     
     for (const model of models) {
       try {
@@ -8652,7 +8651,7 @@ ${additionalInstructions ? `【追加の指示】\n${additionalInstructions}\n` 
 - ハンズオン形式を推奨`
 
     // Gemini API呼び出し
-    const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-pro']
+    const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro']
     
     for (const model of models) {
       try {
@@ -8808,7 +8807,7 @@ ${additionalInstructions || 'なし'}
 - Markdownのコンテンツは改行を\\nで表現
 - JSON以外の説明は不要`
 
-    const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-pro']
+    const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash']
     
     for (const model of models) {
       try {
@@ -9118,10 +9117,9 @@ ${message}
 
     // 使用するモデルのリスト（フォールバック順）
     const models = [
-      'gemini-2.0-flash-exp',
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-flash',
-      'gemini-pro'
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-2.0-flash'
     ]
     
     let generatedBody = ''
