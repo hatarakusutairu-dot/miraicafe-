@@ -1,6 +1,15 @@
 import { renderLayout } from '../components/layout'
 import { Course, BlogPost, Portfolio } from '../data'
 
+// HTMLタグを除去してテキストを切り詰める
+const truncateText = (text: string, maxLength: number): string => {
+  if (!text) return ''
+  // HTMLタグを除去
+  const plain = text.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
+  if (plain.length <= maxLength) return plain
+  return plain.substring(0, maxLength) + '...'
+}
+
 export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[], portfolios?: Portfolio[]) => {
   const content = `
     <!-- Hero Section - Warm Greenhouse Cafe Style -->
@@ -722,8 +731,8 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
                 <div class="flex items-center text-sm text-cafe-textLight mb-2">
                   <i class="fas fa-tag mr-2 text-nature-forest"></i>${course.category}
                 </div>
-                <h3 class="text-xl font-bold text-cafe-text mb-2">${course.title}</h3>
-                <p class="text-cafe-textLight text-sm mb-4 line-clamp-2">${course.description}</p>
+                <h3 class="text-lg font-bold text-cafe-text mb-2 line-clamp-2">${truncateText(course.title, 40)}</h3>
+                <p class="text-cafe-textLight text-sm mb-4 line-clamp-2">${truncateText(course.description, 60)}</p>
                 <div class="flex items-center justify-between pt-4 border-t border-cafe-beige">
                   <span class="text-2xl font-bold text-cafe-wood">¥${course.price.toLocaleString()}</span>
                   <a href="/courses/${course.id}" class="btn-warm px-5 py-2 text-sm font-medium">
