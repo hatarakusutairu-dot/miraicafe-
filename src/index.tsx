@@ -107,6 +107,61 @@ app.onError((err, c) => {
 app.use('/api/*', cors())
 app.use('/admin/api/*', cors())
 
+// Content Security Policy (CSP) - フィッシング攻撃対策
+// 許可されたドメインのみからのスクリプト実行・接続を許可
+app.use('*', async (c, next) => {
+  await next()
+  
+  // APIエンドポイントにはCSPを適用しない
+  if (c.req.path.startsWith('/api/') || c.req.path.startsWith('/admin/api/')) {
+    return
+  }
+  
+  // CSPディレクティブを構築
+  const cspDirectives = [
+    // デフォルトは自サイトのみ
+    "default-src 'self'",
+    
+    // スクリプト: 自サイト + 許可されたCDN + インラインスクリプト（Tailwind設定等）
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.googletagmanager.com https://www.google-analytics.com https://js.stripe.com https://static.cloudflareinsights.com",
+    
+    // スタイル: 自サイト + フォント + CDN + インラインスタイル
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+    
+    // フォント
+    "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com data:",
+    
+    // 画像: 自サイト + 画像ホスティング + data URI
+    "img-src 'self' data: blob: https: http:",
+    
+    // 接続先: 自サイト + 必要なAPI（Stripe, Supabase, Google等）
+    // ※ 未許可のLLM API（OpenAI, Anthropic等）への接続をブロック
+    "connect-src 'self' https://miraicafe.work https://*.supabase.co https://api.stripe.com https://www.google-analytics.com https://www.googletagmanager.com https://generativelanguage.googleapis.com https://api.resend.com https://api.unsplash.com https://holidays-jp.github.io https://*.cloudflare.com",
+    
+    // フレーム: YouTube, Vimeo, Stripe, Google Calendar
+    "frame-src 'self' https://www.youtube.com https://player.vimeo.com https://js.stripe.com https://calendar.google.com",
+    
+    // メディア
+    "media-src 'self' blob: https:",
+    
+    // オブジェクト（Flash等）は無効化
+    "object-src 'none'",
+    
+    // ベースURI
+    "base-uri 'self'",
+    
+    // フォーム送信先
+    "form-action 'self' https://calendar.google.com https://calendar.yahoo.co.jp https://outlook.live.com"
+  ]
+  
+  c.header('Content-Security-Policy', cspDirectives.join('; '))
+  
+  // 追加のセキュリティヘッダー
+  c.header('X-Content-Type-Options', 'nosniff')
+  c.header('X-Frame-Options', 'SAMEORIGIN')
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin')
+})
+
 // Static files
 app.use('/static/*', serveStatic({ root: './public' }))
 
