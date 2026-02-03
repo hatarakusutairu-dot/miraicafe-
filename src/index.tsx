@@ -9613,22 +9613,36 @@ app.post('/admin/api/surveys/publish-reviews', async (c) => {
       }>
     }>()
     
+    console.log('Publish reviews request:', JSON.stringify(body, null, 2))
+    
     if (!body.reviews || body.reviews.length === 0) {
+      console.log('No reviews to publish')
       return c.json({ error: '公開するデータがありません' }, 400)
     }
     
     let successCount = 0
+    const errors: string[] = []
     
     for (const review of body.reviews) {
+      console.log('Processing review:', JSON.stringify(review))
+      
       // 回答の公開同意を確認
       const response = await c.env.DB.prepare(`
         SELECT * FROM survey_responses WHERE id = ? AND (publish_consent = 'yes' OR publish_consent = 'anonymous')
       `).bind(review.response_id).first()
       
-      if (!response) continue
+      if (!response) {
+        console.log(`Response ${review.response_id} not found or no consent`)
+        errors.push(`回答ID ${review.response_id}: 公開同意がありません`)
+        continue
+      }
       
       // コメントがない場合はスキップ
-      if (!review.comment || !review.comment.trim()) continue
+      if (!review.comment || !review.comment.trim()) {
+        console.log(`Review ${review.response_id} has no comment`)
+        errors.push(`回答ID ${review.response_id}: コメントがありません`)
+        continue
+      }
       
       // 講座名から講座IDを取得
       let courseId = 'general'
@@ -9638,10 +9652,14 @@ app.post('/admin/api/surveys/publish-reviews', async (c) => {
         `).bind(review.course_name, `%${review.course_name.substring(0, 30)}%`).first() as { id: string } | null
         if (course) {
           courseId = course.id
+          console.log(`Found course: ${courseId} for "${review.course_name}"`)
+        } else {
+          console.log(`Course not found for "${review.course_name}", using general`)
         }
       }
       
       // 口コミを作成（reviewer_emailはNOT NULLなので空文字を設定）
+      console.log('Inserting review:', { courseId, name: review.reviewer_name, rating: review.rating })
       const result = await c.env.DB.prepare(`
         INSERT INTO reviews (course_id, reviewer_name, reviewer_email, rating, comment, status, created_at)
         VALUES (?, ?, ?, ?, ?, 'approved', datetime('now'))
@@ -9655,6 +9673,8 @@ app.post('/admin/api/surveys/publish-reviews', async (c) => {
       
       // survey_responsesを更新（公開済みフラグとreview_id）
       const reviewId = result.meta?.last_row_id
+      console.log(`Review created with ID: ${reviewId}`)
+      
       await c.env.DB.prepare(`
         UPDATE survey_responses SET published_as_review = 1, review_id = ? WHERE id = ?
       `).bind(reviewId, review.response_id).run()
@@ -9662,10 +9682,17 @@ app.post('/admin/api/surveys/publish-reviews', async (c) => {
       successCount++
     }
     
-    return c.json({ success: true, count: successCount })
+    console.log(`Published ${successCount} reviews`)
+    
+    if (successCount === 0 && errors.length > 0) {
+      return c.json({ error: errors.join('\n'), details: errors }, 400)
+    }
+    
+    return c.json({ success: true, count: successCount, errors: errors.length > 0 ? errors : undefined })
   } catch (error) {
     console.error('Publish reviews error:', error)
-    return c.json({ error: '口コミの公開に失敗しました' }, 500)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    return c.json({ error: `口コミの公開に失敗しました: ${errorMessage}` }, 500)
   }
 })
 
