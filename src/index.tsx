@@ -9647,9 +9647,26 @@ app.post('/admin/api/surveys/publish-reviews', async (c) => {
       // 講座名から講座IDを取得
       let courseId = 'general'
       if (review.course_name) {
-        const course = await c.env.DB.prepare(`
-          SELECT id FROM courses WHERE title = ? OR title LIKE ?
-        `).bind(review.course_name, `%${review.course_name.substring(0, 30)}%`).first() as { id: string } | null
+        // まず完全一致で検索
+        let course = await c.env.DB.prepare(`
+          SELECT id FROM courses WHERE title = ?
+        `).bind(review.course_name).first() as { id: string } | null
+        
+        // 完全一致がない場合、短い部分で部分一致（特殊文字をエスケープ）
+        if (!course) {
+          // 講座名の最初の20文字を使用し、特殊文字をエスケープ
+          const searchTerm = review.course_name
+            .substring(0, 20)
+            .replace(/[%_\[\]]/g, '') // SQLiteのLIKE特殊文字を除去
+            .trim()
+          
+          if (searchTerm.length >= 5) {
+            course = await c.env.DB.prepare(`
+              SELECT id FROM courses WHERE title LIKE ?
+            `).bind(`%${searchTerm}%`).first() as { id: string } | null
+          }
+        }
+        
         if (course) {
           courseId = course.id
           console.log(`Found course: ${courseId} for "${review.course_name}"`)
