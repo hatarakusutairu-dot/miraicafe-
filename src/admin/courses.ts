@@ -247,6 +247,10 @@ export const renderCourseForm = (course?: Course, error?: string) => {
               placeholder="講座の内容を詳しく説明してください"
               oninput="updateDescriptionPreview()">${escapeAttr(course?.description || '')}</textarea>
             <div class="mt-2 flex flex-wrap gap-2 text-xs">
+              <button type="button" onclick="convertTextToHtml()" class="px-3 py-1 bg-indigo-500 text-white hover:bg-indigo-600 rounded font-medium">
+                <i class="fas fa-magic mr-1"></i>テキスト→HTML変換
+              </button>
+              <span class="border-l border-gray-300 mx-1"></span>
               <button type="button" onclick="insertHtmlTag('p')" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded">&lt;p&gt;段落&lt;/p&gt;</button>
               <button type="button" onclick="insertHtmlTag('br')" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded">&lt;br&gt;改行</button>
               <button type="button" onclick="insertHtmlTag('strong')" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded">&lt;strong&gt;太字&lt;/strong&gt;</button>
@@ -799,12 +803,49 @@ export const renderCourseForm = (course?: Course, error?: string) => {
         if (aiData) {
           try {
             const data = JSON.parse(aiData);
+            
+            // Markdown/プレーンテキスト → HTML変換関数
+            function convertToHtml(text) {
+              if (!text) return '';
+              // 既にHTMLタグが含まれている場合はそのまま返す
+              if (/<[a-z][\s\S]*>/i.test(text)) return text;
+              
+              let html = text;
+              // 見出し（## → h3, ### → h4）
+              html = html.replace(/^### (.+)$/gm, '<h4 class="font-bold mt-4 mb-2">$1</h4>');
+              html = html.replace(/^## (.+)$/gm, '<h3 class="font-bold text-lg mt-4 mb-2">$1</h3>');
+              // 太字（**text**）
+              html = html.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
+              // 箇条書き（- item → <li>）
+              html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+              // 連続する<li>をulで囲む
+              html = html.replace(/(<li>.+<\\/li>\\n?)+/g, '<ul class="list-disc pl-5 my-2">$&</ul>');
+              // 番号付きリスト（1. item → <li>）
+              html = html.replace(/^\\d+\\. (.+)$/gm, '<li>$1</li>');
+              // 空行で段落分け
+              html = html.split(/\\n\\n+/).map(p => {
+                p = p.trim();
+                if (!p) return '';
+                // 既にブロック要素で始まっている場合はそのまま
+                if (/^<(h[1-6]|ul|ol|li|div|p|blockquote)/i.test(p)) return p;
+                return '<p>' + p + '</p>';
+              }).join('\\n');
+              // 単一改行を<br>に
+              html = html.replace(/([^>])\\n([^<])/g, '$1<br>$2');
+              
+              return html;
+            }
+            
             // フォームに反映
             if (data.title) document.querySelector('input[name="title"]').value = data.title;
             if (data.catchphrase) document.querySelector('input[name="catchphrase"]').value = data.catchphrase;
             if (data.category) document.querySelector('select[name="category"]').value = data.category;
             if (data.level) document.querySelector('select[name="level"]').value = data.level;
-            if (data.description) document.querySelector('textarea[name="description"]').value = data.description;
+            if (data.description) {
+              // 説明文をHTML形式に変換
+              const htmlDescription = convertToHtml(data.description);
+              document.querySelector('textarea[name="description"]').value = htmlDescription;
+            }
             if (data.price) document.querySelector('input[name="price"]').value = data.price;
             if (data.duration) document.querySelector('input[name="duration"]').value = data.duration;
             if (data.targetAudience && Array.isArray(data.targetAudience)) {
@@ -1271,6 +1312,81 @@ export const renderCourseForm = (course?: Course, error?: string) => {
         input.focus();
         input.selectionStart = input.selectionEnd = start + insertText.length;
         updateDescriptionPreview();
+      }
+      
+      // テキスト→HTML自動変換
+      function convertTextToHtml() {
+        const input = document.getElementById('description-input');
+        if (!input) return;
+        
+        let text = input.value;
+        if (!text.trim()) {
+          showToast('変換するテキストがありません', 'error');
+          return;
+        }
+        
+        // 既にHTMLが多く含まれている場合は警告
+        const htmlTagCount = (text.match(/<[a-z][^>]*>/gi) || []).length;
+        if (htmlTagCount > 5) {
+          if (!confirm('既にHTMLタグが含まれています。変換を続けますか？')) return;
+        }
+        
+        let html = text;
+        
+        // Markdown見出し（## → h3, ### → h4）
+        html = html.replace(/^### (.+)$/gm, '<h4 class="font-bold mt-4 mb-2">$1</h4>');
+        html = html.replace(/^## (.+)$/gm, '<h3 class="font-bold text-lg mt-4 mb-2">$1</h3>');
+        
+        // 太字（**text** → <strong>）
+        html = html.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
+        
+        // 箇条書き（- item → <li>）
+        const lines = html.split('\\n');
+        let result = [];
+        let inList = false;
+        
+        for (let i = 0; i < lines.length; i++) {
+          let line = lines[i];
+          const isBullet = /^[\\-\\*•]\\s+(.+)$/.test(line);
+          const isNumber = /^\\d+\\.\\s+(.+)$/.test(line);
+          
+          if (isBullet || isNumber) {
+            if (!inList) {
+              result.push(isBullet ? '<ul class="list-disc pl-5 my-2">' : '<ol class="list-decimal pl-5 my-2">');
+              inList = isBullet ? 'ul' : 'ol';
+            }
+            const content = line.replace(/^[\\-\\*•\\d.]+\\s+/, '');
+            result.push('  <li>' + content + '</li>');
+          } else {
+            if (inList) {
+              result.push(inList === 'ul' ? '</ul>' : '</ol>');
+              inList = false;
+            }
+            // 空行は段落の区切り
+            if (line.trim() === '') {
+              result.push('');
+            } else if (!/<[a-z]/i.test(line)) {
+              // HTMLタグがない行は<p>で囲む
+              result.push('<p>' + line + '</p>');
+            } else {
+              result.push(line);
+            }
+          }
+        }
+        if (inList) {
+          result.push(inList === 'ul' ? '</ul>' : '</ol>');
+        }
+        
+        html = result.join('\\n');
+        
+        // 連続した空の<p></p>を削除
+        html = html.replace(/<p><\\/p>\\n?/g, '');
+        // 連続改行を整理
+        html = html.replace(/\\n{3,}/g, '\\n\\n');
+        
+        input.value = html;
+        updateDescriptionPreview();
+        showToast('HTMLに変換しました', 'success');
       }
       
       // 初期プレビュー表示
