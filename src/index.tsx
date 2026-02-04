@@ -38,6 +38,7 @@ import { renderPortfoliosList, renderPortfolioForm, type Portfolio } from './adm
 import { renderAIPortfolioGeneratorPage } from './admin/ai-portfolio-generator'
 import { renderCommentsList, type Comment } from './admin/comments'
 import { renderSurveyDashboard, renderSurveyQuestions, renderSurveyResponses, renderSurveySettings } from './admin/surveys'
+import { renderMembersList, renderCouponsList, renderRewardSettings } from './admin/members'
 import { renderSurveyPage } from './pages/survey'
 import { renderPaymentsList, type Payment } from './admin/payments'
 import { renderPricingPatternsList, renderPricingPatternForm } from './admin/pricing-patterns'
@@ -73,6 +74,19 @@ import {
 import { generateAllCalendarLinks, generateEventDescription, type CalendarEvent } from './services/calendar'
 import { getAvailableDates, calculatePrice, formatDateJa } from './services/google-calendar'
 import { uploadToSupabase, deleteFromSupabase, type SupabaseConfig } from './services/supabase-storage'
+import { 
+  getOrCreateMember, 
+  getMemberByEmail, 
+  getMemberByReferralCode,
+  awardPointsForBooking, 
+  validateCoupon, 
+  useCoupon,
+  usePoints,
+  getMemberDashboard,
+  createMemberCoupon,
+  type Member, 
+  type Coupon 
+} from './services/membership'
 
 // Data
 import { courses, blogPosts, schedules, portfolios } from './data'
@@ -3563,6 +3577,49 @@ app.post('/api/stripe/webhook', async (c) => {
           session.id
         ).run()
 
+        // === 会員ポイント付与処理 ===
+        if (customerEmail && bookingId) {
+          try {
+            // 会員を取得または作成（紹介コードがあれば適用）
+            const referralCode = metadata.referral_code || null
+            const { member, isNew, welcomePoints } = await getOrCreateMember(
+              c.env.DB,
+              customerEmail,
+              customerName,
+              customerPhone,
+              referralCode
+            )
+            
+            console.log(`Member ${isNew ? 'created' : 'found'}: ${member.email} (ID: ${member.id})`)
+            if (isNew && welcomePoints > 0) {
+              console.log(`Welcome bonus: ${welcomePoints} points`)
+            }
+            
+            // 予約完了ポイントを付与
+            const paymentAmount = session.amount_total || 0
+            const pointsResult = await awardPointsForBooking(
+              c.env.DB,
+              member.id,
+              bookingId as number,
+              paymentAmount
+            )
+            
+            console.log(`Points awarded: ${pointsResult.pointsAwarded} (milestone: ${pointsResult.milestoneBonus})`)
+            if (pointsResult.tierUpdated) {
+              console.log(`Member tier upgraded to: ${pointsResult.newTier}`)
+            }
+            
+            // bookingsテーブルにmember_idを記録
+            await c.env.DB.prepare(`
+              UPDATE bookings SET member_id = ? WHERE id = ?
+            `).bind(member.id, bookingId).run()
+            
+          } catch (memberError) {
+            // ポイント処理が失敗しても決済は成功とする
+            console.error('Failed to process member points:', memberError)
+          }
+        }
+
         console.log('Payment succeeded for session:', session.id)
         break
       }
@@ -3778,6 +3835,136 @@ app.get('/api/ai-news', async (c) => {
   } catch (error) {
     console.error('Error fetching AI news:', error)
     return c.json([])
+  }
+})
+
+// ===== 会員・ポイントシステム API =====
+
+// 会員情報取得（メールアドレスで検索）
+app.get('/api/member/info', async (c) => {
+  const email = c.req.query('email')
+  if (!email) {
+    return c.json({ error: 'メールアドレスが必要です' }, 400)
+  }
+  
+  try {
+    const member = await getMemberByEmail(c.env.DB, email)
+    if (!member) {
+      return c.json({ found: false })
+    }
+    
+    // ダッシュボードデータを取得
+    const dashboard = await getMemberDashboard(c.env.DB, member.id)
+    
+    return c.json({
+      found: true,
+      member: {
+        id: member.id,
+        email: member.email,
+        name: member.name,
+        referral_code: member.referral_code,
+        current_points: member.current_points,
+        total_points: member.total_points,
+        total_bookings: member.total_bookings,
+        membership_tier: member.membership_tier,
+        created_at: member.created_at
+      },
+      tier: dashboard.tier,
+      pointHistory: dashboard.pointHistory,
+      referralStats: dashboard.referralStats,
+      availableCoupons: dashboard.availableCoupons
+    })
+  } catch (error) {
+    console.error('Member info error:', error)
+    return c.json({ error: 'エラーが発生しました' }, 500)
+  }
+})
+
+// 紹介コードの検証
+app.get('/api/member/validate-referral', async (c) => {
+  const code = c.req.query('code')
+  if (!code) {
+    return c.json({ valid: false, error: '紹介コードが必要です' })
+  }
+  
+  try {
+    const member = await getMemberByReferralCode(c.env.DB, code)
+    if (!member) {
+      return c.json({ valid: false, error: '無効な紹介コードです' })
+    }
+    
+    return c.json({ 
+      valid: true, 
+      referrer_name: member.name ? member.name.charAt(0) + '***' : '会員' // プライバシー保護
+    })
+  } catch (error) {
+    console.error('Validate referral error:', error)
+    return c.json({ valid: false, error: 'エラーが発生しました' })
+  }
+})
+
+// クーポンの検証
+app.post('/api/member/validate-coupon', async (c) => {
+  try {
+    const { code, email, amount } = await c.req.json<{ code: string; email?: string; amount: number }>()
+    
+    if (!code) {
+      return c.json({ valid: false, error: 'クーポンコードが必要です' })
+    }
+    
+    // 会員IDを取得（オプション）
+    let memberId: number | null = null
+    if (email) {
+      const member = await getMemberByEmail(c.env.DB, email)
+      if (member) {
+        memberId = member.id
+      }
+    }
+    
+    const result = await validateCoupon(c.env.DB, code, memberId, amount || 0)
+    
+    if (!result.valid) {
+      return c.json({ valid: false, error: result.error })
+    }
+    
+    return c.json({
+      valid: true,
+      coupon: {
+        id: result.coupon!.id,
+        code: result.coupon!.code,
+        type: result.coupon!.type,
+        value: result.coupon!.value,
+        discount: result.discount
+      }
+    })
+  } catch (error) {
+    console.error('Validate coupon error:', error)
+    return c.json({ valid: false, error: 'エラーが発生しました' })
+  }
+})
+
+// 特典設定を取得（公開用）
+app.get('/api/member/rewards-info', async (c) => {
+  try {
+    const settings = await c.env.DB.prepare(`
+      SELECT setting_key, setting_value, description FROM reward_settings
+    `).all()
+    
+    const tiers = await c.env.DB.prepare(`
+      SELECT tier_name, min_bookings, points_multiplier, discount_rate, description 
+      FROM membership_tiers ORDER BY min_bookings ASC
+    `).all()
+    
+    return c.json({
+      settings: (settings.results || []).reduce((acc: Record<string, string>, row: any) => {
+        acc[row.setting_key] = row.setting_value
+        return acc
+      }, {}),
+      tiers: tiers.results || []
+    })
+  } catch (error) {
+    console.error('Rewards info error:', error)
+    return c.json({ error: 'エラーが発生しました' }, 500)
   }
 })
 
@@ -9342,6 +9529,118 @@ app.post('/api/survey/submit', async (c) => {
   }
 })
 
+// ===== 会員管理画面 =====
+
+// 会員一覧
+app.get('/admin/members', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.redirect('/admin/login')
+  }
+  
+  try {
+    const page = parseInt(c.req.query('page') || '1')
+    const limit = 20
+    const offset = (page - 1) * limit
+    const search = c.req.query('search') || ''
+    const tier = c.req.query('tier') || ''
+    
+    let whereClause = '1=1'
+    const params: any[] = []
+    
+    if (search) {
+      whereClause += ' AND (email LIKE ? OR name LIKE ?)'
+      params.push(`%${search}%`, `%${search}%`)
+    }
+    if (tier) {
+      whereClause += ' AND membership_tier = ?'
+      params.push(tier)
+    }
+    
+    const countResult = await c.env.DB.prepare(`
+      SELECT COUNT(*) as total FROM members WHERE ${whereClause}
+    `).bind(...params).first() as { total: number }
+    
+    const members = await c.env.DB.prepare(`
+      SELECT * FROM members WHERE ${whereClause}
+      ORDER BY created_at DESC LIMIT ? OFFSET ?
+    `).bind(...params, limit, offset).all()
+    
+    const tiers = await c.env.DB.prepare(`
+      SELECT * FROM membership_tiers ORDER BY min_bookings ASC
+    `).all()
+    
+    const settingsResult = await c.env.DB.prepare(`
+      SELECT setting_key, setting_value FROM reward_settings
+    `).all()
+    const settings: Record<string, string> = {}
+    for (const row of (settingsResult.results || []) as { setting_key: string; setting_value: string }[]) {
+      settings[row.setting_key] = row.setting_value
+    }
+    
+    return c.html(renderMembersList(
+      (members.results || []) as any[],
+      countResult.total,
+      page,
+      Math.ceil(countResult.total / limit),
+      (tiers.results || []) as any[],
+      settings
+    ))
+  } catch (error) {
+    console.error('Members list error:', error)
+    return c.text('会員一覧の取得に失敗しました', 500)
+  }
+})
+
+// クーポン管理
+app.get('/admin/members/coupons', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.redirect('/admin/login')
+  }
+  
+  try {
+    const coupons = await c.env.DB.prepare(`
+      SELECT c.*, m.email as member_email, m.name as member_name
+      FROM coupons c
+      LEFT JOIN members m ON c.member_id = m.id
+      ORDER BY c.created_at DESC
+    `).all()
+    
+    return c.html(renderCouponsList((coupons.results || []) as any[]))
+  } catch (error) {
+    console.error('Coupons list error:', error)
+    return c.text('クーポン一覧の取得に失敗しました', 500)
+  }
+})
+
+// 特典設定
+app.get('/admin/members/settings', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.redirect('/admin/login')
+  }
+  
+  try {
+    const settingsResult = await c.env.DB.prepare(`
+      SELECT setting_key, setting_value FROM reward_settings
+    `).all()
+    const settings: Record<string, string> = {}
+    for (const row of (settingsResult.results || []) as { setting_key: string; setting_value: string }[]) {
+      settings[row.setting_key] = row.setting_value
+    }
+    
+    const tiers = await c.env.DB.prepare(`
+      SELECT * FROM membership_tiers ORDER BY min_bookings ASC
+    `).all()
+    
+    return c.html(renderRewardSettings(settings, (tiers.results || []) as any[]))
+  } catch (error) {
+    console.error('Reward settings error:', error)
+    return c.text('特典設定の取得に失敗しました', 500)
+  }
+})
+
 // ===== アンケート管理画面 =====
 
 // アンケート分析ダッシュボード
@@ -9977,6 +10276,266 @@ app.post('/admin/api/send-reminder', async (c) => {
   } catch (error) {
     console.error('Send reminder error:', error)
     return c.json({ error: 'リマインドメール送信に失敗しました' }, 500)
+  }
+})
+
+// ===== 会員管理 管理画面API =====
+
+// 会員一覧取得
+app.get('/admin/api/members', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+  
+  try {
+    const page = parseInt(c.req.query('page') || '1')
+    const limit = 20
+    const offset = (page - 1) * limit
+    const search = c.req.query('search') || ''
+    const tier = c.req.query('tier') || ''
+    
+    let whereClause = '1=1'
+    const params: any[] = []
+    
+    if (search) {
+      whereClause += ' AND (email LIKE ? OR name LIKE ?)'
+      params.push(`%${search}%`, `%${search}%`)
+    }
+    if (tier) {
+      whereClause += ' AND membership_tier = ?'
+      params.push(tier)
+    }
+    
+    const countResult = await c.env.DB.prepare(`
+      SELECT COUNT(*) as total FROM members WHERE ${whereClause}
+    `).bind(...params).first() as { total: number }
+    
+    const members = await c.env.DB.prepare(`
+      SELECT * FROM members WHERE ${whereClause}
+      ORDER BY created_at DESC LIMIT ? OFFSET ?
+    `).bind(...params, limit, offset).all()
+    
+    return c.json({
+      members: members.results || [],
+      total: countResult.total,
+      page,
+      totalPages: Math.ceil(countResult.total / limit)
+    })
+  } catch (error) {
+    console.error('Admin members list error:', error)
+    return c.json({ error: '会員一覧の取得に失敗しました' }, 500)
+  }
+})
+
+// 会員詳細取得
+app.get('/admin/api/members/:id', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+  
+  try {
+    const id = c.req.param('id')
+    const dashboard = await getMemberDashboard(c.env.DB, parseInt(id))
+    
+    // 予約履歴も取得
+    const bookings = await c.env.DB.prepare(`
+      SELECT * FROM bookings WHERE member_id = ? ORDER BY created_at DESC LIMIT 20
+    `).bind(id).all()
+    
+    return c.json({
+      ...dashboard,
+      bookings: bookings.results || []
+    })
+  } catch (error) {
+    console.error('Admin member detail error:', error)
+    return c.json({ error: '会員情報の取得に失敗しました' }, 500)
+  }
+})
+
+// ポイント手動付与
+app.post('/admin/api/members/:id/add-points', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+  
+  try {
+    const id = parseInt(c.req.param('id'))
+    const { points, description } = await c.req.json<{ points: number; description?: string }>()
+    
+    if (!points || points <= 0) {
+      return c.json({ error: 'ポイント数を指定してください' }, 400)
+    }
+    
+    const member = await c.env.DB.prepare(`SELECT * FROM members WHERE id = ?`).bind(id).first() as Member
+    if (!member) {
+      return c.json({ error: '会員が見つかりません' }, 404)
+    }
+    
+    const newBalance = member.current_points + points
+    const newTotal = member.total_points + points
+    
+    await c.env.DB.prepare(`
+      UPDATE members SET current_points = ?, total_points = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(newBalance, newTotal, id).run()
+    
+    await c.env.DB.prepare(`
+      INSERT INTO point_history (member_id, points, balance_after, type, description)
+      VALUES (?, ?, ?, 'admin', ?)
+    `).bind(id, points, newBalance, description || '管理者による付与').run()
+    
+    return c.json({ success: true, newBalance })
+  } catch (error) {
+    console.error('Admin add points error:', error)
+    return c.json({ error: 'ポイント付与に失敗しました' }, 500)
+  }
+})
+
+// クーポン一覧取得
+app.get('/admin/api/coupons', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+  
+  try {
+    const coupons = await c.env.DB.prepare(`
+      SELECT c.*, m.email as member_email, m.name as member_name
+      FROM coupons c
+      LEFT JOIN members m ON c.member_id = m.id
+      ORDER BY c.created_at DESC
+    `).all()
+    
+    return c.json({ coupons: coupons.results || [] })
+  } catch (error) {
+    console.error('Admin coupons list error:', error)
+    return c.json({ error: 'クーポン一覧の取得に失敗しました' }, 500)
+  }
+})
+
+// クーポン作成
+app.post('/admin/api/coupons', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+  
+  try {
+    const { code, type, value, min_amount, max_uses, valid_days, member_id } = await c.req.json<{
+      code?: string
+      type: 'percentage' | 'fixed'
+      value: number
+      min_amount?: number
+      max_uses?: number
+      valid_days?: number
+      member_id?: number
+    }>()
+    
+    if (!type || !value) {
+      return c.json({ error: 'タイプと値は必須です' }, 400)
+    }
+    
+    // コードが指定されていない場合は自動生成
+    const couponCode = code || `MIRAI${Date.now().toString(36).toUpperCase()}`
+    
+    // 有効期限を計算
+    let validUntil: string | null = null
+    if (valid_days) {
+      const date = new Date()
+      date.setDate(date.getDate() + valid_days)
+      validUntil = date.toISOString()
+    }
+    
+    const result = await c.env.DB.prepare(`
+      INSERT INTO coupons (code, member_id, type, value, min_amount, max_uses, valid_until)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      couponCode.toUpperCase(),
+      member_id || null,
+      type,
+      value,
+      min_amount || 0,
+      max_uses || null,
+      validUntil
+    ).run()
+    
+    return c.json({ success: true, coupon_id: result.meta?.last_row_id, code: couponCode })
+  } catch (error) {
+    console.error('Admin create coupon error:', error)
+    return c.json({ error: 'クーポン作成に失敗しました' }, 500)
+  }
+})
+
+// クーポン無効化
+app.delete('/admin/api/coupons/:id', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+  
+  try {
+    const id = c.req.param('id')
+    await c.env.DB.prepare(`
+      UPDATE coupons SET is_active = 0 WHERE id = ?
+    `).bind(id).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Admin delete coupon error:', error)
+    return c.json({ error: 'クーポン無効化に失敗しました' }, 500)
+  }
+})
+
+// 特典設定の更新
+app.put('/admin/api/reward-settings', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+  
+  try {
+    const settings = await c.req.json<Record<string, string | number>>()
+    
+    for (const [key, value] of Object.entries(settings)) {
+      await c.env.DB.prepare(`
+        UPDATE reward_settings SET setting_value = ?, updated_at = datetime('now')
+        WHERE setting_key = ?
+      `).bind(String(value), key).run()
+    }
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Admin update reward settings error:', error)
+    return c.json({ error: '設定の更新に失敗しました' }, 500)
+  }
+})
+
+// 紹介実績一覧
+app.get('/admin/api/referrals', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+  
+  try {
+    const referrals = await c.env.DB.prepare(`
+      SELECT r.*,
+             m1.email as referrer_email, m1.name as referrer_name,
+             m2.email as referred_email, m2.name as referred_name
+      FROM referrals r
+      JOIN members m1 ON r.referrer_id = m1.id
+      JOIN members m2 ON r.referred_id = m2.id
+      ORDER BY r.created_at DESC
+      LIMIT 100
+    `).all()
+    
+    return c.json({ referrals: referrals.results || [] })
+  } catch (error) {
+    console.error('Admin referrals list error:', error)
+    return c.json({ error: '紹介実績の取得に失敗しました' }, 500)
   }
 })
 

@@ -3,6 +3,7 @@
 export const renderAdminLayout = (title: string, content: string, activePage: string = 'dashboard') => {
   const menuItems = [
     { id: 'dashboard', icon: 'fas fa-home', label: 'ダッシュボード', href: '/admin' },
+    { id: 'members', icon: 'fas fa-users', label: '会員管理', href: '/admin/members' },
     { id: 'ai-news', icon: 'fas fa-robot', label: 'AIニュース', href: '/admin/ai-news' },
     { id: 'ai-writer', icon: 'fas fa-magic', label: 'AI記事生成', href: '/admin/blog/ai-writer' },
     { id: 'blog', icon: 'fas fa-newspaper', label: 'ブログ管理', href: '/admin/blog' },
