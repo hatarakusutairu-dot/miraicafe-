@@ -39,6 +39,7 @@ import { renderAIPortfolioGeneratorPage } from './admin/ai-portfolio-generator'
 import { renderCommentsList, type Comment } from './admin/comments'
 import { renderSurveyDashboard, renderSurveyQuestions, renderSurveyResponses, renderSurveySettings } from './admin/surveys'
 import { renderMembersList, renderCouponsList, renderRewardSettings } from './admin/members'
+import { renderBundlesList } from './admin/bundles'
 import { renderSurveyPage } from './pages/survey'
 import { renderPaymentsList, type Payment } from './admin/payments'
 import { renderPricingPatternsList, renderPricingPatternForm } from './admin/pricing-patterns'
@@ -3102,7 +3103,11 @@ app.get('/workspace/calendar/:bookingId', async (c) => {
 app.post('/api/create-checkout-session', async (c) => {
   try {
     const body = await c.req.json()
-    let { courseId, courseTitle, price, customerEmail, customerName, customerPhone, scheduleId, scheduleDate, scheduleTime, successUrl, cancelUrl, bookingId, reservationId, seriesId, pricingType, termId } = body
+    let { courseId, courseTitle, price, customerEmail, customerName, customerPhone, scheduleId, scheduleDate, scheduleTime, successUrl, cancelUrl, bookingId, reservationId, seriesId, pricingType, termId, bundleId, referralCode, couponCode } = body
+    
+    let appliedDiscounts: { type: string; code?: string; amount: number; description: string }[] = []
+    let originalPrice = price
+    let finalPrice = price
 
     // シリーズ予約の場合
     const isSeriesBooking = seriesId && termId && pricingType !== 'single'
@@ -3164,6 +3169,100 @@ app.post('/api/create-checkout-session', async (c) => {
     // bookingIdがなければreservationIdを使用
     bookingId = bookingId || reservationId
 
+    // ===== 割引適用ロジック =====
+    
+    // 1. バンドル割引の適用
+    if (bundleId) {
+      const bundleResult = await c.env.DB.prepare(`
+        SELECT b.*, 
+          (SELECT SUM(cs.calc_course_price_incl) FROM bundle_series bs 
+           JOIN course_series cs ON bs.series_id = cs.id WHERE bs.bundle_id = b.id) as original_price
+        FROM course_bundles b
+        WHERE b.id = ? AND b.is_active = 1
+          AND (b.valid_from IS NULL OR b.valid_from <= datetime('now'))
+          AND (b.valid_until IS NULL OR b.valid_until >= datetime('now'))
+      `).bind(bundleId).first() as any
+      
+      if (bundleResult) {
+        originalPrice = bundleResult.original_price || price
+        finalPrice = bundleResult.bundle_price
+        const discountAmount = originalPrice - finalPrice
+        appliedDiscounts.push({
+          type: 'bundle',
+          code: bundleId,
+          amount: discountAmount,
+          description: `セット割引（${bundleResult.name}）`
+        })
+        courseTitle = bundleResult.name  // セット名を商品名に
+        console.log(`Applied bundle discount: ${bundleId}, original: ${originalPrice}, final: ${finalPrice}`)
+      }
+    }
+    
+    // 2. 紹介コード割引の適用
+    if (referralCode && customerEmail) {
+      // 紹介コードの検証
+      const referrer = await c.env.DB.prepare(`
+        SELECT id, email, name FROM members WHERE referral_code = ? AND status = 'active'
+      `).bind(referralCode.toUpperCase()).first() as any
+      
+      if (referrer && referrer.email !== customerEmail) {
+        // 被紹介者の初回予約かどうかチェック
+        const existingBooking = await c.env.DB.prepare(`
+          SELECT id FROM members WHERE email = ?
+        `).bind(customerEmail).first()
+        
+        if (!existingBooking) {
+          // 初回予約 → 紹介割引500円適用
+          const referralDiscount = 500
+          finalPrice = Math.max(0, finalPrice - referralDiscount)
+          appliedDiscounts.push({
+            type: 'referral',
+            code: referralCode,
+            amount: referralDiscount,
+            description: '紹介割引'
+          })
+          console.log(`Applied referral discount: ${referralCode}, discount: ${referralDiscount}`)
+        }
+      }
+    }
+    
+    // 3. クーポンコード割引の適用
+    if (couponCode && customerEmail) {
+      const coupon = await c.env.DB.prepare(`
+        SELECT c.*, m.id as member_id
+        FROM coupons c
+        LEFT JOIN members m ON m.email = ?
+        WHERE c.code = ? 
+          AND c.is_active = 1
+          AND (c.valid_from IS NULL OR c.valid_from <= datetime('now'))
+          AND (c.valid_until IS NULL OR c.valid_until >= datetime('now'))
+          AND (c.max_uses IS NULL OR c.used_count < c.max_uses)
+      `).bind(customerEmail, couponCode.toUpperCase()).first() as any
+      
+      if (coupon) {
+        let couponDiscount = 0
+        if (coupon.discount_type === 'percentage') {
+          couponDiscount = Math.round(finalPrice * coupon.discount_value)
+        } else {
+          couponDiscount = Math.min(coupon.discount_value, finalPrice)
+        }
+        
+        if (couponDiscount > 0) {
+          finalPrice = Math.max(0, finalPrice - couponDiscount)
+          appliedDiscounts.push({
+            type: 'coupon',
+            code: couponCode,
+            amount: couponDiscount,
+            description: `クーポン（${coupon.name}）`
+          })
+          console.log(`Applied coupon discount: ${couponCode}, discount: ${couponDiscount}`)
+        }
+      }
+    }
+    
+    // 最終価格を更新
+    price = finalPrice
+    
     // Check if Stripe is configured
     if (!c.env.STRIPE_SECRET_KEY) {
       // Demo mode - return mock session
@@ -3174,7 +3273,9 @@ app.post('/api/create-checkout-session', async (c) => {
         amount: price,
         currency: 'jpy',
         course: courseTitle,
-        demo: true
+        demo: true,
+        discounts: appliedDiscounts,
+        original_price: originalPrice
       }
       return c.json(demoSession)
     }
@@ -3228,7 +3329,12 @@ app.post('/api/create-checkout-session', async (c) => {
           termId: termId || null,
           courseId: courseId || null,
           scheduleId: scheduleId || null,
-          pricingType: pricingType || 'single'
+          pricingType: pricingType || 'single',
+          bundleId: bundleId || null,
+          referralCode: referralCode || null,
+          couponCode: couponCode || null,
+          appliedDiscounts: appliedDiscounts,
+          originalPrice: originalPrice
         })
       ).run()
     } catch (dbError) {
@@ -3241,6 +3347,8 @@ app.post('/api/create-checkout-session', async (c) => {
       url: session.url,
       amount: price,
       currency: 'jpy',
+      original_price: originalPrice,
+      discounts: appliedDiscounts,
       course: courseTitle
     })
   } catch (error: any) {
@@ -3614,9 +3722,55 @@ app.post('/api/stripe/webhook', async (c) => {
               UPDATE bookings SET member_id = ? WHERE id = ?
             `).bind(member.id, bookingId).run()
             
+            // 紹介コードによる紹介処理（新規会員のみ）
+            if (isNew && metadata.referral_code) {
+              try {
+                const referrer = await c.env.DB.prepare(`
+                  SELECT id, email, name FROM members WHERE referral_code = ? AND status = 'active'
+                `).bind(metadata.referral_code.toUpperCase()).first() as any
+                
+                if (referrer && referrer.id !== member.id) {
+                  // 紹介者にポイント付与
+                  await c.env.DB.prepare(`
+                    INSERT INTO point_history (member_id, points, type, description, related_booking_id)
+                    VALUES (?, 500, 'referral_bonus', ?, ?)
+                  `).bind(referrer.id, `紹介ボーナス（${member.name || member.email}さん）`, bookingId).run()
+                  
+                  // 紹介者のポイント更新
+                  await c.env.DB.prepare(`
+                    UPDATE members SET total_points = total_points + 500, updated_at = datetime('now') WHERE id = ?
+                  `).bind(referrer.id).run()
+                  
+                  // 紹介履歴の更新
+                  await c.env.DB.prepare(`
+                    UPDATE referrals SET status = 'completed', first_booking_id = ?, completed_at = datetime('now')
+                    WHERE referrer_id = ? AND referred_id = ? AND status = 'pending'
+                  `).bind(bookingId, referrer.id, member.id).run()
+                  
+                  console.log(`Referral bonus awarded to referrer ${referrer.id}`)
+                }
+              } catch (refError) {
+                console.error('Referral processing error:', refError)
+              }
+            }
+            
           } catch (memberError) {
             // ポイント処理が失敗しても決済は成功とする
             console.error('Failed to process member points:', memberError)
+          }
+        }
+        
+        // クーポン使用回数の更新
+        if (metadata.coupon_code) {
+          try {
+            await c.env.DB.prepare(`
+              UPDATE coupons SET used_count = used_count + 1, updated_at = datetime('now')
+              WHERE code = ?
+            `).bind(metadata.coupon_code.toUpperCase()).run()
+            
+            console.log(`Coupon usage updated: ${metadata.coupon_code}`)
+          } catch (couponError) {
+            console.error('Coupon update error:', couponError)
           }
         }
 
@@ -9638,6 +9792,597 @@ app.get('/admin/members/settings', async (c) => {
   } catch (error) {
     console.error('Reward settings error:', error)
     return c.text('特典設定の取得に失敗しました', 500)
+  }
+})
+
+// ===== コースセット（バンドル）管理画面 =====
+
+// バンドル一覧
+app.get('/admin/bundles', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.redirect('/admin/login')
+  }
+  
+  try {
+    // バンドル一覧（シリーズ数と定価合計を計算）
+    const bundlesResult = await c.env.DB.prepare(`
+      SELECT b.*,
+        (SELECT COUNT(*) FROM bundle_series bs WHERE bs.bundle_id = b.id) as series_count,
+        (SELECT SUM(cs.calc_course_price_incl) FROM bundle_series bs 
+         JOIN course_series cs ON bs.series_id = cs.id WHERE bs.bundle_id = b.id) as original_price
+      FROM course_bundles b
+      ORDER BY b.display_order ASC, b.created_at DESC
+    `).all()
+    
+    // コースシリーズ一覧
+    const seriesResult = await c.env.DB.prepare(`
+      SELECT id, title, total_sessions, calc_course_price_incl, status
+      FROM course_series
+      ORDER BY display_order ASC
+    `).all()
+    
+    // 割引ルール
+    const rulesResult = await c.env.DB.prepare(`
+      SELECT * FROM bundle_discount_rules ORDER BY priority DESC
+    `).all()
+    
+    return c.html(renderBundlesList(
+      (bundlesResult.results || []) as any[],
+      (seriesResult.results || []) as any[],
+      (rulesResult.results || []) as any[]
+    ))
+  } catch (error) {
+    console.error('Bundles list error:', error)
+    return c.text('セット一覧の取得に失敗しました', 500)
+  }
+})
+
+// バンドル詳細取得API
+app.get('/admin/api/bundles/:id', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+  
+  try {
+    const id = c.req.param('id')
+    
+    const bundle = await c.env.DB.prepare(`
+      SELECT * FROM course_bundles WHERE id = ?
+    `).bind(id).first()
+    
+    if (!bundle) {
+      return c.json({ error: 'セットが見つかりません' }, 404)
+    }
+    
+    const seriesResult = await c.env.DB.prepare(`
+      SELECT series_id FROM bundle_series WHERE bundle_id = ?
+    `).bind(id).all()
+    
+    return c.json({
+      bundle,
+      series_ids: (seriesResult.results || []).map((r: any) => r.series_id)
+    })
+  } catch (error) {
+    console.error('Bundle detail error:', error)
+    return c.json({ error: 'セット情報の取得に失敗しました' }, 500)
+  }
+})
+
+// バンドル作成・更新API
+app.post('/admin/api/bundles', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+  
+  try {
+    const data = await c.req.json<{
+      id?: string
+      name: string
+      description?: string
+      bundle_price: number
+      series_ids: string[]
+      valid_from?: string
+      valid_until?: string
+      is_featured?: number
+      is_active?: number
+    }>()
+    
+    if (!data.name || !data.bundle_price || !data.series_ids || data.series_ids.length < 2) {
+      return c.json({ error: '必須項目を入力してください' }, 400)
+    }
+    
+    const bundleId = data.id || `bundle-${Date.now()}`
+    
+    if (data.id) {
+      // 更新
+      await c.env.DB.prepare(`
+        UPDATE course_bundles SET
+          name = ?, description = ?, bundle_price = ?,
+          valid_from = ?, valid_until = ?,
+          is_featured = ?, is_active = ?,
+          updated_at = datetime('now')
+        WHERE id = ?
+      `).bind(
+        data.name,
+        data.description || null,
+        data.bundle_price,
+        data.valid_from || null,
+        data.valid_until || null,
+        data.is_featured || 0,
+        data.is_active ?? 1,
+        data.id
+      ).run()
+      
+      // 既存の紐付けを削除して再作成
+      await c.env.DB.prepare(`DELETE FROM bundle_series WHERE bundle_id = ?`).bind(data.id).run()
+    } else {
+      // 新規作成
+      await c.env.DB.prepare(`
+        INSERT INTO course_bundles (id, name, description, bundle_price, valid_from, valid_until, is_featured, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        bundleId,
+        data.name,
+        data.description || null,
+        data.bundle_price,
+        data.valid_from || null,
+        data.valid_until || null,
+        data.is_featured || 0,
+        data.is_active ?? 1
+      ).run()
+    }
+    
+    // シリーズの紐付け
+    for (let i = 0; i < data.series_ids.length; i++) {
+      await c.env.DB.prepare(`
+        INSERT INTO bundle_series (bundle_id, series_id, display_order)
+        VALUES (?, ?, ?)
+      `).bind(bundleId, data.series_ids[i], i).run()
+    }
+    
+    return c.json({ success: true, id: bundleId })
+  } catch (error) {
+    console.error('Bundle save error:', error)
+    return c.json({ error: 'セットの保存に失敗しました' }, 500)
+  }
+})
+
+// バンドル公開/非公開切り替え
+app.post('/admin/api/bundles/:id/toggle', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+  
+  try {
+    const id = c.req.param('id')
+    await c.env.DB.prepare(`
+      UPDATE course_bundles SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END, updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(id).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Bundle toggle error:', error)
+    return c.json({ error: '更新に失敗しました' }, 500)
+  }
+})
+
+// バンドル削除
+app.delete('/admin/api/bundles/:id', async (c) => {
+  const sessionId = getCookie(c, 'admin_session')
+  if (!sessionId || !validateSessionToken(sessionId).valid) {
+    return c.json({ error: '認証が必要です' }, 401)
+  }
+  
+  try {
+    const id = c.req.param('id')
+    await c.env.DB.prepare(`DELETE FROM bundle_series WHERE bundle_id = ?`).bind(id).run()
+    await c.env.DB.prepare(`DELETE FROM course_bundles WHERE id = ?`).bind(id).run()
+    
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Bundle delete error:', error)
+    return c.json({ error: '削除に失敗しました' }, 500)
+  }
+})
+
+// ===== 公開API: バンドル情報取得 =====
+
+// バンドル一覧取得（公開用）
+app.get('/api/bundles', async (c) => {
+  try {
+    const bundlesResult = await c.env.DB.prepare(`
+      SELECT b.*,
+        (SELECT SUM(cs.calc_course_price_incl) FROM bundle_series bs 
+         JOIN course_series cs ON bs.series_id = cs.id WHERE bs.bundle_id = b.id) as original_price
+      FROM course_bundles b
+      WHERE b.is_active = 1
+        AND (b.valid_from IS NULL OR b.valid_from <= datetime('now'))
+        AND (b.valid_until IS NULL OR b.valid_until >= datetime('now'))
+      ORDER BY b.is_featured DESC, b.display_order ASC
+    `).all()
+    
+    // 各バンドルに含まれるシリーズを取得
+    const bundles = []
+    for (const bundle of (bundlesResult.results || []) as any[]) {
+      const seriesResult = await c.env.DB.prepare(`
+        SELECT cs.id, cs.title, cs.total_sessions, cs.calc_course_price_incl, cs.image
+        FROM bundle_series bs
+        JOIN course_series cs ON bs.series_id = cs.id
+        WHERE bs.bundle_id = ?
+        ORDER BY bs.display_order ASC
+      `).bind(bundle.id).all()
+      
+      bundles.push({
+        ...bundle,
+        discount_percent: bundle.original_price ? Math.round((1 - bundle.bundle_price / bundle.original_price) * 100) : 0,
+        series: seriesResult.results || []
+      })
+    }
+    
+    return c.json({ bundles })
+  } catch (error) {
+    console.error('Public bundles error:', error)
+    return c.json({ bundles: [] })
+  }
+})
+
+// 割引ルール取得（公開用）
+app.get('/api/bundle-rules', async (c) => {
+  try {
+    const rules = await c.env.DB.prepare(`
+      SELECT * FROM bundle_discount_rules WHERE is_active = 1 ORDER BY priority DESC
+    `).all()
+    
+    return c.json({ rules: rules.results || [] })
+  } catch (error) {
+    console.error('Bundle rules error:', error)
+    return c.json({ rules: [] })
+  }
+})
+
+// 動的割引計算API（複数シリーズ選択時の割引を計算）
+app.post('/api/calculate-bundle-discount', async (c) => {
+  try {
+    const { series_ids } = await c.req.json<{ series_ids: string[] }>()
+    
+    if (!series_ids || series_ids.length === 0) {
+      return c.json({ original_price: 0, discounted_price: 0, discount_amount: 0, discount_percent: 0 })
+    }
+    
+    // シリーズの価格を取得
+    const placeholders = series_ids.map(() => '?').join(',')
+    const seriesResult = await c.env.DB.prepare(`
+      SELECT id, title, calc_course_price_incl FROM course_series WHERE id IN (${placeholders})
+    `).bind(...series_ids).all()
+    
+    const seriesList = (seriesResult.results || []) as { id: string; title: string; calc_course_price_incl: number }[]
+    const originalPrice = seriesList.reduce((sum, s) => sum + s.calc_course_price_incl, 0)
+    
+    // 固定バンドルがあるかチェック
+    const bundleResult = await c.env.DB.prepare(`
+      SELECT b.* FROM course_bundles b
+      WHERE b.is_active = 1
+        AND (b.valid_from IS NULL OR b.valid_from <= datetime('now'))
+        AND (b.valid_until IS NULL OR b.valid_until >= datetime('now'))
+        AND (SELECT COUNT(*) FROM bundle_series bs WHERE bs.bundle_id = b.id) = ?
+        AND NOT EXISTS (
+          SELECT 1 FROM bundle_series bs WHERE bs.bundle_id = b.id AND bs.series_id NOT IN (${placeholders})
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM (${series_ids.map(() => 'SELECT ? as sid').join(' UNION ALL ')}) t 
+          WHERE t.sid NOT IN (SELECT bs.series_id FROM bundle_series bs WHERE bs.bundle_id = b.id)
+        )
+      LIMIT 1
+    `).bind(series_ids.length, ...series_ids, ...series_ids).first() as any
+    
+    if (bundleResult) {
+      // 固定バンドルがある場合
+      return c.json({
+        original_price: originalPrice,
+        discounted_price: bundleResult.bundle_price,
+        discount_amount: originalPrice - bundleResult.bundle_price,
+        discount_percent: Math.round((1 - bundleResult.bundle_price / originalPrice) * 100),
+        bundle_id: bundleResult.id,
+        bundle_name: bundleResult.name,
+        is_fixed_bundle: true
+      })
+    }
+    
+    // 動的割引ルールを適用
+    const rules = await c.env.DB.prepare(`
+      SELECT * FROM bundle_discount_rules WHERE is_active = 1 ORDER BY priority DESC
+    `).all()
+    
+    let appliedRule = null
+    for (const rule of (rules.results || []) as any[]) {
+      if (series_ids.length >= rule.min_series_count &&
+          (!rule.max_series_count || series_ids.length <= rule.max_series_count)) {
+        appliedRule = rule
+        break
+      }
+    }
+    
+    if (appliedRule) {
+      let discountedPrice = originalPrice
+      if (appliedRule.discount_type === 'percentage') {
+        discountedPrice = Math.round(originalPrice * (1 - appliedRule.discount_value))
+      } else {
+        discountedPrice = originalPrice - appliedRule.discount_value * series_ids.length
+      }
+      
+      return c.json({
+        original_price: originalPrice,
+        discounted_price: discountedPrice,
+        discount_amount: originalPrice - discountedPrice,
+        discount_percent: Math.round((1 - discountedPrice / originalPrice) * 100),
+        rule_name: appliedRule.name,
+        is_fixed_bundle: false
+      })
+    }
+    
+    // 割引なし
+    return c.json({
+      original_price: originalPrice,
+      discounted_price: originalPrice,
+      discount_amount: 0,
+      discount_percent: 0,
+      is_fixed_bundle: false
+    })
+  } catch (error) {
+    console.error('Calculate bundle discount error:', error)
+    return c.json({ error: '割引計算に失敗しました' }, 500)
+  }
+})
+
+// ===== 公開API: 紹介コード・クーポン検証 =====
+
+// 紹介コード検証
+app.post('/api/validate-referral', async (c) => {
+  try {
+    const { referral_code, email } = await c.req.json<{ referral_code: string; email?: string }>()
+    
+    if (!referral_code) {
+      return c.json({ valid: false, message: '紹介コードを入力してください' })
+    }
+    
+    const referrer = await c.env.DB.prepare(`
+      SELECT id, name, email FROM members WHERE referral_code = ? AND status = 'active'
+    `).bind(referral_code.toUpperCase()).first() as any
+    
+    if (!referrer) {
+      return c.json({ valid: false, message: '紹介コードが見つかりません' })
+    }
+    
+    // 自分自身の紹介コードチェック
+    if (email && referrer.email === email) {
+      return c.json({ valid: false, message: '自分自身の紹介コードは使用できません' })
+    }
+    
+    // 既に会員登録済みかチェック
+    if (email) {
+      const existingMember = await c.env.DB.prepare(`
+        SELECT id FROM members WHERE email = ?
+      `).bind(email).first()
+      
+      if (existingMember) {
+        return c.json({ valid: false, message: '紹介割引は初回利用の方のみ適用されます' })
+      }
+    }
+    
+    return c.json({
+      valid: true,
+      referrer_name: referrer.name || '紹介者',
+      discount_amount: 500,
+      message: '紹介コードが適用されました（500円割引）'
+    })
+  } catch (error) {
+    console.error('Validate referral error:', error)
+    return c.json({ valid: false, message: '検証に失敗しました' })
+  }
+})
+
+// クーポンコード検証
+app.post('/api/validate-coupon', async (c) => {
+  try {
+    const { coupon_code, email, amount } = await c.req.json<{ coupon_code: string; email?: string; amount?: number }>()
+    
+    if (!coupon_code) {
+      return c.json({ valid: false, message: 'クーポンコードを入力してください' })
+    }
+    
+    const coupon = await c.env.DB.prepare(`
+      SELECT * FROM coupons
+      WHERE code = ? 
+        AND is_active = 1
+        AND (valid_from IS NULL OR valid_from <= datetime('now'))
+        AND (valid_until IS NULL OR valid_until >= datetime('now'))
+        AND (max_uses IS NULL OR used_count < max_uses)
+    `).bind(coupon_code.toUpperCase()).first() as any
+    
+    if (!coupon) {
+      return c.json({ valid: false, message: 'クーポンコードが見つからないか、有効期限が切れています' })
+    }
+    
+    // 最低利用金額チェック
+    if (amount && coupon.min_amount && amount < coupon.min_amount) {
+      return c.json({ 
+        valid: false, 
+        message: `このクーポンは¥${coupon.min_amount.toLocaleString()}以上のお買い物でご利用いただけます` 
+      })
+    }
+    
+    // 会員限定クーポンチェック
+    if (coupon.member_id && email) {
+      const member = await c.env.DB.prepare(`
+        SELECT id FROM members WHERE email = ?
+      `).bind(email).first() as any
+      
+      if (!member || member.id !== coupon.member_id) {
+        return c.json({ valid: false, message: 'このクーポンはあなた専用ではありません' })
+      }
+    }
+    
+    // 割引額を計算
+    let discountAmount = 0
+    const baseAmount = amount || 10000  // デフォルト金額
+    
+    if (coupon.discount_type === 'percentage') {
+      discountAmount = Math.round(baseAmount * coupon.discount_value)
+    } else {
+      discountAmount = Math.min(coupon.discount_value, baseAmount)
+    }
+    
+    return c.json({
+      valid: true,
+      coupon_name: coupon.name,
+      discount_type: coupon.discount_type,
+      discount_value: coupon.discount_value,
+      discount_amount: discountAmount,
+      message: coupon.discount_type === 'percentage' 
+        ? `${Math.round(coupon.discount_value * 100)}%OFFクーポンが適用されました`
+        : `¥${coupon.discount_value.toLocaleString()}割引クーポンが適用されました`
+    })
+  } catch (error) {
+    console.error('Validate coupon error:', error)
+    return c.json({ valid: false, message: '検証に失敗しました' })
+  }
+})
+
+// 割引を含めた最終価格計算API
+app.post('/api/calculate-final-price', async (c) => {
+  try {
+    const { 
+      series_ids, 
+      bundle_id, 
+      referral_code, 
+      coupon_code, 
+      email, 
+      base_price 
+    } = await c.req.json<{
+      series_ids?: string[]
+      bundle_id?: string
+      referral_code?: string
+      coupon_code?: string
+      email?: string
+      base_price?: number
+    }>()
+    
+    let originalPrice = base_price || 0
+    let finalPrice = originalPrice
+    const discounts: { type: string; name: string; amount: number }[] = []
+    
+    // 1. バンドル割引（複数コース選択の場合）
+    if (bundle_id) {
+      const bundle = await c.env.DB.prepare(`
+        SELECT b.*, 
+          (SELECT SUM(cs.calc_course_price_incl) FROM bundle_series bs 
+           JOIN course_series cs ON bs.series_id = cs.id WHERE bs.bundle_id = b.id) as original_price
+        FROM course_bundles b
+        WHERE b.id = ? AND b.is_active = 1
+      `).bind(bundle_id).first() as any
+      
+      if (bundle) {
+        originalPrice = bundle.original_price
+        finalPrice = bundle.bundle_price
+        discounts.push({
+          type: 'bundle',
+          name: `セット割引（${bundle.name}）`,
+          amount: originalPrice - finalPrice
+        })
+      }
+    } else if (series_ids && series_ids.length > 1) {
+      // 動的割引計算
+      const placeholders = series_ids.map(() => '?').join(',')
+      const seriesResult = await c.env.DB.prepare(`
+        SELECT SUM(calc_course_price_incl) as total FROM course_series WHERE id IN (${placeholders})
+      `).bind(...series_ids).first() as any
+      
+      if (seriesResult) {
+        originalPrice = seriesResult.total || originalPrice
+        finalPrice = originalPrice
+        
+        // 割引ルールを適用
+        const rules = await c.env.DB.prepare(`
+          SELECT * FROM bundle_discount_rules WHERE is_active = 1 ORDER BY priority DESC
+        `).all()
+        
+        for (const rule of (rules.results || []) as any[]) {
+          if (series_ids.length >= rule.min_series_count &&
+              (!rule.max_series_count || series_ids.length <= rule.max_series_count)) {
+            if (rule.discount_type === 'percentage') {
+              const discount = Math.round(originalPrice * rule.discount_value)
+              finalPrice = originalPrice - discount
+              discounts.push({ type: 'bundle', name: rule.name, amount: discount })
+            } else {
+              const discount = rule.discount_value * series_ids.length
+              finalPrice = originalPrice - discount
+              discounts.push({ type: 'bundle', name: rule.name, amount: discount })
+            }
+            break
+          }
+        }
+      }
+    }
+    
+    // 2. 紹介コード割引（初回のみ）
+    if (referral_code && email) {
+      const referrer = await c.env.DB.prepare(`
+        SELECT id FROM members WHERE referral_code = ? AND status = 'active'
+      `).bind(referral_code.toUpperCase()).first()
+      
+      const existingMember = await c.env.DB.prepare(`
+        SELECT id FROM members WHERE email = ?
+      `).bind(email).first()
+      
+      if (referrer && !existingMember) {
+        const referralDiscount = 500
+        finalPrice = Math.max(0, finalPrice - referralDiscount)
+        discounts.push({ type: 'referral', name: '紹介割引', amount: referralDiscount })
+      }
+    }
+    
+    // 3. クーポン割引
+    if (coupon_code) {
+      const coupon = await c.env.DB.prepare(`
+        SELECT * FROM coupons
+        WHERE code = ? AND is_active = 1
+          AND (valid_from IS NULL OR valid_from <= datetime('now'))
+          AND (valid_until IS NULL OR valid_until >= datetime('now'))
+          AND (max_uses IS NULL OR used_count < max_uses)
+      `).bind(coupon_code.toUpperCase()).first() as any
+      
+      if (coupon && (!coupon.min_amount || finalPrice >= coupon.min_amount)) {
+        let couponDiscount = 0
+        if (coupon.discount_type === 'percentage') {
+          couponDiscount = Math.round(finalPrice * coupon.discount_value)
+        } else {
+          couponDiscount = Math.min(coupon.discount_value, finalPrice)
+        }
+        
+        if (couponDiscount > 0) {
+          finalPrice = Math.max(0, finalPrice - couponDiscount)
+          discounts.push({ type: 'coupon', name: coupon.name, amount: couponDiscount })
+        }
+      }
+    }
+    
+    const totalDiscount = originalPrice - finalPrice
+    
+    return c.json({
+      original_price: originalPrice,
+      final_price: finalPrice,
+      total_discount: totalDiscount,
+      discount_percent: originalPrice > 0 ? Math.round((totalDiscount / originalPrice) * 100) : 0,
+      discounts
+    })
+  } catch (error) {
+    console.error('Calculate final price error:', error)
+    return c.json({ error: '価格計算に失敗しました' }, 500)
   }
 })
 
