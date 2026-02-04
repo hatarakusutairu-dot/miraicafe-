@@ -4129,7 +4129,7 @@ app.get('/api/member/rewards-info', async (c) => {
 app.get('/api/reviews/:courseId', async (c) => {
   const courseId = c.req.param('courseId')
   const page = parseInt(c.req.query('page') || '1')
-  const limit = 10
+  const limit = Math.min(parseInt(c.req.query('limit') || '10'), 50) // 最大50件まで
   const offset = (page - 1) * limit
 
   try {
@@ -8074,9 +8074,16 @@ app.get('/api/site-stats', async (c) => {
     const studentCountTotal = studentCountAuto + studentCountExtra
     
     if (stats) {
-      // 講座数
+      // 講座数（DBから取得）
       if ((stats as any).course_count_auto) {
-        courseCount = courses.length
+        try {
+          const courseCountResult = await c.env.DB.prepare(`
+            SELECT COUNT(*) as count FROM courses WHERE status = 'published'
+          `).first()
+          courseCount = (courseCountResult as any)?.count || 0
+        } catch (e) {
+          courseCount = 0
+        }
       } else {
         courseCount = (stats as any).course_count_manual || 0
       }

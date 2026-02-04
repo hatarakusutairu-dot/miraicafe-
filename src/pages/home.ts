@@ -746,6 +746,107 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       </div>
     </section>
 
+    <!-- 8.5 お客様の声（口コミ）セクション -->
+    <section class="py-20 bg-white relative overflow-hidden">
+      <!-- 装飾 -->
+      <div class="absolute top-0 left-0 w-64 h-64 bg-nature-mint rounded-full opacity-10 blur-3xl"></div>
+      <div class="absolute bottom-0 right-0 w-80 h-80 bg-cafe-latte rounded-full opacity-10 blur-3xl"></div>
+      
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+          <span class="inline-flex items-center bg-yellow-100 text-yellow-700 font-medium px-4 py-2 rounded-full text-sm mb-4">
+            <i class="fas fa-star mr-2"></i>VOICE
+          </span>
+          <h2 class="text-3xl sm:text-4xl font-bold text-cafe-text mb-3">お客様の声</h2>
+          <p class="text-cafe-textLight">実際に受講された方々からのご感想</p>
+        </div>
+        
+        <!-- 口コミ一覧（動的読み込み） -->
+        <div id="reviews-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- ローディング -->
+          <div class="col-span-full py-8 text-center text-cafe-textLight">
+            <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+            <p>読み込み中...</p>
+          </div>
+        </div>
+        
+        <!-- もっと見るボタン -->
+        <div id="reviews-more" class="hidden text-center mt-8">
+          <a href="/courses" class="btn-outline inline-flex items-center px-6 py-3 font-medium">
+            講座ページで全ての口コミを見る <i class="fas fa-arrow-right ml-2"></i>
+          </a>
+        </div>
+      </div>
+      
+      <script>
+        // 口コミを取得して表示
+        (async function() {
+          try {
+            const res = await fetch('/api/reviews/all?limit=10');
+            const data = await res.json();
+            const reviews = data.reviews || [];
+            
+            const container = document.getElementById('reviews-container');
+            const moreBtn = document.getElementById('reviews-more');
+            
+            if (reviews.length === 0) {
+              container.innerHTML = '<p class="col-span-full text-center text-cafe-textLight py-12">まだ口コミがありません</p>';
+              return;
+            }
+            
+            // 最大10件まで表示
+            const displayReviews = reviews.slice(0, 10);
+            
+            container.innerHTML = displayReviews.map(review => {
+              // 星評価を生成
+              const stars = Array(5).fill(0).map((_, i) => 
+                i < review.rating 
+                  ? '<i class="fas fa-star text-yellow-400"></i>'
+                  : '<i class="far fa-star text-gray-300"></i>'
+              ).join('');
+              
+              // 日付フォーマット
+              const date = review.created_at ? new Date(review.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short' }) : '';
+              
+              // コメントを短縮（100文字）
+              const shortComment = review.comment && review.comment.length > 100 
+                ? review.comment.substring(0, 100) + '...' 
+                : review.comment || '';
+              
+              return \`
+                <div class="bg-cafe-cream/50 rounded-xl p-6 border border-cafe-beige hover:shadow-lg transition-shadow">
+                  <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-cafe-wood/20 flex items-center justify-center">
+                        <i class="fas fa-user text-cafe-wood"></i>
+                      </div>
+                      <div>
+                        <div class="font-medium text-cafe-text">\${review.reviewer_name || '匿名'}</div>
+                        <div class="text-xs text-cafe-textLight">\${date}</div>
+                      </div>
+                    </div>
+                    <div class="flex gap-0.5 text-sm">
+                      \${stars}
+                    </div>
+                  </div>
+                  <p class="text-cafe-textLight text-sm leading-relaxed">\${shortComment}</p>
+                </div>
+              \`;
+            }).join('');
+            
+            // 口コミがあればもっと見るボタンを表示
+            if (reviews.length > 0) {
+              moreBtn.classList.remove('hidden');
+            }
+          } catch (error) {
+            console.error('口コミ読み込みエラー:', error);
+            document.getElementById('reviews-container').innerHTML = 
+              '<p class="col-span-full text-center text-red-500 py-8">読み込みに失敗しました</p>';
+          }
+        })();
+      </script>
+    </section>
+
     <!-- 9. Contact CTA Section (そのまま) -->
     <section class="py-24 relative overflow-hidden">
       <div class="absolute inset-0 bg-gradient-to-br from-cafe-wood via-cafe-caramel to-cafe-brown"></div>
