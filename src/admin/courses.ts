@@ -38,8 +38,23 @@ function truncateText(text: string, maxLength: number): string {
 }
 
 // 講座一覧ページ
-export const renderCoursesList = (courses: Course[]) => {
+export const renderCoursesList = (courses: Course[], errorMessage?: string, successMessage?: string) => {
   const content = `
+    ${errorMessage ? `
+    <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
+      <i class="fas fa-exclamation-circle text-red-500 mr-3 mt-0.5"></i>
+      <div>
+        <p class="text-red-800 font-medium">削除できませんでした</p>
+        <p class="text-red-600 text-sm">${errorMessage}</p>
+      </div>
+    </div>
+    ` : ''}
+    ${successMessage ? `
+    <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start">
+      <i class="fas fa-check-circle text-green-500 mr-3 mt-0.5"></i>
+      <p class="text-green-800">${successMessage}</p>
+    </div>
+    ` : ''}
     <div class="flex items-center justify-between mb-6">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">講座管理</h1>

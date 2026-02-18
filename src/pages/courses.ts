@@ -250,94 +250,25 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
       </div>
     </section>
 
-    <!-- Filter Section - Compact Layout -->
-    <section class="py-3 bg-white/95 backdrop-blur-sm sticky top-16 z-40 border-b border-future-sky shadow-sm">
+    <!-- 検索バー（シンプル版） -->
+    <section class="py-4 bg-white/95 backdrop-blur-sm sticky top-16 z-40 border-b border-gray-200 shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        <!-- Mobile Filter Toggle -->
-        <div class="lg:hidden">
-          <button id="filter-toggle" class="w-full flex items-center justify-between glass text-future-text px-4 py-3 rounded-xl font-medium text-sm min-h-[48px]">
-            <span class="flex items-center">
-              <i class="fas fa-filter mr-2 text-ai-blue"></i>
-              フィルター・検索
-              <span id="active-filters-count" class="ml-2 text-ai-blue hidden">
-                (<span id="filter-count">0</span>)
-              </span>
-            </span>
-            <i class="fas fa-chevron-down transition-transform text-base" id="filter-toggle-icon"></i>
-          </button>
-        </div>
-
-        <!-- Filter Content - Mobile: Collapsible, Desktop: Always visible -->
-        <div id="filter-content" class="filter-panel mt-3 lg:mt-0">
-          <!-- Search Bar -->
-          <div class="mb-4">
-            <div class="relative">
-              <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-future-textLight"></i>
-              <input type="text" id="search-input" 
-                class="w-full lg:w-80 pl-11 pr-10 py-3 border border-future-sky rounded-xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light text-base"
-                placeholder="講座名で検索...">
-              <button id="search-clear" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-future-textLight hover:text-future-text hidden p-2">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
-          </div>
-
-          <!-- Category Filter -->
-          <div class="mb-4">
-            <span class="text-future-textLight font-medium text-sm block mb-2 lg:hidden">カテゴリ</span>
-            <div class="flex items-center gap-2 lg:gap-3 flex-wrap" id="category-filters">
-              <span class="text-future-textLight font-medium hidden lg:inline">カテゴリ:</span>
-              <button class="filter-btn category-btn active px-4 py-2 rounded-full font-medium transition-all shadow-sm text-sm" data-category="all">すべて</button>
-              <button class="filter-btn category-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-category="AI基礎">AI基礎</button>
-              <button class="filter-btn category-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-category="AIツール活用">AIツール活用</button>
-              <button class="filter-btn category-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-category="データ分析">データ分析</button>
-              <button class="filter-btn category-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-category="資格対策">資格対策</button>
-              <button class="filter-btn category-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-category="教育者向け">教育者向け</button>
-            </div>
-          </div>
-
-          <!-- Price Filter -->
-          <div class="mb-4">
-            <span class="text-future-textLight font-medium text-sm block mb-2 lg:hidden">価格</span>
-            <div class="flex items-center gap-2 lg:gap-3 flex-wrap" id="price-filters">
-              <span class="text-future-textLight font-medium hidden lg:inline">価格:</span>
-              <button class="filter-btn price-btn active px-4 py-2 rounded-full font-medium transition-all shadow-sm text-sm" data-price="all">すべて</button>
-              <button class="filter-btn price-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-price="free">無料</button>
-              <button class="filter-btn price-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-price="under5000">〜5千円</button>
-              <button class="filter-btn price-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-price="under10000">〜1万円</button>
-              <button class="filter-btn price-btn px-4 py-2 rounded-full font-medium transition-all text-sm" data-price="over10000">1万円〜</button>
-            </div>
-          </div>
-
-          <!-- Sort + Reset -->
-          <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 lg:gap-4">
-            <div class="flex items-center gap-2 w-full sm:w-auto">
-              <span class="text-future-textLight font-medium text-sm">並び替え:</span>
-              <select id="sort-select" class="flex-1 sm:flex-none px-4 py-2 border border-future-sky rounded-xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light text-future-text text-sm min-h-[44px]">
-                <option value="newest">新着順</option>
-                <option value="popular">人気順</option>
-                <option value="price-asc">安い順</option>
-                <option value="price-desc">高い順</option>
-                <option value="rating">評価順</option>
-              </select>
-            </div>
-            <button id="reset-filters" class="text-ai-blue font-medium hover:text-ai-purple transition-colors hidden text-sm py-2">
-              <i class="fas fa-redo mr-1"></i>リセット
+        <div class="flex flex-col sm:flex-row items-center gap-4">
+          <!-- 検索入力 -->
+          <div class="relative flex-1 w-full sm:max-w-md">
+            <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            <input type="text" id="search-input" 
+              class="w-full pl-11 pr-10 py-3 border border-gray-200 rounded-xl focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all bg-gray-50 text-base"
+              placeholder="講座名やキーワードで検索...">
+            <button id="search-clear" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden p-2">
+              <i class="fas fa-times"></i>
             </button>
           </div>
-
-          <!-- Results Count (Desktop) -->
-          <p class="text-future-textLight mt-4 hidden lg:block">
-            全<span class="font-bold text-future-text">${courses.length}</span>件中<span class="font-bold text-future-text" id="filtered-count">${courses.length}</span>件
-          </p>
-        </div>
-
-        <!-- Mobile: Results Count -->
-        <div class="lg:hidden mt-3 text-center">
-          <p class="text-future-textLight text-sm">
-            全<span class="font-bold text-future-text">${courses.length}</span>件中<span class="font-bold text-future-text" id="filtered-count-mobile">${courses.length}</span>件を表示
-          </p>
+          
+          <!-- 件数表示 -->
+          <div class="text-sm text-gray-500">
+            全<span class="font-bold text-gray-800">${courses.length}</span>件
+          </div>
         </div>
       </div>
     </section>
@@ -435,92 +366,489 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
     </section>
     ` : ''}
 
-    <!-- Standalone Courses Grid -->
-    <section class="py-16 bg-future-light">
+    <!-- カテゴリ別講座セクション（横スクロール） -->
+    <section class="py-8 bg-white border-b border-gray-100">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        ${courses.length > 0 || !courseSeriesList?.length ? `
-        <div class="text-center mb-12">
-          <span class="inline-flex items-center gradient-ai text-white font-medium px-4 py-2 rounded-full text-sm mb-4">
-            <i class="fas fa-book mr-2"></i>SINGLE COURSES
-          </span>
-          <h2 class="text-3xl font-bold text-future-text mb-4">単発講座</h2>
-          <p class="text-future-textLight">1回完結型の講座です。気軽にご参加ください。</p>
+        <!-- セクションヘッダー -->
+        <div class="text-center mb-6">
+          <h2 class="text-2xl font-bold text-gray-800 mb-2">
+            <i class="fas fa-layer-group mr-2 text-amber-600"></i>カテゴリから講座を探す
+          </h2>
+          <p class="text-gray-500 text-sm">あなたの目的に合わせて、最適な講座をお選びください</p>
         </div>
-        ` : ''}
         
-        <!-- No Results Message -->
-        <div id="no-results" class="hidden text-center py-16">
-          <div class="w-20 h-20 gradient-ai rounded-2xl flex items-center justify-center mx-auto mb-6 opacity-50">
-            <i class="fas fa-search text-white text-3xl"></i>
-          </div>
-          <h3 class="text-xl font-bold text-future-text mb-2">条件に合う講座が見つかりませんでした</h3>
-          <p class="text-future-textLight mb-6">検索条件を変更してお試しください</p>
-          <button id="reset-from-empty" class="btn-ai gradient-ai text-white px-6 py-3 rounded-full font-medium">
-            <i class="fas fa-redo mr-2"></i>フィルターをリセット
+        <!-- カテゴリナビゲーション（件数バッジ付き） -->
+        <div class="flex items-center gap-3 mb-6 overflow-x-auto pb-2 scrollbar-hide" id="category-nav">
+          <button class="category-nav-btn active whitespace-nowrap px-4 py-2.5 rounded-full font-medium transition-all text-sm border-2 flex items-center gap-2" data-category="all">
+            <i class="fas fa-th-large"></i>すべて
+          </button>
+          <button class="category-nav-btn whitespace-nowrap px-4 py-2.5 rounded-full font-medium transition-all text-sm border-2 flex items-center gap-2" data-category="trial">
+            <i class="fas fa-gift"></i>体験版
+            <span id="count-trial" class="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">0</span>
+          </button>
+          <button class="category-nav-btn whitespace-nowrap px-4 py-2.5 rounded-full font-medium transition-all text-sm border-2 flex items-center gap-2" data-category="career">
+            <i class="fas fa-user-tie"></i>キャリコン向け
+            <span id="count-career" class="bg-purple-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">0</span>
+          </button>
+          <button class="category-nav-btn whitespace-nowrap px-4 py-2.5 rounded-full font-medium transition-all text-sm border-2 flex items-center gap-2" data-category="learning">
+            <i class="fas fa-graduation-cap"></i>AI基礎・学習効率化
+            <span id="count-learning" class="bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">0</span>
+          </button>
+          <button class="category-nav-btn whitespace-nowrap px-4 py-2.5 rounded-full font-medium transition-all text-sm border-2 flex items-center gap-2" data-category="teacher">
+            <i class="fas fa-chalkboard-teacher"></i>教育者向け
+            <span id="count-teacher" class="bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">0</span>
+          </button>
+          <button class="category-nav-btn whitespace-nowrap px-4 py-2.5 rounded-full font-medium transition-all text-sm border-2 flex items-center gap-2" data-category="tools">
+            <i class="fas fa-tools"></i>各ツール
+            <span id="count-tools" class="bg-gray-400 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">0</span>
           </button>
         </div>
+        
+        <style>
+          .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+          }
+          .category-nav-btn {
+            background: white;
+            border-color: #e5e7eb;
+            color: #6b7280;
+          }
+          .category-nav-btn:hover {
+            border-color: #8B6914;
+            color: #8B6914;
+            background: #fef3c7;
+          }
+          .category-nav-btn.active {
+            background: linear-gradient(135deg, #8B6914 0%, #B8956A 100%);
+            border-color: #8B6914;
+            color: white;
+          }
+          .category-nav-btn.active span {
+            background: rgba(255,255,255,0.3);
+          }
+          .course-section {
+            scroll-margin-top: 120px;
+          }
+          .course-scroll-container {
+            display: flex;
+            gap: 1rem;
+            overflow-x: auto;
+            padding-bottom: 1rem;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+          }
+          .course-scroll-container::-webkit-scrollbar {
+            height: 6px;
+          }
+          .course-scroll-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+          }
+          .course-scroll-container::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 3px;
+          }
+          .course-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: #999;
+          }
+          .course-scroll-card {
+            flex: 0 0 280px;
+            scroll-snap-align: start;
+          }
+          @media (min-width: 640px) {
+            .course-scroll-card {
+              flex: 0 0 300px;
+            }
+          }
+          @media (min-width: 1024px) {
+            .course-scroll-card {
+              flex: 0 0 320px;
+            }
+          }
+        </style>
+      </div>
+    </section>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="courses-grid">
-          ${courses.map((course, index) => `
-            <div class="bg-white overflow-hidden shadow-lg border border-future-sky/50 course-card rounded-2xl" 
-                 data-level="${escapeAttr(course.level)}" 
-                 data-category="${escapeAttr(course.category)}"
-                 data-price="${course.price}"
-                 data-title="${escapeAttr(course.title)}"
-                 data-description="${escapeAttr(course.description)}"
-                 data-index="${index}"
-                 data-course-id="${course.id}"
-                 onclick="window.location.href='/courses/${course.id}'">
-              <div class="aspect-video relative overflow-hidden">
-                <img src="${course.image}" alt="${course.title}" class="w-full h-full object-cover hover:scale-110 transition-transform duration-700">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                <div class="absolute top-4 left-4 flex gap-2">
-                  <span class="gradient-ai text-white text-xs font-bold px-3 py-1 rounded-full shadow">${course.level}</span>
-                  ${seriesMap && seriesMap[course.id] ? `
-                  <span class="bg-ai-purple text-white text-xs font-bold px-3 py-1 rounded-full shadow">
-                    <i class="fas fa-layer-group mr-1"></i>第${seriesMap[course.id].sessionNumber}/${seriesMap[course.id].totalSessions}回
-                  </span>
-                  ` : ''}
-                </div>
-                <div class="absolute top-4 right-4">
-                  <span class="glass text-future-text text-xs font-bold px-3 py-1 rounded-full">
-                    <i class="fas fa-clock mr-1"></i>${course.duration}
-                  </span>
-                </div>
-              </div>
-              <div class="p-6">
-                <div class="flex items-center text-sm text-future-textLight mb-2">
-                  <i class="fas fa-tag mr-2 text-ai-blue"></i>${course.category}
-                  <span class="mx-2">•</span>
-                  <i class="fas fa-user mr-2 text-ai-purple"></i>${course.instructor}
-                </div>
-                <h3 class="text-xl font-bold text-future-text mb-2">${course.title}</h3>
-                <p class="text-future-textLight text-sm mb-4 line-clamp-2">${truncateText(course.description, 100)}</p>
-                
-                <div class="flex flex-wrap gap-2 mb-4">
-                  ${course.features.slice(0, 2).map(feature => `
-                    <span class="bg-ai-cyan/10 text-ai-cyan text-xs px-2 py-1 rounded">${feature}</span>
-                  `).join('')}
-                  ${course.features.length > 2 ? `<span class="text-future-textLight text-xs">+${course.features.length - 2}</span>` : ''}
-                </div>
-                
-                <div class="flex items-center justify-between pt-4 border-t border-future-sky">
-                  <div>
-                    <span class="text-2xl font-bold gradient-ai-text">¥${course.price.toLocaleString()}</span>
-                    <span class="text-xs text-future-textLight ml-1">(税込)</span>
-                  </div>
-                  <div class="flex gap-2">
-                    <span class="btn-ai glass text-future-text px-4 py-2 rounded-full text-sm font-medium border border-ai-blue/30 hover:border-ai-blue course-detail-btn" onclick="event.stopPropagation(); window.location.href='/courses/${course.id}'">
-                      詳細
-                    </span>
-                    <a href="/reservation?course=${course.id}" class="btn-ai gradient-ai text-white px-4 py-2 rounded-full text-sm font-medium course-reserve-btn" onclick="event.stopPropagation();">
-                      予約
-                    </a>
-                  </div>
-                </div>
-              </div>
+    <!-- 体験版（無料・低価格）セクション -->
+    <section class="course-section py-10 bg-gradient-to-r from-green-50 to-emerald-50" id="section-trial" data-category="trial">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                <i class="fas fa-gift mr-1"></i>体験版
+              </span>
+              <span class="text-green-600 text-sm font-medium">まずはここから！</span>
             </div>
-          `).join('')}
+            <h3 class="text-xl font-bold text-gray-800">無料・低価格で始める</h3>
+            <p class="text-sm text-gray-600">AIに興味がある方、まずは気軽に体験してみましょう</p>
+          </div>
+          <a href="#" class="text-green-600 hover:text-green-700 font-medium text-sm whitespace-nowrap">
+            もっと見る <i class="fas fa-chevron-right ml-1"></i>
+          </a>
+        </div>
+        <div class="course-scroll-container" id="trial-courses">
+          <!-- JSで動的に挿入 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- キャリコン向けセクション -->
+    <section class="course-section py-10 bg-gradient-to-r from-purple-50 to-indigo-50" id="section-career" data-category="career">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="bg-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                <i class="fas fa-user-tie mr-1"></i>キャリコン向け
+              </span>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800">キャリアコンサルタントのためのAI講座</h3>
+            <p class="text-sm text-gray-600">AI時代に選ばれるキャリコンになるための実践講座</p>
+          </div>
+          <a href="#" class="text-purple-600 hover:text-purple-700 font-medium text-sm whitespace-nowrap">
+            もっと見る <i class="fas fa-chevron-right ml-1"></i>
+          </a>
+        </div>
+        <div class="course-scroll-container" id="career-courses">
+          <!-- JSで動的に挿入 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 学習効率化セクション -->
+    <section class="course-section py-10 bg-gradient-to-r from-blue-50 to-cyan-50" id="section-learning" data-category="learning">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                <i class="fas fa-graduation-cap mr-1"></i>学習効率化
+              </span>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800">資格学習・自己学習をAIで加速</h3>
+            <p class="text-sm text-gray-600">AIを活用して学習効率を劇的に向上させる</p>
+          </div>
+          <a href="#" class="text-blue-600 hover:text-blue-700 font-medium text-sm whitespace-nowrap">
+            もっと見る <i class="fas fa-chevron-right ml-1"></i>
+          </a>
+        </div>
+        <div class="course-scroll-container" id="learning-courses">
+          <!-- JSで動的に挿入 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 教育者向けセクション -->
+    <section class="course-section py-10 bg-gradient-to-r from-orange-50 to-amber-50" id="section-teacher" data-category="teacher">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                <i class="fas fa-chalkboard-teacher mr-1"></i>教育者向け
+              </span>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800">先生のためのAI講座</h3>
+            <p class="text-sm text-gray-600">教育現場でAIを活用するための実践講座</p>
+          </div>
+          <a href="#" class="text-orange-600 hover:text-orange-700 font-medium text-sm whitespace-nowrap">
+            もっと見る <i class="fas fa-chevron-right ml-1"></i>
+          </a>
+        </div>
+        <div class="course-scroll-container" id="teacher-courses">
+          <!-- JSで動的に挿入 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 各ツールセクション（準備中） -->
+    <section class="course-section py-10 bg-gradient-to-r from-gray-50 to-slate-50" id="section-tools" data-category="tools">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="bg-gray-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                <i class="fas fa-tools mr-1"></i>各ツール
+              </span>
+              <span class="bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-0.5 rounded-full">準備中</span>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800">AIツール別講座</h3>
+            <p class="text-sm text-gray-600">ChatGPT、Claude、NotebookLMなど各ツールの使い方</p>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl p-8 border-2 border-dashed border-gray-300 text-center">
+          <i class="fas fa-hammer text-4xl text-gray-300 mb-3"></i>
+          <p class="text-gray-500 font-medium">現在準備中です</p>
+          <p class="text-gray-400 text-sm mt-1">近日公開予定！お楽しみに</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- カテゴリ別講座の動的生成スクリプト -->
+    <script>
+      (function() {
+        // 全講座データ
+        const allCourses = ${JSON.stringify(courses.map(c => ({
+          id: c.id,
+          title: c.title,
+          description: c.description ? c.description.replace(/<[^>]*>/g, '').substring(0, 80) : '',
+          price: c.price,
+          duration: c.duration,
+          level: c.level,
+          category: c.category,
+          image: c.image
+        })))};
+        
+        // カテゴリ分類ロジック（改善版）
+        function categorize(course) {
+          const title = (course.title || '').toLowerCase();
+          const titleOriginal = course.title || '';
+          const category = (course.category || '').toLowerCase();
+          
+          // 体験版（無料・1000円以下）
+          if (course.price <= 1000) return 'trial';
+          
+          // キャリコン向け（キャリアコンサルタント関連）
+          if (title.includes('キャリア') || title.includes('キャリコン') || 
+              titleOriginal.includes('キャリア') || titleOriginal.includes('キャリコン')) return 'career';
+          
+          // 教育者向け（先生、教師、教育現場向け）
+          if (title.includes('先生') || title.includes('教師') || title.includes('教育') ||
+              titleOriginal.includes('先生') || titleOriginal.includes('教師') || titleOriginal.includes('教育')) return 'teacher';
+          
+          // 学習効率化（資格学習、自己学習、勉強効率化）
+          if (title.includes('資格') || title.includes('学習') || title.includes('勉強') ||
+              titleOriginal.includes('資格') || titleOriginal.includes('学習') || titleOriginal.includes('勉強')) return 'learning';
+          
+          // AI基礎（入門、基礎、AIって何？など）
+          if (category.includes('ai基礎') || title.includes('入門') || title.includes('基礎') ||
+              titleOriginal.includes('入門') || titleOriginal.includes('基礎') || 
+              titleOriginal.includes('AIって何')) return 'learning';
+          
+          // ビジネス活用もlearningに
+          if (category.includes('ビジネス') || title.includes('効率') || title.includes('活用') ||
+              titleOriginal.includes('効率') || titleOriginal.includes('活用')) return 'learning';
+          
+          return 'learning'; // デフォルト
+        }
+        
+        // カード生成（改善版デザイン）
+        function createCard(course) {
+          const priceLabel = course.price === 0 ? '無料' : '¥' + course.price.toLocaleString();
+          const priceClass = course.price === 0 ? 'bg-green-500 text-white' : 'bg-amber-100 text-amber-800';
+          const levelColors = {
+            '初級': 'bg-blue-100 text-blue-700',
+            '中級': 'bg-orange-100 text-orange-700',
+            '上級': 'bg-red-100 text-red-700',
+            '全レベル': 'bg-purple-100 text-purple-700'
+          };
+          const levelClass = levelColors[course.level] || 'bg-gray-100 text-gray-700';
+          
+          return \`
+            <a href="/courses/\${course.id}" class="course-scroll-card bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all block group">
+              <div class="aspect-video relative overflow-hidden bg-gradient-to-br from-gray-100 to-gray-50">
+                \${course.image ? \`<img src="\${course.image}" alt="\${course.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">\` : \`<div class="w-full h-full flex items-center justify-center"><i class="fas fa-book-open text-5xl text-gray-200"></i></div>\`}
+                <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                <div class="absolute top-3 left-3 flex gap-2">
+                  <span class="text-xs font-bold px-2.5 py-1 rounded-full shadow-sm \${priceClass}">\${priceLabel}</span>
+                </div>
+                <div class="absolute top-3 right-3">
+                  <span class="text-xs font-medium px-2.5 py-1 rounded-full shadow-sm \${levelClass}">\${course.level || '初級'}</span>
+                </div>
+                <div class="absolute bottom-3 right-3">
+                  <span class="bg-white/90 backdrop-blur-sm text-xs font-medium px-2.5 py-1 rounded-full text-gray-600">
+                    <i class="fas fa-clock mr-1"></i>\${course.duration || '120分'}
+                  </span>
+                </div>
+              </div>
+              <div class="p-4">
+                <h4 class="font-bold text-gray-800 text-sm line-clamp-2 mb-2 group-hover:text-amber-700 transition-colors min-h-[2.5rem]">\${course.title}</h4>
+                <p class="text-gray-500 text-xs line-clamp-2 mb-3 min-h-[2rem]">\${course.description || ''}</p>
+                <div class="flex items-center justify-between text-xs pt-3 border-t border-gray-100">
+                  <span class="text-gray-400"><i class="fas fa-tag mr-1"></i>\${course.category || 'AI基礎'}</span>
+                  <span class="text-amber-600 font-bold group-hover:text-amber-700">
+                    詳細を見る <i class="fas fa-arrow-right ml-1 group-hover:translate-x-1 transition-transform"></i>
+                  </span>
+                </div>
+              </div>
+            </a>
+          \`;
+        }
+        
+        // 空の場合のメッセージ
+        function createEmptyMessage(text) {
+          return \`
+            <div class="w-full py-12 text-center">
+              <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                <i class="fas fa-inbox text-2xl text-gray-300"></i>
+              </div>
+              <p class="text-gray-400 text-sm">\${text}</p>
+            </div>
+          \`;
+        }
+        
+        // 各カテゴリに講座を配置
+        const categories = {
+          trial: [],
+          career: [],
+          learning: [],
+          teacher: [],
+          tools: []
+        };
+        
+        allCourses.forEach(course => {
+          const cat = categorize(course);
+          if (categories[cat]) {
+            categories[cat].push(course);
+          }
+        });
+        
+        // カテゴリごとの件数を更新
+        const countBadges = {
+          trial: document.getElementById('count-trial'),
+          career: document.getElementById('count-career'),
+          learning: document.getElementById('count-learning'),
+          teacher: document.getElementById('count-teacher'),
+          tools: document.getElementById('count-tools')
+        };
+        
+        Object.keys(countBadges).forEach(key => {
+          const badge = countBadges[key];
+          if (badge) {
+            badge.textContent = categories[key].length;
+            badge.style.display = categories[key].length > 0 ? 'inline' : 'none';
+          }
+        });
+        
+        // 各コンテナに挿入
+        const trialContainer = document.getElementById('trial-courses');
+        if (trialContainer) {
+          trialContainer.innerHTML = categories.trial.length > 0 
+            ? categories.trial.map(createCard).join('')
+            : createEmptyMessage('現在、体験版講座はありません');
+        }
+        
+        const careerContainer = document.getElementById('career-courses');
+        if (careerContainer) {
+          careerContainer.innerHTML = categories.career.length > 0 
+            ? categories.career.map(createCard).join('')
+            : createEmptyMessage('現在、キャリコン向け講座はありません');
+        }
+        
+        const learningContainer = document.getElementById('learning-courses');
+        if (learningContainer) {
+          learningContainer.innerHTML = categories.learning.length > 0 
+            ? categories.learning.map(createCard).join('')
+            : createEmptyMessage('現在、学習効率化講座はありません');
+        }
+        
+        const teacherContainer = document.getElementById('teacher-courses');
+        if (teacherContainer) {
+          teacherContainer.innerHTML = categories.teacher.length > 0 
+            ? categories.teacher.map(createCard).join('')
+            : createEmptyMessage('現在、教育者向け講座はありません');
+        }
+        
+        // カテゴリナビゲーション
+        document.querySelectorAll('.category-nav-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const category = this.dataset.category;
+            
+            // ボタンのアクティブ状態更新
+            document.querySelectorAll('.category-nav-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // セクションの表示/非表示
+            document.querySelectorAll('.course-section').forEach(section => {
+              if (category === 'all' || section.dataset.category === category) {
+                section.style.display = 'block';
+              } else {
+                section.style.display = 'none';
+              }
+            });
+            
+            // スクロール（すべて以外の場合）
+            if (category !== 'all') {
+              const targetSection = document.getElementById('section-' + category);
+              if (targetSection) {
+                targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }
+          });
+        });
+        
+        // 検索機能
+        const searchInput = document.getElementById('search-input');
+        const searchClear = document.getElementById('search-clear');
+        
+        if (searchInput) {
+          let searchTimeout;
+          searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const value = this.value.trim().toLowerCase();
+            
+            // クリアボタン表示
+            if (searchClear) {
+              searchClear.classList.toggle('hidden', !value);
+            }
+            
+            searchTimeout = setTimeout(function() {
+              // 全カテゴリの講座カードを検索でフィルタリング
+              document.querySelectorAll('.course-scroll-card').forEach(card => {
+                const title = (card.querySelector('h4')?.textContent || '').toLowerCase();
+                const desc = (card.querySelector('p')?.textContent || '').toLowerCase();
+                
+                if (!value || title.includes(value) || desc.includes(value)) {
+                  card.style.display = 'block';
+                } else {
+                  card.style.display = 'none';
+                }
+              });
+              
+              // 各セクションの空状態チェック
+              document.querySelectorAll('.course-scroll-container').forEach(container => {
+                const visibleCards = container.querySelectorAll('.course-scroll-card:not([style*="display: none"])');
+                const emptyMsg = container.querySelector('.empty-search-message');
+                
+                if (value && visibleCards.length === 0) {
+                  if (!emptyMsg) {
+                    const msg = document.createElement('div');
+                    msg.className = 'empty-search-message w-full py-8 text-center text-gray-400';
+                    msg.innerHTML = '<i class="fas fa-search text-2xl mb-2"></i><p class="text-sm">「' + searchInput.value + '」に一致する講座はありません</p>';
+                    container.appendChild(msg);
+                  }
+                } else if (emptyMsg) {
+                  emptyMsg.remove();
+                }
+              });
+            }, 300);
+          });
+        }
+        
+        if (searchClear) {
+          searchClear.addEventListener('click', function() {
+            if (searchInput) {
+              searchInput.value = '';
+              searchInput.dispatchEvent(new Event('input'));
+            }
+          });
+        }
+      })();
+    </script>
+
+    <!-- 全講座グリッド（検索結果用・通常は非表示） -->
+    <section class="hidden py-16 bg-future-light" id="search-results-section">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-8">
+          <h2 class="text-2xl font-bold text-gray-800">検索結果</h2>
+          <p class="text-gray-500 text-sm" id="search-results-count"></p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="search-results-grid">
         </div>
       </div>
     </section>
@@ -545,250 +873,8 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
       </div>
     </section>
 
+    <!-- ===== 講座推薦チャットボット ===== -->
     <script>
-    (function() {
-      // Elements
-      const searchInput = document.getElementById('search-input');
-      const searchClear = document.getElementById('search-clear');
-      const categoryBtns = document.querySelectorAll('.category-btn');
-      const priceBtns = document.querySelectorAll('.price-btn');
-      const sortSelect = document.getElementById('sort-select');
-      const resetFilters = document.getElementById('reset-filters');
-      const resetFromEmpty = document.getElementById('reset-from-empty');
-      const coursesGrid = document.getElementById('courses-grid');
-      const noResults = document.getElementById('no-results');
-      const filteredCountEl = document.getElementById('filtered-count');
-      const filterToggle = document.getElementById('filter-toggle');
-      const filterContent = document.getElementById('filter-content');
-      const filterToggleIcon = document.getElementById('filter-toggle-icon');
-      const activeFiltersCount = document.getElementById('active-filters-count');
-      const filterCountEl = document.getElementById('filter-count');
-      
-      // Course cards
-      const courseCards = Array.from(document.querySelectorAll('.course-card'));
-      const totalCourses = ${courses.length};
-      
-      // Current filter state
-      let currentFilters = {
-        search: '',
-        category: 'all',
-        price: 'all',
-        sort: 'newest'
-      };
-
-      // Mobile filter toggle
-      if (filterToggle && filterContent) {
-        filterToggle.addEventListener('click', function() {
-          const isExpanded = filterContent.classList.contains('filter-expanded');
-          if (isExpanded) {
-            filterContent.classList.remove('filter-expanded');
-            filterToggleIcon.style.transform = 'rotate(0deg)';
-          } else {
-            filterContent.classList.add('filter-expanded');
-            filterToggleIcon.style.transform = 'rotate(180deg)';
-          }
-        });
-      }
-
-      // Search functionality with debounce
-      let searchTimeout;
-      searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        const value = this.value.trim();
-        
-        // Show/hide clear button
-        searchClear.classList.toggle('hidden', !value);
-        
-        searchTimeout = setTimeout(function() {
-          currentFilters.search = value.toLowerCase();
-          applyFilters();
-        }, 300);
-      });
-
-      searchClear.addEventListener('click', function() {
-        searchInput.value = '';
-        searchClear.classList.add('hidden');
-        currentFilters.search = '';
-        applyFilters();
-      });
-
-      // Category filter
-      categoryBtns.forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          categoryBtns.forEach(function(b) {
-            b.classList.remove('active');
-          });
-          this.classList.add('active');
-          
-          currentFilters.category = this.dataset.category;
-          applyFilters();
-        });
-      });
-
-      // Price filter
-      priceBtns.forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          priceBtns.forEach(function(b) {
-            b.classList.remove('active');
-          });
-          this.classList.add('active');
-          
-          currentFilters.price = this.dataset.price;
-          applyFilters();
-        });
-      });
-
-      // Sort functionality
-      sortSelect.addEventListener('change', function() {
-        currentFilters.sort = this.value;
-        applyFilters();
-      });
-
-      // Reset filters
-      function resetAllFilters() {
-        searchInput.value = '';
-        searchClear.classList.add('hidden');
-        currentFilters = {
-          search: '',
-          category: 'all',
-          price: 'all',
-          sort: 'newest'
-        };
-        
-        // Reset button styles - use only 'active' class (CSS handles the rest)
-        categoryBtns.forEach(function(b, i) {
-          b.classList.remove('active');
-          if (i === 0) {
-            b.classList.add('active');
-          }
-        });
-        
-        priceBtns.forEach(function(b, i) {
-          b.classList.remove('active');
-          if (i === 0) {
-            b.classList.add('active');
-          }
-        });
-        
-        sortSelect.value = 'newest';
-        applyFilters();
-      }
-
-      resetFilters.addEventListener('click', resetAllFilters);
-      resetFromEmpty.addEventListener('click', resetAllFilters);
-
-      // Apply filters
-      function applyFilters() {
-        let visibleCount = 0;
-        let activeFilterCount = 0;
-        
-        // Count active filters
-        if (currentFilters.search) activeFilterCount++;
-        if (currentFilters.category !== 'all') activeFilterCount++;
-        if (currentFilters.price !== 'all') activeFilterCount++;
-        if (currentFilters.sort !== 'newest') activeFilterCount++;
-        
-        // Show/hide reset button and active filter count
-        resetFilters.classList.toggle('hidden', activeFilterCount === 0);
-        if (activeFiltersCount) {
-          activeFiltersCount.classList.toggle('hidden', activeFilterCount === 0);
-          filterCountEl.textContent = activeFilterCount;
-        }
-
-        // Filter and sort cards
-        let filteredCards = courseCards.filter(function(card) {
-          const title = card.dataset.title.toLowerCase();
-          const description = card.dataset.description.toLowerCase();
-          const category = card.dataset.category;
-          const price = parseInt(card.dataset.price);
-          
-          // Search filter
-          if (currentFilters.search) {
-            const searchTerm = currentFilters.search;
-            if (!title.includes(searchTerm) && !description.includes(searchTerm)) {
-              return false;
-            }
-          }
-          
-          // Category filter
-          if (currentFilters.category !== 'all') {
-            if (category !== currentFilters.category) {
-              return false;
-            }
-          }
-          
-          // Price filter
-          if (currentFilters.price !== 'all') {
-            switch (currentFilters.price) {
-              case 'free':
-                if (price !== 0) return false;
-                break;
-              case 'under5000':
-                if (price > 5000) return false;
-                break;
-              case 'under10000':
-                if (price > 10000) return false;
-                break;
-              case 'over10000':
-                if (price <= 10000) return false;
-                break;
-            }
-          }
-          
-          return true;
-        });
-
-        // Sort cards
-        filteredCards.sort(function(a, b) {
-          const priceA = parseInt(a.dataset.price);
-          const priceB = parseInt(b.dataset.price);
-          const indexA = parseInt(a.dataset.index);
-          const indexB = parseInt(b.dataset.index);
-          
-          switch (currentFilters.sort) {
-            case 'newest':
-              return indexA - indexB; // Original order (assuming newest first)
-            case 'popular':
-              return indexA - indexB; // Placeholder - would use review count
-            case 'price-asc':
-              return priceA - priceB;
-            case 'price-desc':
-              return priceB - priceA;
-            case 'rating':
-              return indexA - indexB; // Placeholder - would use rating
-            default:
-              return 0;
-          }
-        });
-
-        // Hide all cards first
-        courseCards.forEach(function(card) {
-          card.style.display = 'none';
-          card.style.order = '';
-        });
-
-        // Show and reorder filtered cards
-        filteredCards.forEach(function(card, index) {
-          card.style.display = 'block';
-          card.style.order = index;
-          visibleCount++;
-        });
-
-        // Update count display
-        filteredCountEl.textContent = visibleCount;
-        const filteredCountMobile = document.getElementById('filtered-count-mobile');
-        if (filteredCountMobile) filteredCountMobile.textContent = visibleCount;
-        
-        // Show/hide no results message
-        noResults.classList.toggle('hidden', visibleCount > 0);
-        coursesGrid.classList.toggle('hidden', visibleCount === 0);
-      }
-
-      // Initial application
-      applyFilters();
-    })();
-
-    // ===== 講座推薦チャットボット =====
     (function() {
       const chatMessages = document.getElementById('chat-messages');
       const chatInput = document.getElementById('chat-input');

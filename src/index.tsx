@@ -5022,7 +5022,26 @@ function generateCourseId(title: string): string {
 
 app.get('/admin/courses', async (c) => {
   const allCourses = await getAllCourses(c.env.DB)
-  return c.html(renderCoursesList(allCourses))
+  
+  // クエリパラメータからエラー/成功メッセージを取得
+  const error = c.req.query('error')
+  const success = c.req.query('success')
+  const count = c.req.query('count')
+  
+  let errorMessage: string | undefined
+  let successMessage: string | undefined
+  
+  if (error === 'has_bookings') {
+    errorMessage = `この講座には${count}件の予約があるため削除できません。まず予約をキャンセルまたは完了させてください。`
+  } else if (error === 'delete_failed') {
+    errorMessage = '講座の削除中にエラーが発生しました。'
+  }
+  
+  if (success === 'deleted') {
+    successMessage = '講座を削除しました。'
+  }
+  
+  return c.html(renderCoursesList(allCourses, errorMessage, successMessage))
 })
 
 app.get('/admin/courses/new', (c) => {
@@ -5301,16 +5320,34 @@ app.post('/admin/courses/update/:id', async (c) => {
   }
 })
 
-// 講座削除（関連するスケジュールも削除）
+// 講座削除（関連するスケジュールも削除）- 予約がある場合は削除不可
 app.post('/admin/courses/delete/:id', async (c) => {
   const id = c.req.param('id')
   try {
+    // 予約の有無を確認
+    const bookingCheck = await c.env.DB.prepare(`
+      SELECT COUNT(*) as count FROM bookings WHERE course_id = ?
+    `).bind(id).first() as { count: number } | null
+    
+    if (bookingCheck && bookingCheck.count > 0) {
+      // 予約がある場合は削除できない
+      console.error(`Cannot delete course ${id}: has ${bookingCheck.count} bookings`)
+      // 講座一覧に戻る（エラーメッセージはセッション経由で渡すか、クエリパラメータで渡す）
+      return c.redirect('/admin/courses?error=has_bookings&count=' + bookingCheck.count)
+    }
+    
+    // 関連データを削除（順序に注意）
+    // 1. スケジュール
     await c.env.DB.prepare(`DELETE FROM schedules WHERE course_id = ?`).bind(id).run()
+    // 2. レビュー（任意）
+    await c.env.DB.prepare(`DELETE FROM reviews WHERE course_id = ?`).bind(id).run()
+    // 3. 講座本体
     await c.env.DB.prepare(`DELETE FROM courses WHERE id = ?`).bind(id).run()
-    return c.redirect('/admin/courses')
+    
+    return c.redirect('/admin/courses?success=deleted')
   } catch (error) {
     console.error('Error deleting course:', error)
-    return c.redirect('/admin/courses')
+    return c.redirect('/admin/courses?error=delete_failed')
   }
 })
 
