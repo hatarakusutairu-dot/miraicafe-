@@ -4941,7 +4941,8 @@ async function getCourseById(db: D1Database, id: string): Promise<any | null> {
           startTime: s.start_time,
           endTime: s.end_time,
           capacity: s.capacity,
-          location: s.location || 'オンライン'
+          location: s.location || 'オンライン',
+          online_url: s.online_url || ''
         }))
       } catch (e) {
         console.error('Schedule fetch error:', e)
@@ -5032,7 +5033,7 @@ app.get('/admin/courses', async (c) => {
   let successMessage: string | undefined
   
   if (error === 'has_bookings') {
-    errorMessage = `この講座には${count}件の予約があるため削除できません。まず予約をキャンセルまたは完了させてください。`
+    errorMessage = `この講座には${count}件のアクティブな予約があるため削除できません。まず予約をキャンセルまたは完了に変更してください。`
   } else if (error === 'delete_failed') {
     errorMessage = '講座の削除中にエラーが発生しました。'
   }
@@ -5132,18 +5133,32 @@ app.post('/admin/courses/create', async (c) => {
     const rawScheduleEnds = body['schedule_end[]'] || body.schedule_end
     const rawScheduleCapacities = body['schedule_capacity[]'] || body.schedule_capacity
     const rawScheduleLocations = body['schedule_location[]'] || body.schedule_location
+    const rawScheduleOnlineUrls = body['schedule_online_url[]'] || body.schedule_online_url
     const scheduleDates = Array.isArray(rawScheduleDates) ? rawScheduleDates : [rawScheduleDates].filter(Boolean)
     const scheduleStarts = Array.isArray(rawScheduleStarts) ? rawScheduleStarts : [rawScheduleStarts].filter(Boolean)
     const scheduleEnds = Array.isArray(rawScheduleEnds) ? rawScheduleEnds : [rawScheduleEnds].filter(Boolean)
     const scheduleCapacities = Array.isArray(rawScheduleCapacities) ? rawScheduleCapacities : [rawScheduleCapacities].filter(Boolean)
     const scheduleLocations = Array.isArray(rawScheduleLocations) ? rawScheduleLocations : [rawScheduleLocations].filter(Boolean)
+    const scheduleOnlineUrls = Array.isArray(rawScheduleOnlineUrls) ? rawScheduleOnlineUrls : [rawScheduleOnlineUrls].filter(Boolean)
     
     for (let i = 0; i < scheduleDates.length; i++) {
       if (scheduleDates[i] && scheduleStarts[i] && scheduleEnds[i]) {
         const scheduleId = `sch_${Date.now()}_${i}`
+        const onlineUrl = (scheduleOnlineUrls[i] as string || '').trim()
+        
+        // URL重複チェック（空でない場合のみ）
+        if (onlineUrl) {
+          const existing = await c.env.DB.prepare(`
+            SELECT id FROM schedules WHERE online_url = ?
+          `).bind(onlineUrl).first()
+          if (existing) {
+            return c.html(renderCourseForm(undefined, `日程${i + 1}のMeet URL「${onlineUrl}」は既に他の日程で使用されています。`))
+          }
+        }
+        
         await c.env.DB.prepare(`
-          INSERT INTO schedules (id, course_id, date, start_time, end_time, capacity, location)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO schedules (id, course_id, date, start_time, end_time, capacity, location, online_url)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
           scheduleId,
           id,
@@ -5151,7 +5166,8 @@ app.post('/admin/courses/create', async (c) => {
           scheduleStarts[i],
           scheduleEnds[i],
           parseInt(scheduleCapacities[i] as string) || 10,
-          scheduleLocations[i] || 'オンライン'
+          scheduleLocations[i] || 'オンライン',
+          onlineUrl || null
         ).run()
       }
     }
@@ -5283,11 +5299,13 @@ app.post('/admin/courses/update/:id', async (c) => {
     const rawScheduleEnds2 = body['schedule_end[]'] || body.schedule_end
     const rawScheduleCapacities2 = body['schedule_capacity[]'] || body.schedule_capacity
     const rawScheduleLocations2 = body['schedule_location[]'] || body.schedule_location
+    const rawScheduleOnlineUrls2 = body['schedule_online_url[]'] || body.schedule_online_url
     const scheduleDates = Array.isArray(rawScheduleDates2) ? rawScheduleDates2 : [rawScheduleDates2].filter(Boolean)
     const scheduleStarts = Array.isArray(rawScheduleStarts2) ? rawScheduleStarts2 : [rawScheduleStarts2].filter(Boolean)
     const scheduleEnds = Array.isArray(rawScheduleEnds2) ? rawScheduleEnds2 : [rawScheduleEnds2].filter(Boolean)
     const scheduleCapacities = Array.isArray(rawScheduleCapacities2) ? rawScheduleCapacities2 : [rawScheduleCapacities2].filter(Boolean)
     const scheduleLocations = Array.isArray(rawScheduleLocations2) ? rawScheduleLocations2 : [rawScheduleLocations2].filter(Boolean)
+    const scheduleOnlineUrls = Array.isArray(rawScheduleOnlineUrls2) ? rawScheduleOnlineUrls2 : [rawScheduleOnlineUrls2].filter(Boolean)
     
     // 新しいスケジュールがある場合のみ既存を削除
     if (scheduleDates.length > 0 && scheduleDates[0]) {
@@ -5296,9 +5314,22 @@ app.post('/admin/courses/update/:id', async (c) => {
       for (let i = 0; i < scheduleDates.length; i++) {
         if (scheduleDates[i] && scheduleStarts[i] && scheduleEnds[i]) {
           const scheduleId = `sch_${Date.now()}_${i}`
+          const onlineUrl = (scheduleOnlineUrls[i] as string || '').trim()
+          
+          // URL重複チェック（空でない場合のみ）
+          if (onlineUrl) {
+            const existing = await c.env.DB.prepare(`
+              SELECT id FROM schedules WHERE online_url = ? AND course_id != ?
+            `).bind(onlineUrl, id).first()
+            if (existing) {
+              const course = await getCourseById(c.env.DB, id)
+              return c.html(renderCourseForm(course, `日程${i + 1}のMeet URL「${onlineUrl}」は既に他の日程で使用されています。`))
+            }
+          }
+          
           await c.env.DB.prepare(`
-            INSERT INTO schedules (id, course_id, date, start_time, end_time, capacity, location)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO schedules (id, course_id, date, start_time, end_time, capacity, location, online_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           `).bind(
             scheduleId,
             id,
@@ -5306,7 +5337,8 @@ app.post('/admin/courses/update/:id', async (c) => {
             scheduleStarts[i],
             scheduleEnds[i],
             parseInt(scheduleCapacities[i] as string) || 10,
-            scheduleLocations[i] || 'オンライン'
+            scheduleLocations[i] || 'オンライン',
+            onlineUrl || null
           ).run()
         }
       }
@@ -5320,18 +5352,20 @@ app.post('/admin/courses/update/:id', async (c) => {
   }
 })
 
-// 講座削除（関連するスケジュールも削除）- 予約がある場合は削除不可
+// 講座削除（関連するスケジュールも削除）- アクティブな予約がある場合は削除不可
 app.post('/admin/courses/delete/:id', async (c) => {
   const id = c.req.param('id')
   try {
-    // 予約の有無を確認
+    // アクティブな予約（pending, confirmed）の有無を確認
+    // cancelled（キャンセル済み）やcompleted（完了済み）は削除を許可
     const bookingCheck = await c.env.DB.prepare(`
-      SELECT COUNT(*) as count FROM bookings WHERE course_id = ?
+      SELECT COUNT(*) as count FROM bookings 
+      WHERE course_id = ? AND status NOT IN ('cancelled', 'completed')
     `).bind(id).first() as { count: number } | null
     
     if (bookingCheck && bookingCheck.count > 0) {
-      // 予約がある場合は削除できない
-      console.error(`Cannot delete course ${id}: has ${bookingCheck.count} bookings`)
+      // アクティブな予約がある場合は削除できない
+      console.error(`Cannot delete course ${id}: has ${bookingCheck.count} active bookings`)
       // 講座一覧に戻る（エラーメッセージはセッション経由で渡すか、クエリパラメータで渡す）
       return c.redirect('/admin/courses?error=has_bookings&count=' + bookingCheck.count)
     }

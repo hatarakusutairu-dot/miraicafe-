@@ -531,8 +531,17 @@ export const renderCourseForm = (course?: Course, error?: string) => {
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
                   </div>
                 </div>
+                <div class="mt-3">
+                  <label class="text-xs text-gray-500 block mb-1">
+                    <i class="fas fa-video mr-1 text-blue-500"></i>Meet URL（この日程専用）
+                    <span class="text-gray-400 ml-1">※Peatix等で日程ごとに異なるURLを使う場合</span>
+                  </label>
+                  <input type="url" name="schedule_online_url[]" value="${escapeAttr(sch.online_url || '')}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                    placeholder="https://meet.google.com/xxx-xxxx-xxx">
+                </div>
                 <div class="flex justify-between items-center mt-3">
-                  <a href="#" onclick="addToCalendar('${sch.date}', '${sch.startTime}', '${sch.endTime}', '${escapeAttr(course?.title || '')}', '${escapeAttr(course?.online_url || '')}', '${escapeAttr(sch.location || 'オンライン')}'); return false;" 
+                  <a href="#" onclick="addToCalendar('${sch.date}', '${sch.startTime}', '${sch.endTime}', '${escapeAttr(course?.title || '')}', '${escapeAttr(sch.online_url || course?.online_url || '')}', '${escapeAttr(sch.location || 'オンライン')}'); return false;" 
                      class="text-green-600 hover:text-green-800 text-sm flex items-center">
                     <i class="fab fa-google mr-1"></i>Googleカレンダーに追加
                   </a>
@@ -743,6 +752,15 @@ export const renderCourseForm = (course?: Course, error?: string) => {
                   <i class="fas fa-trash"></i>
                 </button>
               </div>
+            </div>
+            <div class="mt-3">
+              <label class="block text-xs text-gray-500 mb-1">
+                <i class="fas fa-video mr-1 text-blue-500"></i>Meet URL（この日程専用）
+                <span class="text-gray-400 ml-1">※Peatix等で日程ごとに異なるURLを使う場合</span>
+              </label>
+              <input type="url" name="schedule_online_url[]"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                placeholder="https://meet.google.com/xxx-xxxx-xxx">
             </div>
           </div>
         \`;
