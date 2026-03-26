@@ -375,7 +375,7 @@ function getBusySlotsFromEvents(events: CalendarEventRead[]): BusySlot[] {
 
   for (const event of events) {
     if (event.status === 'cancelled') continue
-    if (event.transparency === 'transparent' && !event.summary?.includes('仮予約')) continue
+    // すべての予定を予約不可として扱う（transparencyに関わらず）
 
     const startStr = event.start.dateTime || event.start.date
     const endStr = event.end.dateTime || event.end.date
