@@ -457,10 +457,9 @@ function getAvailableSlotsForDate(
 
       const slotStartMs = Date.UTC(year, month - 1, day, hour - 9, minute, 0)
       const slotEndMs = slotStartMs + duration * 60 * 1000
-      const slotStartWithBuffer = slotStartMs - BUFFER_MINUTES * 60 * 1000
-      const slotEndWithBuffer = slotEndMs + BUFFER_MINUTES * 60 * 1000
 
-      const isAvailable = !busySlots.some(busy => slotStartWithBuffer < busy.end && slotEndWithBuffer > busy.start)
+      // イベント側にバッファが含まれているので、スロットがその範囲と重なるかチェック
+      const isAvailable = !busySlots.some(busy => slotStartMs < busy.end && slotEndMs > busy.start)
       const timeStr = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0')
       slots.push({ time: timeStr, available: isAvailable })
     }
