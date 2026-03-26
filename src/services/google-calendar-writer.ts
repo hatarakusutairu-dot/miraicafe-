@@ -314,3 +314,189 @@ export async function confirmCalendarEvent(
     }
   )
 }
+
+// ========== Calendar Read Functions (Service Account) ==========
+
+interface CalendarEventRead {
+  id: string
+  start: { dateTime?: string; date?: string }
+  end: { dateTime?: string; date?: string }
+  summary?: string
+  status?: string
+  transparency?: string
+}
+
+interface BusySlot {
+  start: number
+  end: number
+  summary?: string
+}
+
+const BUSINESS_HOURS = {
+  weekdays: { start: 10, end: 20 },
+  saturday: { start: 10, end: 20 },
+}
+
+const BUFFER_MINUTES = 60
+
+export async function getCalendarEventsWithServiceAccount(
+  serviceAccountKeyJson: string,
+  calendarId: string,
+  timeMin: Date,
+  timeMax: Date
+): Promise<CalendarEventRead[]> {
+  const serviceAccountKey = JSON.parse(serviceAccountKeyJson)
+  const accessToken = await getAccessToken(serviceAccountKey)
+
+  const url = new URL('https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(calendarId) + '/events')
+  url.searchParams.set('timeMin', timeMin.toISOString())
+  url.searchParams.set('timeMax', timeMax.toISOString())
+  url.searchParams.set('singleEvents', 'true')
+  url.searchParams.set('orderBy', 'startTime')
+  url.searchParams.set('maxResults', '500')
+
+  const response = await fetch(url.toString(), {
+    headers: { 'Authorization': 'Bearer ' + accessToken }
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    console.error('Google Calendar API error:', error)
+    throw new Error('Calendar fetch failed: ' + response.status)
+  }
+
+  const data = await response.json() as { items?: CalendarEventRead[] }
+  console.log('Fetched ' + (data.items?.length || 0) + ' events (Service Account)')
+  return data.items || []
+}
+
+function getBusySlotsFromEvents(events: CalendarEventRead[]): BusySlot[] {
+  const slots: BusySlot[] = []
+
+  for (const event of events) {
+    if (event.status === 'cancelled') continue
+    if (event.transparency === 'transparent' && !event.summary?.includes('仮予約')) continue
+
+    const startStr = event.start.dateTime || event.start.date
+    const endStr = event.end.dateTime || event.end.date
+    if (!startStr || !endStr) continue
+
+    let startMs: number
+    let endMs: number
+
+    if (event.start.date && !event.start.dateTime) {
+      const parts = event.start.date.split('-').map(Number)
+      startMs = Date.UTC(parts[0], parts[1] - 1, parts[2], -9, 0, 0)
+      const endParts = event.end.date.split('-').map(Number)
+      endMs = Date.UTC(endParts[0], endParts[1] - 1, endParts[2], -9, 0, 0)
+      console.log('All-day: ' + (event.summary || 'No title'))
+    } else {
+      startMs = new Date(startStr).getTime()
+      endMs = new Date(endStr).getTime()
+      console.log('Timed: ' + (event.summary || 'No title'))
+    }
+
+    const isAllDay = event.start.date && !event.start.dateTime
+    const bufferedStart = isAllDay ? startMs : startMs - BUFFER_MINUTES * 60 * 1000
+    const bufferedEnd = isAllDay ? endMs : endMs + BUFFER_MINUTES * 60 * 1000
+
+    slots.push({ start: bufferedStart, end: bufferedEnd, summary: event.summary })
+  }
+
+  console.log('Total busy slots: ' + slots.length)
+  return slots
+}
+
+function getTodayJSTForRead(): { year: number; month: number; day: number; dateStr: string } {
+  const now = new Date()
+  const jstTime = now.getTime() + 9 * 60 * 60 * 1000
+  const jstDate = new Date(jstTime)
+  const year = jstDate.getUTCFullYear()
+  const month = jstDate.getUTCMonth() + 1
+  const day = jstDate.getUTCDate()
+  const dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0')
+  return { year, month, day, dateStr }
+}
+
+function addDaysToDateForRead(dateStr: string, days: number): { year: number; month: number; day: number; dateStr: string } {
+  const parts = dateStr.split('-').map(Number)
+  const date = new Date(parts[0], parts[1] - 1, parts[2])
+  date.setDate(date.getDate() + days)
+  const newYear = date.getFullYear()
+  const newMonth = date.getMonth() + 1
+  const newDay = date.getDate()
+  const newDateStr = newYear + '-' + String(newMonth).padStart(2, '0') + '-' + String(newDay).padStart(2, '0')
+  return { year: newYear, month: newMonth, day: newDay, dateStr: newDateStr }
+}
+
+function getAvailableSlotsForDate(
+  dateStr: string,
+  busySlots: BusySlot[],
+  duration: number
+): { time: string; available: boolean }[] {
+  const parts = dateStr.split('-').map(Number)
+  const year = parts[0], month = parts[1], day = parts[2]
+  const dayOfWeek = new Date(year, month - 1, day).getDay()
+  const slots: { time: string; available: boolean }[] = []
+
+  if (dayOfWeek === 0) return []
+
+  const hours = dayOfWeek === 6 ? BUSINESS_HOURS.saturday : BUSINESS_HOURS.weekdays
+  const today = getTodayJSTForRead()
+  const isToday = dateStr === today.dateStr
+  const nowJST = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  const currentHourJST = nowJST.getUTCHours()
+  const currentMinuteJST = nowJST.getUTCMinutes()
+
+  for (let hour = hours.start; hour < hours.end; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      const slotEndHour = hour + Math.floor((minute + duration) / 60)
+      const slotEndMinute = (minute + duration) % 60
+      if (slotEndHour > hours.end || (slotEndHour === hours.end && slotEndMinute > 0)) continue
+      if (isToday && (hour < currentHourJST || (hour === currentHourJST && minute <= currentMinuteJST))) continue
+
+      const slotStartMs = Date.UTC(year, month - 1, day, hour - 9, minute, 0)
+      const slotEndMs = slotStartMs + duration * 60 * 1000
+      const slotStartWithBuffer = slotStartMs - BUFFER_MINUTES * 60 * 1000
+      const slotEndWithBuffer = slotEndMs + BUFFER_MINUTES * 60 * 1000
+
+      const isAvailable = !busySlots.some(busy => slotStartWithBuffer < busy.end && slotEndWithBuffer > busy.start)
+      const timeStr = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0')
+      slots.push({ time: timeStr, available: isAvailable })
+    }
+  }
+
+  return slots
+}
+
+export async function getAvailableDatesWithServiceAccount(
+  serviceAccountKeyJson: string,
+  calendarId: string,
+  days: number = 60,
+  duration: number = 30
+): Promise<{ date: string; dayOfWeek: number; hasSlots: boolean; slots: { time: string; available: boolean }[] }[]> {
+  const startDate = new Date()
+  startDate.setHours(0, 0, 0, 0)
+  const endDate = new Date(startDate)
+  endDate.setDate(endDate.getDate() + days)
+
+  const events = await getCalendarEventsWithServiceAccount(serviceAccountKeyJson, calendarId, startDate, endDate)
+  const busySlots = getBusySlotsFromEvents(events)
+
+  const result: { date: string; dayOfWeek: number; hasSlots: boolean; slots: { time: string; available: boolean }[] }[] = []
+  const today = getTodayJSTForRead()
+
+  for (let i = 0; i < days; i++) {
+    const targetDate = addDaysToDateForRead(today.dateStr, i)
+    const dayOfWeek = new Date(targetDate.year, targetDate.month - 1, targetDate.day).getDay()
+
+    if (dayOfWeek === 0) continue
+
+    const slots = getAvailableSlotsForDate(targetDate.dateStr, busySlots, duration)
+    const availableSlots = slots.filter(s => s.available)
+
+    result.push({ date: targetDate.dateStr, dayOfWeek, hasSlots: availableSlots.length > 0, slots })
+  }
+
+  return result
+}

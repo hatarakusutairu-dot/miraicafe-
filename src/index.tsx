@@ -74,7 +74,7 @@ import {
 } from './stripe'
 import { generateAllCalendarLinks, generateEventDescription, type CalendarEvent } from './services/calendar'
 import { getAvailableDates, calculatePrice, formatDateJa } from './services/google-calendar'
-import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, confirmCalendarEvent } from './services/google-calendar-writer'
+import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, confirmCalendarEvent, getAvailableDatesWithServiceAccount } from './services/google-calendar-writer'
 import { uploadToSupabase, deleteFromSupabase, type SupabaseConfig } from './services/supabase-storage'
 import { 
   getOrCreateMember, 
@@ -1374,9 +1374,10 @@ app.get('/consultation', (c) => {
 
 // API: 予約可能日時を取得
 app.get('/api/consultation/available-dates', async (c) => {
-  const { GOOGLE_CALENDAR_API_KEY, GOOGLE_CALENDAR_ID } = c.env;
+  const { GOOGLE_CALENDAR_API_KEY, GOOGLE_CALENDAR_ID, GOOGLE_SERVICE_ACCOUNT_KEY } = c.env;
   
-  if (!GOOGLE_CALENDAR_API_KEY || !GOOGLE_CALENDAR_ID) {
+  // Service Account優先、なければAPIキー、どちらもなければデモモード
+  if (!GOOGLE_CALENDAR_ID || (!GOOGLE_SERVICE_ACCOUNT_KEY && !GOOGLE_CALENDAR_API_KEY)) {
     // デモモード（API設定なしの場合）
     const today = new Date();
     const dates = [];
@@ -1408,11 +1409,24 @@ app.get('/api/consultation/available-dates', async (c) => {
   
   try {
     const duration = parseInt(c.req.query('duration') || '30');
+    
+    // Service Accountがあれば優先使用（全イベント取得可能）
+    if (GOOGLE_SERVICE_ACCOUNT_KEY) {
+      const dates = await getAvailableDatesWithServiceAccount(
+        GOOGLE_SERVICE_ACCOUNT_KEY,
+        GOOGLE_CALENDAR_ID,
+        60, // 60日分
+        duration
+      );
+      return c.json({ dates });
+    }
+    
+    // フォールバック: APIキー使用
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
     
     const dates = await getAvailableDates(
-      GOOGLE_CALENDAR_API_KEY,
+      GOOGLE_CALENDAR_API_KEY!,
       GOOGLE_CALENDAR_ID,
       startDate,
       60, // 60日分
