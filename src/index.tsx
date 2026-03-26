@@ -74,6 +74,7 @@ import {
 } from './stripe'
 import { generateAllCalendarLinks, generateEventDescription, type CalendarEvent } from './services/calendar'
 import { getAvailableDates, calculatePrice, formatDateJa } from './services/google-calendar'
+import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, confirmCalendarEvent } from './services/google-calendar-writer'
 import { uploadToSupabase, deleteFromSupabase, type SupabaseConfig } from './services/supabase-storage'
 import { 
   getOrCreateMember, 
@@ -105,6 +106,7 @@ type Bindings = {
   SUPABASE_ANON_KEY?: string
   GOOGLE_CALENDAR_API_KEY?: string
   GOOGLE_CALENDAR_ID?: string
+  GOOGLE_SERVICE_ACCOUNT_KEY?: string  // Service Account JSON for calendar write access
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -1427,8 +1429,8 @@ app.get('/api/consultation/available-dates', async (c) => {
 // API: 個別相談の予約（Stripe決済へ）
 // 個別相談の予約申請（承認制：決済は承認後）
 app.post('/api/consultation/apply', async (c) => {
-  const { DB, RESEND_API_KEY } = c.env;
-  
+  const { DB, RESEND_API_KEY, GOOGLE_SERVICE_ACCOUNT_KEY, GOOGLE_CALENDAR_ID } = c.env;
+
   const body = await c.req.json();
   const { type, duration, date, time, customerName, customerEmail, customerPhone, message, agreedToTerms } = body;
   
@@ -1459,7 +1461,46 @@ app.post('/api/consultation/apply', async (c) => {
       customerName, customerEmail, customerPhone || null, message || null,
       price
     ).run();
-    
+
+    // Googleカレンダーに仮予約として自動登録
+    let calendarEventId: string | null = null;
+    let calendarEventLink: string | null = null;
+
+    if (GOOGLE_SERVICE_ACCOUNT_KEY && GOOGLE_CALENDAR_ID) {
+      try {
+        const calendarResult = await createCalendarEvent(
+          GOOGLE_SERVICE_ACCOUNT_KEY,
+          GOOGLE_CALENDAR_ID,
+          {
+            summary: `【仮予約】${customerName}様 ${typeLabel}`,
+            description: `お客様: ${customerName}\nメール: ${customerEmail}\n電話: ${customerPhone || '-'}\n\n相談タイプ: ${typeLabel}\n時間: ${duration}分\n料金: ¥${price.toLocaleString()}\n\n※ 承認待ちの仮予約です\n※ 決済完了後に正式予約となります\n\nメッセージ:\n${message || 'なし'}`,
+            startDate: date,
+            startTime: time,
+            duration: duration,
+            location: 'https://meet.google.com/hsd-xuri-hiu',
+            colorId: '5' // 黄色（仮予約）
+          }
+        );
+
+        if (calendarResult.success && calendarResult.eventId) {
+          calendarEventId = calendarResult.eventId;
+          calendarEventLink = calendarResult.htmlLink || null;
+
+          // DBにカレンダーイベントIDを保存
+          await DB.prepare(`
+            UPDATE consultation_bookings SET calendar_event_id = ? WHERE id = ?
+          `).bind(calendarEventId, consultationId).run();
+
+          console.log(`Calendar event created: ${calendarEventId}`);
+        } else {
+          console.error('Calendar event creation failed:', calendarResult.error);
+        }
+      } catch (calendarError) {
+        console.error('Calendar auto-registration error:', calendarError);
+        // カレンダー登録に失敗しても予約自体は続行
+      }
+    }
+
     // 管理者に通知メール
     if (RESEND_API_KEY) {
       try {
