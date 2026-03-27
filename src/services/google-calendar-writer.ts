@@ -485,7 +485,7 @@ export async function getAvailableDatesWithServiceAccount(
   const result: { date: string; dayOfWeek: number; hasSlots: boolean; slots: { time: string; available: boolean }[] }[] = []
   const today = getTodayJSTForRead()
 
-  for (let i = 0; i < days; i++) {
+  for (let i = 3; i < days; i++) { // 3日前までの予約制限（承認・決済の猶予）
     const targetDate = addDaysToDateForRead(today.dateStr, i)
     const dayOfWeek = new Date(targetDate.year, targetDate.month - 1, targetDate.day).getDay()
 
