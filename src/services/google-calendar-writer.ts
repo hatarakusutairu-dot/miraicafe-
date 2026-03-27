@@ -333,8 +333,8 @@ interface BusySlot {
 }
 
 const BUSINESS_HOURS = {
-  weekdays: { start: 10, end: 20 },
-  saturday: { start: 10, end: 20 },
+  weekdays: { start: 10, end: 18 },  // 10:00-18:00
+  saturday: { start: 10, end: 18 },  // 10:00-18:00
 }
 
 const BUFFER_MINUTES = 60
