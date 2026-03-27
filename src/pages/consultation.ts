@@ -406,6 +406,17 @@ export const renderConsultationPage = (props: ConsultationPageProps = {}) => {
         color: white;
       }
       
+      .calendar-day.limited {
+        background: #fef3c7;
+        color: #b45309;
+        font-weight: 600;
+      }
+      
+      .calendar-day.limited:hover {
+        background: #f59e0b;
+        color: white;
+      }
+      
       .calendar-day.selected {
         background: #ec4899;
         color: white;
@@ -670,7 +681,13 @@ export const renderConsultationPage = (props: ConsultationPageProps = {}) => {
           } else if (isSunday) {
             dayDiv.classList.add('unavailable', 'sunday');
           } else if (data && data.hasSlots) {
-            dayDiv.classList.add('available');
+            // 空きスロット数で色分け（3個以下は残りわずか）
+            const availableCount = data.slots.filter(s => s.available).length;
+            if (availableCount <= 3) {
+              dayDiv.classList.add('limited');
+            } else {
+              dayDiv.classList.add('available');
+            }
             if (dayOfWeek === 6) dayDiv.classList.add('saturday');
             dayDiv.onclick = () => selectDate(dateStr);
           } else {
