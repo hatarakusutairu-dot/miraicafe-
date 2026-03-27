@@ -453,6 +453,9 @@ function getAvailableSlotsForDate(
       const slotEndHour = hour + Math.floor((minute + duration) / 60)
       const slotEndMinute = (minute + duration) % 60
       if (slotEndHour > hours.end || (slotEndHour === hours.end && slotEndMinute > 0)) continue
+      
+      // 昼休み(12:00-13:00)は除外
+      if (hour === 12) continue
       if (isToday && (hour < currentHourJST || (hour === currentHourJST && minute <= currentMinuteJST))) continue
 
       const slotStartMs = Date.UTC(year, month - 1, day, hour - 9, minute, 0)
