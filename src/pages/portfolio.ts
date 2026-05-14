@@ -547,29 +547,32 @@ export const renderPortfolioDetailPage = (portfolio: Portfolio, relatedPortfolio
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          ${courses.map(course => `
+          ${courses.map(course => {
+            // HTMLタグを除去して60文字に切り詰め
+            const plainDesc = (course.description || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
+            const shortDesc = plainDesc.length > 60 ? plainDesc.substring(0, 60) + '...' : plainDesc
+            return `
             <a href="/courses/${course.id}" class="group block">
-              <div class="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100">
-                <div class="aspect-video overflow-hidden relative">
+              <div class="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100 h-full flex flex-col">
+                <div class="aspect-video overflow-hidden relative flex-shrink-0">
                   <img src="${course.image}" alt="${course.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                   <div class="absolute top-3 left-3">
                     <span class="bg-white/95 backdrop-blur-sm text-xs font-semibold text-amber-700 px-3 py-1 rounded-full">${course.category}</span>
                   </div>
                 </div>
-                <div class="p-5">
-                  <h3 class="font-bold text-cafe-text group-hover:text-amber-600 transition-colors line-clamp-1">${course.title}</h3>
-                  <p class="text-sm text-cafe-textLight mt-2 line-clamp-2">${course.description}</p>
-                  <div class="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                    <div class="flex items-center gap-3 text-xs text-gray-500">
-                      <span><i class="fas fa-clock mr-1"></i>${course.duration}</span>
-                      <span><i class="fas fa-signal mr-1"></i>${course.level}</span>
+                <div class="p-5 flex flex-col flex-grow">
+                  <h3 class="font-bold text-cafe-text group-hover:text-amber-600 transition-colors line-clamp-2 text-sm">${course.title}</h3>
+                  <p class="text-xs text-cafe-textLight mt-2 flex-grow">${shortDesc}</p>
+                  <div class="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                    <div class="flex items-center gap-2 text-xs text-gray-500">
+                      <span><i class="fas fa-clock mr-1"></i>${course.duration || '未定'}</span>
                     </div>
-                    <span class="text-amber-600 font-bold">${course.price === 0 ? '無料' : '¥' + course.price.toLocaleString()}</span>
+                    <span class="text-amber-600 font-bold text-sm">${course.price === 0 ? '無料' : '¥' + course.price.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
             </a>
-          `).join('')}
+          `}).join('')}
         </div>
         
         <div class="text-center mt-10">
