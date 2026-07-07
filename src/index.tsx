@@ -111,6 +111,7 @@ type Bindings = {
   GOOGLE_SERVICE_ACCOUNT_KEY?: string  // Service Account JSON for calendar write access
   ADMIN_NOTIFICATION_EMAIL?: string  // 管理者通知メールの宛先（未設定時は既定値）
   CRON_SECRET?: string  // リマインドcron用シークレット（未設定時はSTRIPE_WEBHOOK_SECRETを流用）
+  SESSION_SECRET?: string  // 管理セッション署名用シークレット（本番では必須設定）
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -1650,16 +1651,34 @@ app.post('/api/consultation/apply', async (c) => {
 
   const body = await c.req.json();
   const { type, duration, date, time, customerName, customerEmail, customerPhone, message, agreedToTerms } = body;
-  
+
   if (!type || !duration || !date || !time || !customerName || !customerEmail) {
     return c.json({ error: '必須項目が不足しています' }, 400);
   }
-  
+
   if (!agreedToTerms) {
     return c.json({ error: '利用規約への同意が必要です' }, 400);
   }
-  
-  const price = calculatePrice(duration);
+
+  // 入力値の形式検証（メール等でそのまま表示されるため、HTML等の混入を入口で防ぐ）
+  const durationNum = parseInt(String(duration), 10);
+  if (type !== 'ai' && type !== 'mental') {
+    return c.json({ error: '相談タイプが不正です' }, 400);
+  }
+  if (![30, 60].includes(durationNum)) {
+    return c.json({ error: '相談時間が不正です' }, 400);
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+    return c.json({ error: '日付の形式が不正です' }, 400);
+  }
+  if (!/^\d{1,2}:\d{2}$/.test(String(time))) {
+    return c.json({ error: '時刻の形式が不正です' }, 400);
+  }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(customerEmail))) {
+    return c.json({ error: 'メールアドレスの形式が不正です' }, 400);
+  }
+
+  const price = calculatePrice(durationNum);
   const typeLabel = type === 'ai' ? 'AI活用相談' : 'キャリア・メンタル相談';
   const dateLabel = formatDateJa(date);
   
@@ -1674,7 +1693,7 @@ app.post('/api/consultation/apply', async (c) => {
         amount, status, payment_status, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_approval', 'pending', datetime('now'))
     `).bind(
-      consultationId, type, duration, date, time,
+      consultationId, type, durationNum, date, time,
       customerName, customerEmail, customerPhone || null, message || null,
       price
     ).run();
@@ -1690,10 +1709,10 @@ app.post('/api/consultation/apply', async (c) => {
           GOOGLE_CALENDAR_ID,
           {
             summary: `【仮予約】${customerName}様 ${typeLabel}`,
-            description: `お客様: ${customerName}\nメール: ${customerEmail}\n電話: ${customerPhone || '-'}\n\n相談タイプ: ${typeLabel}\n時間: ${duration}分\n料金: ¥${price.toLocaleString()}\n\n※ 承認待ちの仮予約です\n※ 決済完了後に正式予約となります\n\nメッセージ:\n${message || 'なし'}`,
+            description: `お客様: ${customerName}\nメール: ${customerEmail}\n電話: ${customerPhone || '-'}\n\n相談タイプ: ${typeLabel}\n時間: ${durationNum}分\n料金: ¥${price.toLocaleString()}\n\n※ 承認待ちの仮予約です\n※ 決済完了後に正式予約となります\n\nメッセージ:\n${message || 'なし'}`,
             startDate: date,
             startTime: time,
-            duration: duration,
+            duration: durationNum,
             location: 'https://meet.google.com/hsd-xuri-hiu',
             colorId: '5' // 黄色（仮予約）
           }
@@ -2067,7 +2086,7 @@ ${MEET_URL}
                 <h2 style="color: #ec4899;">新しい個別相談の予約が入りました</h2>
                 <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
                   <p><strong>お客様:</strong> ${escapeHtml(metadata.customer_name || '')}</p>
-                  <p><strong>メール:</strong> ${session.customer_email}</p>
+                  <p><strong>メール:</strong> ${escapeHtml(session.customer_email || '')}</p>
                   <p><strong>相談タイプ:</strong> ${typeLabel}</p>
                   <p><strong>日時:</strong> ${dateLabel} ${metadata.time}〜 (${metadata.duration}分)</p>
                   <p><strong>金額:</strong> ¥${session.amount_total?.toLocaleString()}</p>
@@ -4665,37 +4684,71 @@ app.post('/api/reviews', async (c) => {
 
 // セッション管理（署名付きCookie方式：Cloudflare Workers対応）
 const SESSION_DURATION = 24 * 60 * 60 * 1000 // 24時間
-const SESSION_SECRET = 'miraicafe-admin-secret-2026' // 本番では環境変数から取得推奨
+// フォールバック用の既定シークレット。本番では必ず環境変数 SESSION_SECRET を設定すること。
+// 未設定だとこの公開値が使われ、管理セッションを偽造される恐れがある。
+const DEFAULT_SESSION_SECRET = 'miraicafe-admin-secret-2026'
 
-// 署名付きトークンを生成
-function generateSessionToken(email: string): string {
+// セッション署名に使うシークレットを解決（環境変数優先）
+function resolveSessionSecret(env: { SESSION_SECRET?: string }): string {
+  if (!env.SESSION_SECRET) {
+    console.warn('SESSION_SECRET is not set; using insecure default. Set the SESSION_SECRET env var in production.')
+  }
+  return env.SESSION_SECRET || DEFAULT_SESSION_SECRET
+}
+
+// ArrayBuffer -> Base64URL
+function base64UrlFromBytes(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let bin = ''
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i])
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+}
+
+// HMAC-SHA256 署名（ペイロード全体を保護する）
+async function hmacSha256(secret: string, message: string): Promise<string> {
+  const enc = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  )
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message))
+  return base64UrlFromBytes(sig)
+}
+
+// 定数時間比較（タイミング攻撃対策）
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return diff === 0
+}
+
+// 署名付きトークンを生成（HMAC-SHA256）
+async function generateSessionToken(email: string, secret: string): Promise<string> {
   const expiresAt = Date.now() + SESSION_DURATION
-  const data = JSON.stringify({ email, expiresAt })
-  const encoded = btoa(data)
-  // 簡易署名（本番ではHMAC-SHA256を使用推奨）
-  const signature = btoa(SESSION_SECRET + encoded).slice(0, 16)
+  const encoded = btoa(JSON.stringify({ email, expiresAt }))
+  const signature = await hmacSha256(secret, encoded)
   return `${encoded}.${signature}`
 }
 
-// トークンを検証
-function validateSessionToken(token: string | undefined): { valid: boolean; email?: string } {
+// トークンを検証（HMAC-SHA256・定数時間比較）
+async function validateSessionToken(token: string | undefined, secret: string): Promise<{ valid: boolean; email?: string }> {
   if (!token) return { valid: false }
-  
+
   try {
     const [encoded, signature] = token.split('.')
     if (!encoded || !signature) return { valid: false }
-    
-    // 署名検証
-    const expectedSignature = btoa(SESSION_SECRET + encoded).slice(0, 16)
-    if (signature !== expectedSignature) return { valid: false }
-    
+
+    // 署名検証（署名がペイロード全体をカバーする）
+    const expectedSignature = await hmacSha256(secret, encoded)
+    if (!timingSafeEqual(signature, expectedSignature)) return { valid: false }
+
     // データ復元
     const data = JSON.parse(atob(encoded))
     if (!data.email || !data.expiresAt) return { valid: false }
-    
+
     // 有効期限チェック
     if (Date.now() > data.expiresAt) return { valid: false }
-    
+
     return { valid: true, email: data.email }
   } catch {
     return { valid: false }
@@ -4712,8 +4765,8 @@ app.use('/admin/*', async (c, next) => {
   }
   
   const sessionToken = getCookie(c, 'admin_session')
-  const { valid } = validateSessionToken(sessionToken)
-  
+  const { valid } = await validateSessionToken(sessionToken, resolveSessionSecret(c.env))
+
   if (!valid) {
     // API リクエストの場合は JSON エラーを返す
     if (path.includes('/admin/api/')) {
@@ -4721,14 +4774,14 @@ app.use('/admin/*', async (c, next) => {
     }
     return c.redirect('/admin/login')
   }
-  
+
   return next()
 })
 
 // ログインページ
-app.get('/admin/login', (c) => {
+app.get('/admin/login', async (c) => {
   const sessionToken = getCookie(c, 'admin_session')
-  const { valid } = validateSessionToken(sessionToken)
+  const { valid } = await validateSessionToken(sessionToken, resolveSessionSecret(c.env))
   if (valid) {
     return c.redirect('/admin')
   }
@@ -4747,7 +4800,7 @@ app.post('/admin/login', async (c) => {
   
   if (email === adminEmail && password === adminPassword) {
     // 署名付きトークンを生成
-    const sessionToken = generateSessionToken(email)
+    const sessionToken = await generateSessionToken(email, resolveSessionSecret(c.env))
     
     // 本番環境ではSecure、開発環境では無効
     const isProduction = c.req.url.startsWith('https://')
@@ -7650,7 +7703,7 @@ app.post('/admin/contacts/:id/status', async (c) => {
 app.post('/admin/api/contacts/:id/reply', async (c) => {
   // 認証チェック
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
   
@@ -7763,7 +7816,7 @@ app.post('/admin/api/upload', async (c) => {
   try {
     // 認証チェック
     const sessionId = getCookie(c, 'admin_session')
-    if (!sessionId || !validateSessionToken(sessionId).valid) {
+    if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
       return c.json({ error: '認証が必要です' }, 401)
     }
 
@@ -7844,7 +7897,7 @@ app.post('/admin/api/upload', async (c) => {
 app.post('/admin/api/upload-multiple', async (c) => {
   // 認証チェック
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
 
@@ -7913,7 +7966,7 @@ app.post('/admin/api/upload-multiple', async (c) => {
 app.post('/admin/api/upload-video', async (c) => {
   // 認証チェック
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
 
@@ -7992,7 +8045,7 @@ app.post('/admin/api/upload-video', async (c) => {
 app.delete('/admin/api/upload/:fileIdOrName', async (c) => {
   // 認証チェック
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
 
@@ -8015,7 +8068,7 @@ app.delete('/admin/api/upload/:fileIdOrName', async (c) => {
 app.get('/admin/api/ai/search-images', async (c) => {
   // 認証チェック
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
 
@@ -10181,7 +10234,7 @@ app.post('/api/survey/submit', async (c) => {
 // 会員一覧
 app.get('/admin/members', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.redirect('/admin/login')
   }
   
@@ -10242,7 +10295,7 @@ app.get('/admin/members', async (c) => {
 // クーポン管理
 app.get('/admin/members/coupons', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.redirect('/admin/login')
   }
   
@@ -10264,7 +10317,7 @@ app.get('/admin/members/coupons', async (c) => {
 // 特典設定
 app.get('/admin/members/settings', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.redirect('/admin/login')
   }
   
@@ -10293,7 +10346,7 @@ app.get('/admin/members/settings', async (c) => {
 // バンドル一覧
 app.get('/admin/bundles', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.redirect('/admin/login')
   }
   
@@ -10334,7 +10387,7 @@ app.get('/admin/bundles', async (c) => {
 // バンドル詳細取得API
 app.get('/admin/api/bundles/:id', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
   
@@ -10366,7 +10419,7 @@ app.get('/admin/api/bundles/:id', async (c) => {
 // バンドル作成・更新API
 app.post('/admin/api/bundles', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
   
@@ -10446,7 +10499,7 @@ app.post('/admin/api/bundles', async (c) => {
 // バンドル公開/非公開切り替え
 app.post('/admin/api/bundles/:id/toggle', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
   
@@ -10467,7 +10520,7 @@ app.post('/admin/api/bundles/:id/toggle', async (c) => {
 // バンドル削除
 app.delete('/admin/api/bundles/:id', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
   
@@ -11313,9 +11366,10 @@ app.get('/api/cron/send-reminders', async (c) => {
   
   // 管理者セッションまたはCronシークレットで認証
   const sessionId = getCookie(c, 'admin_session')
-  const isAdmin = sessionId && validateSessionToken(sessionId).valid
-  const isCron = authHeader === cronSecret
-  
+  const isAdmin = sessionId && (await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid
+  // シークレット未設定時に undefined === undefined でバイパスされないよう、truthy を必須にする
+  const isCron = !!cronSecret && authHeader === cronSecret
+
   if (!isAdmin && !isCron) {
     return c.json({ error: 'Unauthorized' }, 401)
   }
@@ -11435,7 +11489,7 @@ app.get('/api/cron/send-reminders', async (c) => {
 // 管理画面からリマインドメール手動送信
 app.post('/admin/api/send-reminder', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
   
@@ -11523,7 +11577,7 @@ app.post('/admin/api/send-reminder', async (c) => {
 // 会員一覧取得
 app.get('/admin/api/members', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
   
@@ -11570,7 +11624,7 @@ app.get('/admin/api/members', async (c) => {
 // 会員詳細取得
 app.get('/admin/api/members/:id', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
   
@@ -11596,7 +11650,7 @@ app.get('/admin/api/members/:id', async (c) => {
 // ポイント手動付与
 app.post('/admin/api/members/:id/add-points', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
   
@@ -11636,7 +11690,7 @@ app.post('/admin/api/members/:id/add-points', async (c) => {
 // クーポン一覧取得
 app.get('/admin/api/coupons', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
   
@@ -11658,7 +11712,7 @@ app.get('/admin/api/coupons', async (c) => {
 // クーポン作成
 app.post('/admin/api/coupons', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
   
@@ -11711,7 +11765,7 @@ app.post('/admin/api/coupons', async (c) => {
 // クーポン無効化
 app.delete('/admin/api/coupons/:id', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
   
@@ -11731,7 +11785,7 @@ app.delete('/admin/api/coupons/:id', async (c) => {
 // 特典設定の更新
 app.put('/admin/api/reward-settings', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
   
@@ -11755,7 +11809,7 @@ app.put('/admin/api/reward-settings', async (c) => {
 // 紹介実績一覧
 app.get('/admin/api/referrals', async (c) => {
   const sessionId = getCookie(c, 'admin_session')
-  if (!sessionId || !validateSessionToken(sessionId).valid) {
+  if (!sessionId || !(await validateSessionToken(sessionId, resolveSessionSecret(c.env))).valid) {
     return c.json({ error: '認証が必要です' }, 401)
   }
   
