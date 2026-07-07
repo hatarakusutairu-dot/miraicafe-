@@ -1,8 +1,10 @@
 // Email notification service using Resend API
 // Resend: https://resend.com/
 
-// 管理者メールアドレス（送信元・通知先）
-const ADMIN_EMAIL = 'ai.career@miraicafe.work'
+// 管理者メールアドレス（通知先）
+// 環境変数 ADMIN_NOTIFICATION_EMAIL で上書き可能。未設定時は運営者のGmailに送信する
+// ※ ADMIN_EMAIL は管理画面ログイン用に使われているため別名にしている
+const DEFAULT_ADMIN_EMAIL = 'hatarakusutairu@gmail.com'
 const FROM_EMAIL = 'mirAIcafe <noreply@miraicafe.work>'  // Resendで認証済みドメイン
 
 export interface EmailOptions {
@@ -14,6 +16,12 @@ export interface EmailOptions {
 
 export interface Env {
   RESEND_API_KEY?: string
+  ADMIN_NOTIFICATION_EMAIL?: string
+}
+
+// 管理者通知の宛先を取得（全メールで共通利用する）
+export function getAdminEmail(env: Env): string {
+  return env.ADMIN_NOTIFICATION_EMAIL || DEFAULT_ADMIN_EMAIL
 }
 
 // Resend APIを使用してメール送信
@@ -136,7 +144,7 @@ export async function sendContactNotificationToAdmin(env: Env, contact: ContactD
   `
 
   return sendEmail(env, {
-    to: ADMIN_EMAIL,
+    to: getAdminEmail(env),
     subject,
     html,
     replyTo: contact.email
@@ -233,7 +241,7 @@ export async function sendReservationNotificationToAdmin(env: Env, reservation: 
   `
 
   return sendEmail(env, {
-    to: ADMIN_EMAIL,
+    to: getAdminEmail(env),
     subject,
     html,
     replyTo: reservation.email
@@ -413,14 +421,14 @@ export async function sendReviewNotificationToAdmin(env: Env, review: ReviewData
   `
 
   return sendEmail(env, {
-    to: ADMIN_EMAIL,
+    to: getAdminEmail(env),
     subject,
     html
   })
 }
 
 // HTMLエスケープ関数
-function escapeHtml(text: string): string {
+export function escapeHtml(text: string): string {
   const htmlEntities: Record<string, string> = {
     '&': '&amp;',
     '<': '&lt;',
@@ -687,5 +695,5 @@ export async function sendReminderEmail(
   })
 }
 
-// エクスポート
-export { ADMIN_EMAIL }
+// 後方互換のためのエクスポート（新規コードでは getAdminEmail(env) を使用すること）
+export { DEFAULT_ADMIN_EMAIL as ADMIN_EMAIL }
