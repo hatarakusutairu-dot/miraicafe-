@@ -129,18 +129,37 @@ async function incrementScheduleEnrolled(db: D1Database, scheduleId: string | nu
   }
 }
 
-// 残席カウント: 講座ID+日付でenrolledを増減する（キャンセル/復帰用。0未満にはならない）
-async function adjustScheduleEnrolledByCourseDate(
+// 予約の preferred_time("HH:MM - HH:MM" 等) から開始時刻 "HH:MM" を取り出す
+function extractStartTime(preferredTime: string | null | undefined): string | null {
+  if (!preferredTime) return null
+  const m = preferredTime.match(/(\d{1,2}:\d{2})/)
+  return m ? m[1] : null
+}
+
+// 残席カウント: 予約(course_id + date + 開始時刻)に対応する1枠だけenrolledを増減する。
+// 同一講座が同じ日に複数枠を持つケースでも、開始時刻で対象を1枠に絞る（0未満にはならない）
+async function adjustScheduleEnrolledForBooking(
   db: D1Database,
   courseId: string | null | undefined,
   date: string | null | undefined,
+  preferredTime: string | null | undefined,
   delta: number
 ): Promise<void> {
   if (!courseId || !date) return
   try {
+    const startTime = extractStartTime(preferredTime)
+    // 対象スケジュールを1件だけ解決（開始時刻が分かればそれで一致、なければ最古の1件）
+    const target = startTime
+      ? await db.prepare(
+          `SELECT id FROM schedules WHERE course_id = ? AND date = ? AND start_time = ? ORDER BY id ASC LIMIT 1`
+        ).bind(courseId, date, startTime).first() as any
+      : await db.prepare(
+          `SELECT id FROM schedules WHERE course_id = ? AND date = ? ORDER BY id ASC LIMIT 1`
+        ).bind(courseId, date).first() as any
+    if (!target?.id) return
     await db.prepare(
-      `UPDATE schedules SET enrolled = MAX(COALESCE(enrolled, 0) + ?, 0) WHERE course_id = ? AND date = ?`
-    ).bind(delta, courseId, date).run()
+      `UPDATE schedules SET enrolled = MAX(COALESCE(enrolled, 0) + ?, 0) WHERE id = ?`
+    ).bind(delta, target.id).run()
   } catch (e) {
     console.error('Failed to adjust schedule enrolled:', e)
   }
@@ -176,6 +195,20 @@ async function claimCheckoutSession(db: D1Database, sessionId: string): Promise<
     console.error('claimCheckoutSession error:', e)
     // 判定できない場合は従来通り既存予約チェックにフォールバック
     return 'no_record'
+  }
+}
+
+// 処理権を解放する（予約作成に失敗したとき呼ぶ）。
+// status を 'pending' に戻すことで、Stripeの再送や別経路が再度 claim して復旧できるようにする。
+// これにより「claimだけ消費されて予約が作られない」状態が永続化するのを防ぐ。
+async function releaseCheckoutClaim(db: D1Database, sessionId: string): Promise<void> {
+  try {
+    await db.prepare(`
+      UPDATE payments SET status = 'pending', updated_at = CURRENT_TIMESTAMP
+      WHERE stripe_checkout_session_id = ? AND status = 'succeeded'
+    `).bind(sessionId).run()
+  } catch (e) {
+    console.error('releaseCheckoutClaim error:', e)
   }
 }
 
@@ -1046,8 +1079,24 @@ app.get('/payment-complete', async (c) => {
                   console.error('Failed to send booking confirmation email:', emailErr)
                 }
               }
+
+              // 管理者への予約通知（この経路で新規作成した場合のみ。Webhookが作成した場合はそちらが送る）
+              sendReservationNotificationToAdmin(c.env, {
+                name: customerName,
+                email: customerEmail,
+                phone: customerPhone,
+                courseName: courseName,
+                courseId: metadata.course_id,
+                scheduleDate: scheduleResult?.date || '',
+                scheduleTime: scheduleResult ? `${scheduleResult.start_time} - ${scheduleResult.end_time || ''}` : '',
+                location: scheduleResult?.location || 'オンライン',
+                price: session.amount_total || 0,
+                reservationId: singleBookingId
+              }).catch(err => console.error('Failed to send admin notification:', err))
             } catch (dbError: any) {
               console.error('Failed to create single booking:', dbError)
+              // 処理権を解放し、Webhook再送で復旧できるようにする
+              await releaseCheckoutClaim(c.env.DB, sessionId)
               // エラーをpaymentsテーブルに記録
               try {
                 await c.env.DB.prepare(`
@@ -1059,7 +1108,7 @@ app.get('/payment-complete', async (c) => {
               }
             }
           }
-          
+
           return c.html(renderPaymentCompletePage({
             success: true,
             bookingId: singleBookingId?.toString() || '',
@@ -1153,50 +1202,70 @@ app.get('/payment-complete', async (c) => {
               }
             }
 
-            // 開催期の申込人数を更新（1申込につき1人分）
-            if (createdCount > 0) {
-              await adjustTermEnrolled(c.env.DB, metadata.term_id, 1)
-            }
-
-            console.log(`Created ${createdCount} bookings with series_booking_id: ${seriesBookingId}`)
-            
-            // paymentsテーブルも更新
-            await c.env.DB.prepare(`
-              UPDATE payments SET 
-                status = 'succeeded',
-                stripe_payment_intent_id = ?,
-                metadata = ?
-              WHERE stripe_checkout_session_id = ?
-            `).bind(
-              session.payment_intent || null,
-              JSON.stringify({ ...metadata, series_booking_id: seriesBookingId }),
-              sessionId
-            ).run()
-            
-            // シリーズ予約完了メール送信
-            console.log('Sending series booking confirmation email to:', customerEmail)
-            if (customerEmail) {
-              const seriesSchedules = (linkedCourses as any[]).map((lc: any) => ({
-                courseTitle: lc.title,
-                date: lc.date || '未定',
-                startTime: lc.start_time || '--:--',
-                endTime: lc.end_time || '--:--'
-              }))
-              
-              try {
-                await sendBookingConfirmationEmail(c.env, {
-                  customerName,
-                  customerEmail,
-                  courseName,
-                  amount: session.amount_total || 0,
-                  bookingId: seriesBookingId,
-                  isSeriesBooking: true,
-                  seriesSchedules
-                })
-                console.log('Series booking confirmation email sent successfully')
-              } catch (emailErr) {
-                console.error('Failed to send series confirmation email:', emailErr)
+            // 全件作成に失敗した場合は処理権を解放し、Webhook再送で復旧できるようにする
+            if (createdCount === 0 && linkedCourses.length > 0) {
+              console.error('Series booking (payment-complete): all inserts failed')
+              await releaseCheckoutClaim(c.env.DB, sessionId)
+            } else {
+              // 開催期の申込人数を更新（1申込につき1人分）
+              if (createdCount > 0) {
+                await adjustTermEnrolled(c.env.DB, metadata.term_id, 1)
               }
+
+              console.log(`Created ${createdCount} bookings with series_booking_id: ${seriesBookingId}`)
+
+              // paymentsテーブルも更新
+              await c.env.DB.prepare(`
+                UPDATE payments SET
+                  status = 'succeeded',
+                  stripe_payment_intent_id = ?,
+                  metadata = ?
+                WHERE stripe_checkout_session_id = ?
+              `).bind(
+                session.payment_intent || null,
+                JSON.stringify({ ...metadata, series_booking_id: seriesBookingId }),
+                sessionId
+              ).run()
+
+              // シリーズ予約完了メール送信
+              console.log('Sending series booking confirmation email to:', customerEmail)
+              if (customerEmail) {
+                const seriesSchedules = (linkedCourses as any[]).map((lc: any) => ({
+                  courseTitle: lc.title,
+                  date: lc.date || '未定',
+                  startTime: lc.start_time || '--:--',
+                  endTime: lc.end_time || '--:--'
+                }))
+
+                try {
+                  await sendBookingConfirmationEmail(c.env, {
+                    customerName,
+                    customerEmail,
+                    courseName,
+                    amount: session.amount_total || 0,
+                    bookingId: seriesBookingId,
+                    isSeriesBooking: true,
+                    seriesSchedules
+                  })
+                  console.log('Series booking confirmation email sent successfully')
+                } catch (emailErr) {
+                  console.error('Failed to send series confirmation email:', emailErr)
+                }
+              }
+
+              // 管理者への予約通知（この経路で新規作成した場合のみ）
+              sendReservationNotificationToAdmin(c.env, {
+                name: customerName,
+                email: customerEmail,
+                phone: customerPhone,
+                courseName: `${courseName}（シリーズ一括）`,
+                courseId: metadata.series_id,
+                scheduleDate: '',
+                scheduleTime: `全${linkedCourses.length}回`,
+                location: 'Google Meet（オンライン）',
+                price: session.amount_total || 0,
+                reservationId: seriesBookingId
+              }).catch(err => console.error('Failed to send admin notification:', err))
             }
           }
         }
@@ -1302,8 +1371,24 @@ app.get('/payment-complete', async (c) => {
                   console.error('Failed to send confirmation email:', emailErr)
                 }
               }
+
+              // 管理者への予約通知（この経路で新規作成した場合のみ）
+              sendReservationNotificationToAdmin(c.env, {
+                name: customerName,
+                email: customerEmail,
+                phone: customerPhone,
+                courseName: courseName,
+                courseId: metadata.course_id,
+                scheduleDate: scheduleResult?.date || '',
+                scheduleTime: scheduleResult ? `${scheduleResult.start_time} - ${scheduleResult.end_time || ''}` : '',
+                location: scheduleResult?.location || 'オンライン',
+                price: session.amount_total || 0,
+                reservationId: singleBookingId
+              }).catch(err => console.error('Failed to send admin notification:', err))
             } catch (dbError: any) {
               console.error('Failed to create standalone single booking:', dbError)
+              // 処理権を解放し、Webhook再送で復旧できるようにする
+              await releaseCheckoutClaim(c.env.DB, sessionId)
             }
           }
           
@@ -1836,17 +1921,18 @@ app.get('/consultation/complete', async (c) => {
     const metadata = session.metadata || {};
     const consultationId = metadata.consultation_id;
     
-    // DBの予約ステータスを更新
-    // 条件付きUPDATEにより、Webhookが先に処理済みの場合はメールを再送しない（二重送信防止）
-    const confirmResult = await DB.prepare(`
-      UPDATE consultation_bookings
-      SET status = 'confirmed', payment_status = 'paid', stripe_payment_intent = ?
-      WHERE id = ? AND payment_status != 'paid'
-    `).bind(session.payment_intent, consultationId).run();
-    const isFirstConfirmation = (confirmResult.meta?.changes ?? 0) > 0;
-
     // 確認メール送信（日程・Meet URL含む）
     const MEET_URL = 'https://meet.google.com/hsd-xuri-hiu';
+
+    // DBの予約ステータスを更新
+    // 条件付きUPDATEにより、Webhookが先に処理済みの場合はメールを再送しない（二重送信防止）
+    // meet_url もここで保存する（Webhookが後着だと payment_status 条件でno-opになり列が埋まらないため）
+    const confirmResult = await DB.prepare(`
+      UPDATE consultation_bookings
+      SET status = 'confirmed', payment_status = 'paid', stripe_payment_intent = ?, meet_url = ?
+      WHERE id = ? AND payment_status != 'paid'
+    `).bind(session.payment_intent, MEET_URL, consultationId).run();
+    const isFirstConfirmation = (confirmResult.meta?.changes ?? 0) > 0;
 
     if (RESEND_API_KEY && isFirstConfirmation && metadata.customer_name) {
       try {
@@ -3799,6 +3885,13 @@ app.post('/api/stripe/webhook', async (c) => {
               }
             }
 
+            // 全件作成に失敗した場合は処理権を解放してエラーを投げ、Stripeに再送させる（復旧のため）
+            if (createdCount === 0 && linkedCourses.length > 0) {
+              console.error('Series booking: all inserts failed in webhook')
+              await releaseCheckoutClaim(c.env.DB, session.id)
+              throw new Error('Series booking creation failed')
+            }
+
             // 開催期の申込人数を更新（1申込につき1人分）
             if (createdCount > 0) {
               await adjustTermEnrolled(c.env.DB, termId, 1)
@@ -3854,54 +3947,65 @@ app.post('/api/stripe/webhook', async (c) => {
               ORDER BY id DESC LIMIT 1
             `).bind(courseId, customerEmail, schedule?.date || null).first() as any
 
+            // 既存予約が無い場合は作成する。
+            // claim==='already_processed'（別経路が処理権を保持）ならここでは作成せずスキップし、
+            // 並行時の二重作成を防ぐ。先行処理がINSERT失敗した場合は releaseCheckoutClaim で
+            // status が 'pending' に戻るため、Stripe再送時にこの経路が claim を取り直して作成する。
             if (existingSingle?.id) {
               bookingId = existingSingle.id
               console.log('Single booking already exists, skipping creation:', bookingId)
             } else if (claim === 'already_processed') {
-              console.log('Checkout session already claimed elsewhere, skipping single booking creation')
+              console.log('Checkout session claimed elsewhere, deferring single booking creation')
             } else {
-              const result = await c.env.DB.prepare(`
-                INSERT INTO bookings (
-                  course_id, course_name, customer_name, customer_email, customer_phone,
-                  preferred_date, preferred_time, status, payment_status, amount, source
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, 'mirAIcafe')
-              `).bind(
-                courseId,
-                course.title,
-                customerName,
-                customerEmail,
-                customerPhone || null,
-                schedule?.date || null,
-                schedule ? `${schedule.start_time} - ${schedule.end_time}` : null,
-                session.amount_total || course.price
-              ).run()
+              try {
+                const result = await c.env.DB.prepare(`
+                  INSERT INTO bookings (
+                    course_id, course_name, customer_name, customer_email, customer_phone,
+                    preferred_date, preferred_time, status, payment_status, amount, source
+                  ) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'paid', ?, 'mirAIcafe')
+                `).bind(
+                  courseId,
+                  course.title,
+                  customerName,
+                  customerEmail,
+                  customerPhone || null,
+                  schedule?.date || null,
+                  schedule ? `${schedule.start_time} - ${schedule.end_time}` : null,
+                  session.amount_total || course.price
+                ).run()
 
-              bookingId = result.meta?.last_row_id
-              console.log('Single booking created:', bookingId)
+                bookingId = result.meta?.last_row_id
+                console.log('Single booking created:', bookingId)
 
-              // 残席カウントを更新
-              if (schedule) {
-                await incrementScheduleEnrolled(c.env.DB, schedule.id)
+                // 残席カウントを更新
+                if (schedule) {
+                  await incrementScheduleEnrolled(c.env.DB, schedule.id)
+                }
+
+                // メール通知（新規作成時のみ送信）
+                const emailData = {
+                  name: customerName,
+                  email: customerEmail,
+                  phone: customerPhone,
+                  courseName: course.title,
+                  courseId: courseId,
+                  scheduleDate: schedule?.date,
+                  scheduleTime: schedule ? `${schedule.start_time} - ${schedule.end_time}` : null,
+                  location: schedule?.location || 'オンライン',
+                  price: session.amount_total || course.price,
+                  reservationId: bookingId
+                }
+
+                sendReservationNotificationToAdmin(c.env, emailData)
+                  .catch(err => console.error('Failed to send notification:', err))
+                sendReservationConfirmationToCustomer(c.env, emailData)
+                  .catch(err => console.error('Failed to send confirmation:', err))
+              } catch (insertErr) {
+                // 作成に失敗したら処理権を解放し、エラーを投げてStripeに再送させる（復旧のため）
+                console.error('Failed to create single booking in webhook:', insertErr)
+                await releaseCheckoutClaim(c.env.DB, session.id)
+                throw insertErr
               }
-
-              // メール通知（新規作成時のみ送信）
-              const emailData = {
-                name: customerName,
-                email: customerEmail,
-                phone: customerPhone,
-                courseName: course.title,
-                courseId: courseId,
-                scheduleDate: schedule?.date,
-                scheduleTime: schedule ? `${schedule.start_time} - ${schedule.end_time}` : null,
-                location: schedule?.location || 'オンライン',
-                price: session.amount_total || course.price,
-                reservationId: bookingId
-              }
-
-              sendReservationNotificationToAdmin(c.env, emailData)
-                .catch(err => console.error('Failed to send notification:', err))
-              sendReservationConfirmationToCustomer(c.env, emailData)
-                .catch(err => console.error('Failed to send confirmation:', err))
             }
           }
         }
@@ -5919,7 +6023,10 @@ app.post('/admin/api/bookings/manual', async (c) => {
       admin_note || null,
       source
     ).run()
-    
+
+    // 残席カウントの同期: 対応スケジュールがあれば+1（後のキャンセル/削除の減算と対称にする）
+    await adjustScheduleEnrolledForBooking(c.env.DB, course_id, preferred_date || null, null, 1)
+
     return c.json({ success: true })
   } catch (error) {
     console.error('Manual booking error:', error)
@@ -6047,7 +6154,7 @@ app.post('/admin/bookings/:id/status', async (c) => {
     // 残席カウントの同期（キャンセル⇔復帰の遷移時のみ）
     if (booking && booking.status !== status) {
       if (status === 'cancelled' && booking.status !== 'cancelled') {
-        await adjustScheduleEnrolledByCourseDate(c.env.DB, booking.course_id, booking.preferred_date, -1)
+        await adjustScheduleEnrolledForBooking(c.env.DB, booking.course_id, booking.preferred_date, booking.preferred_time, -1)
         // シリーズ予約: 全回キャンセルになった時点で開催期の申込人数を1人分戻す
         if (booking.series_booking_id && booking.term_id) {
           const remaining = await c.env.DB.prepare(
@@ -6058,7 +6165,7 @@ app.post('/admin/bookings/:id/status', async (c) => {
           }
         }
       } else if (booking.status === 'cancelled' && status !== 'cancelled') {
-        await adjustScheduleEnrolledByCourseDate(c.env.DB, booking.course_id, booking.preferred_date, 1)
+        await adjustScheduleEnrolledForBooking(c.env.DB, booking.course_id, booking.preferred_date, booking.preferred_time, 1)
         // シリーズ予約: 全回キャンセル状態から復帰した時点で開催期の申込人数を1人分戻す
         if (booking.series_booking_id && booking.term_id) {
           const active = await c.env.DB.prepare(
@@ -6127,7 +6234,7 @@ app.post('/admin/bookings/:id/delete', async (c) => {
 
     // 残席カウントの同期（キャンセル済みでなかった予約の削除時のみ戻す）
     if (booking && booking.status !== 'cancelled') {
-      await adjustScheduleEnrolledByCourseDate(c.env.DB, booking.course_id, booking.preferred_date, -1)
+      await adjustScheduleEnrolledForBooking(c.env.DB, booking.course_id, booking.preferred_date, booking.preferred_time, -1)
       // シリーズ予約: 有効な予約が残っていなければ開催期の申込人数を1人分戻す
       if (booking.series_booking_id && booking.term_id) {
         const remaining = await c.env.DB.prepare(
