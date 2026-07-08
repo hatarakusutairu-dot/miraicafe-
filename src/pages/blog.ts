@@ -121,14 +121,14 @@ export const renderBlogPage = (posts: BlogPost[]) => {
               <!-- タグクラウド -->
               <div class="rounded-2xl p-5 border" style="background: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.5);">
                 <h3 class="text-lg font-bold mb-4 flex items-center" style="color: #1E293B;">
-                  <i class="fas fa-tags mr-2" style="color: #8B5CF6;"></i>タグ
+                  <i class="fas fa-tags mr-2" style="color: #B8956A;"></i>タグ
                 </h3>
                 <div class="flex flex-wrap gap-2">
                   ${allTags.map(tag => `
                     <a href="/blog?tag=${encodeURIComponent(tag.name)}" 
                        class="tag-link inline-flex items-center px-3 py-1.5 rounded-full text-sm transition-all cursor-pointer"
                        data-tag="${tag.name}"
-                       style="background: rgba(59, 130, 246, 0.1); color: #3B82F6;">
+                       style="background: rgba(107, 155, 98, 0.1); color: #6B9B62;">
                       #${tag.name}
                       <span class="ml-1 text-xs opacity-70">${tag.count}</span>
                     </a>
@@ -243,16 +243,16 @@ export const renderBlogPage = (posts: BlogPost[]) => {
     <!-- Newsletter Section -->
     <section class="py-10 bg-white">
       <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="rounded-3xl p-8 border" style="background: rgba(255,255,255,0.9); border-color: rgba(59, 130, 246, 0.2);">
+        <div class="rounded-3xl p-8 border" style="background: rgba(255,255,255,0.9); border-color: rgba(107, 155, 98, 0.2);">
           <div class="text-center">
-            <div class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg pulse-glow" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg pulse-glow" style="background: linear-gradient(135deg, #6B9B62 0%, #B8956A 100%);">
               <i class="fas fa-envelope text-white text-xl"></i>
             </div>
             <h2 class="text-xl font-bold mb-2" style="color: #1E293B;">最新情報をお届け</h2>
             <p class="text-sm mb-4" style="color: #64748B;">メールマガジンに登録して、AI学習の最新情報を受け取りましょう</p>
             <form class="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
               <input type="email" placeholder="メールアドレス" class="flex-1 p-3 border-2 rounded-xl focus:outline-none transition-colors bg-white text-sm" style="border-color: #E2E8F0;">
-              <button type="submit" class="btn-ai text-white px-5 py-3 rounded-xl font-medium shadow-lg text-sm" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
+              <button type="submit" class="btn-ai text-white px-5 py-3 rounded-xl font-medium shadow-lg text-sm" style="background: linear-gradient(135deg, #6B9B62 0%, #B8956A 100%);">
                 登録する
               </button>
             </form>
@@ -595,14 +595,14 @@ export const renderBlogPostPage = (post: BlogPost, allPosts: BlogPost[], courses
         height: 3px;
         background: linear-gradient(90deg, 
           transparent 0%, 
-          rgba(196, 181, 253, 0.7) 20%, 
+          rgba(184, 149, 106, 0.7) 20%, 
           rgba(251, 207, 232, 0.8) 40%,
           rgba(186, 230, 253, 0.8) 60%,
-          rgba(196, 181, 253, 0.7) 80%,
+          rgba(184, 149, 106, 0.7) 80%,
           transparent 100%);
         border-radius: 3px;
         animation: data-flow-horizontal 4s ease-in-out infinite;
-        box-shadow: 0 0 12px rgba(196, 181, 253, 0.4);
+        box-shadow: 0 0 12px rgba(184, 149, 106, 0.4);
       }
       
       /* スキャンライン - 優しいピンク */
@@ -626,7 +626,7 @@ export const renderBlogPostPage = (post: BlogPost, allPosts: BlogPost[], courses
         position: absolute;
         border-radius: 50%;
         background: radial-gradient(circle, 
-          rgba(196, 181, 253, 0.5) 0%, 
+          rgba(184, 149, 106, 0.5) 0%, 
           rgba(251, 207, 232, 0.3) 40%,
           transparent 70%);
         animation: float-orb 6s ease-in-out infinite;
@@ -637,7 +637,7 @@ export const renderBlogPostPage = (post: BlogPost, allPosts: BlogPost[], courses
       .pulse-ring {
         position: absolute;
         border-radius: 50%;
-        border: 2px solid rgba(196, 181, 253, 0.35);
+        border: 2px solid rgba(184, 149, 106, 0.35);
         animation: pulse-wave 4s ease-in-out infinite;
       }
       
@@ -646,8 +646,8 @@ export const renderBlogPostPage = (post: BlogPost, allPosts: BlogPost[], courses
         position: absolute;
         inset: 0;
         background-image: 
-          linear-gradient(rgba(196, 181, 253, 0.08) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(196, 181, 253, 0.08) 1px, transparent 1px);
+          linear-gradient(rgba(184, 149, 106, 0.08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(184, 149, 106, 0.08) 1px, transparent 1px);
         background-size: 50px 50px;
         animation: grid-pulse 5s ease-in-out infinite;
       }
@@ -656,7 +656,7 @@ export const renderBlogPostPage = (post: BlogPost, allPosts: BlogPost[], courses
       .spin-ring {
         position: absolute;
         border-radius: 50%;
-        border: 2px dashed rgba(196, 181, 253, 0.25);
+        border: 2px dashed rgba(184, 149, 106, 0.25);
         animation: spin-ring 25s linear infinite;
       }
       
@@ -666,14 +666,14 @@ export const renderBlogPostPage = (post: BlogPost, allPosts: BlogPost[], courses
         color: #1E293B;
         margin: 2.5rem 0 1rem;
         padding: 0.75rem 1rem;
-        background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
-        border-left: 4px solid #3B82F6;
+        background: linear-gradient(90deg, rgba(107, 155, 98, 0.1) 0%, transparent 100%);
+        border-left: 4px solid #6B9B62;
         border-radius: 0 8px 8px 0;
       }
       .blog-content h3 {
         font-size: 1.25rem;
         font-weight: 600;
-        color: #3B82F6;
+        color: #6B9B62;
         margin: 2rem 0 0.75rem;
       }
       .blog-content p {
@@ -694,25 +694,25 @@ export const renderBlogPostPage = (post: BlogPost, allPosts: BlogPost[], courses
         position: relative;
       }
       .blog-content ul li::marker {
-        color: #8B5CF6;
+        color: #B8956A;
       }
       .blog-content strong {
         color: #7C3AED;
         font-weight: 600;
       }
       .blog-content a {
-        color: #3B82F6;
+        color: #6B9B62;
         text-decoration: underline;
-        text-decoration-color: rgba(59, 130, 246, 0.3);
+        text-decoration-color: rgba(107, 155, 98, 0.3);
         transition: all 0.2s;
       }
       .blog-content a:hover {
-        color: #8B5CF6;
-        text-decoration-color: #8B5CF6;
+        color: #B8956A;
+        text-decoration-color: #B8956A;
       }
       .blog-content blockquote {
         background: linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%);
-        border-left: 4px solid #8B5CF6;
+        border-left: 4px solid #B8956A;
         padding: 1.5rem;
         margin: 2rem 0;
         border-radius: 0 16px 16px 0;
@@ -782,7 +782,7 @@ export const renderBlogPostPage = (post: BlogPost, allPosts: BlogPost[], courses
     <section class="py-16 md:py-20 ai-blog-bg min-h-screen relative">
       
       <!-- グリッドオーバーレイ - 薄め -->
-      <div class="absolute inset-0 pointer-events-none" style="background-image: linear-gradient(rgba(196, 181, 253, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(196, 181, 253, 0.06) 1px, transparent 1px); background-size: 60px 60px;"></div>
+      <div class="absolute inset-0 pointer-events-none" style="background-image: linear-gradient(rgba(184, 149, 106, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(184, 149, 106, 0.06) 1px, transparent 1px); background-size: 60px 60px;"></div>
       
       <!-- 両端の流れるコード -->
       <div class="absolute inset-0 overflow-hidden pointer-events-none">

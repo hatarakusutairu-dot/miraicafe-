@@ -60,18 +60,19 @@ export const renderLayout = (title: string, content: string, activeNav: string =
               aqua: '#B8D8D8',
               blue: '#8BBCBC'
             },
-            // Future/AI theme colors for compatibility
+            // 旧Future/AIテーマの互換トークン。値をカフェ系パレットに再マッピングして
+            // 全ページの世界観を「温かいカフェ×ほんのりAI」に統一している
             future: {
-              text: '#1E293B',
-              textLight: '#64748B',
-              light: '#F8FAFC',
-              sky: '#E2E8F0'
+              text: '#4A4035',       // = cafe.text
+              textLight: '#7A7265',  // = cafe.textLight
+              light: '#FAF8F3',      // = cafe.ivory
+              sky: '#E8DCC8'         // = cafe.beige（枠線・区切り）
             },
             ai: {
-              blue: '#3B82F6',
-              cyan: '#06B6D4',
-              purple: '#8B5CF6',
-              pink: '#EC4899'
+              blue: '#6B9B62',       // = nature.forest（情報・リンク系アクセント）
+              cyan: '#8BBCBC',       // = nature.blue
+              purple: '#B8956A',     // = cafe.wood（強調・シリーズ系）
+              pink: '#C97B5D'        // テラコッタ（暖色アクセント）
             }
           }
         }
@@ -268,35 +269,35 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       background: linear-gradient(135deg, #FAF8F3 0%, #F5F0E6 50%, #E8DCC8 100%);
     }
     
-    /* AI/Future Theme Gradients */
+    /* 旧AI/Futureテーマのグラデーション — カフェ系（ウッド/キャラメル）に統一 */
     .gradient-ai {
-      background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%) !important;
+      background: linear-gradient(135deg, #B8956A 0%, #C4A574 100%) !important;
     }
     .gradient-ai-text {
-      background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+      background: linear-gradient(135deg, #B8956A 0%, #8B7355 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
     .gradient-ai-light {
-      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+      background: linear-gradient(135deg, rgba(184, 149, 106, 0.10) 0%, rgba(143, 181, 133, 0.10) 100%);
     }
-    
-    /* Glass effect for AI theme */
+
+    /* Glass effect */
     .glass {
       background: rgba(255, 255, 255, 0.9);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      color: #1E293B; /* future-text color for visibility */
+      color: #4A4035; /* cafe.text */
     }
-    
-    /* AI Button style */
+
+    /* CTA Button style（旧btn-ai） */
     .btn-ai {
       transition: all 0.3s ease;
     }
     .btn-ai:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+      box-shadow: 0 8px 25px rgba(139, 115, 85, 0.30);
     }
     
     /* Warm button style for cafe theme */
@@ -314,25 +315,25 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     .orb-1 {
       width: 300px;
       height: 300px;
-      background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(143, 181, 133, 0.30) 0%, transparent 70%);
       top: -100px;
       right: -100px;
     }
     .orb-2 {
       width: 200px;
       height: 200px;
-      background: radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(196, 165, 116, 0.30) 0%, transparent 70%);
       bottom: -50px;
       left: -50px;
     }
-    
+
     /* Pulse glow animation */
     .pulse-glow {
       animation: pulseGlow 2s ease-in-out infinite;
     }
     @keyframes pulseGlow {
-      0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
-      50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.5); }
+      0%, 100% { box-shadow: 0 0 20px rgba(184, 149, 106, 0.30); }
+      50% { box-shadow: 0 0 40px rgba(184, 149, 106, 0.50); }
     }
     
     /* Wood accent text */
@@ -400,13 +401,13 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       transition: all 0.2s ease;
     }
     .filter-btn:hover {
-      background-color: rgba(59, 130, 246, 0.15); /* ai-blue/15 */
+      background-color: rgba(107, 155, 98, 0.15); /* ai-blue/15 */
       color: #1D4ED8; /* darker blue */
     }
     .filter-btn.active {
-      background-color: #3B82F6 !important; /* ai-blue */
+      background-color: #6B9B62 !important; /* ai-blue */
       color: #FFFFFF !important;
-      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+      box-shadow: 0 2px 8px rgba(107, 155, 98, 0.3);
     }
     .filter-btn.active:hover {
       background-color: #2563EB !important; /* darker ai-blue */
@@ -419,8 +420,8 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     }
     .course-card:hover {
       transform: translateY(-4px);
-      box-shadow: 0 20px 40px rgba(59, 130, 246, 0.15);
-      border-color: rgba(59, 130, 246, 0.4) !important;
+      box-shadow: 0 20px 40px rgba(107, 155, 98, 0.15);
+      border-color: rgba(107, 155, 98, 0.4) !important;
     }
     
     /* Navigation */

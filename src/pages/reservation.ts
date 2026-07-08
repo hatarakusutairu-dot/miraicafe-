@@ -514,7 +514,7 @@ export const renderReservationPage = (
                 </p>
               </div>
 
-              <button id="checkout-btn" disabled class="btn-ai w-full text-white py-4 rounded-full font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" style="background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);">
+              <button id="checkout-btn" disabled class="btn-ai w-full text-white py-4 rounded-full font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" style="background: linear-gradient(135deg, #6B9B62 0%, #B8956A 100%);">
                 <i id="checkout-btn-icon" class="fas fa-credit-card mr-2"></i><span id="checkout-btn-text">決済に進む</span>
               </button>
 
