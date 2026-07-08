@@ -78,6 +78,7 @@ import { generateAllCalendarLinks, generateEventDescription, type CalendarEvent 
 import { getAvailableDates, calculatePrice, formatDateJa } from './services/google-calendar'
 import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, confirmCalendarEvent, getAvailableDatesWithServiceAccount } from './services/google-calendar-writer'
 import { uploadToSupabase, deleteFromSupabase, type SupabaseConfig } from './services/supabase-storage'
+import { generateWithClaude, extractJson, CLAUDE_MODELS } from './services/claude'
 import { 
   getOrCreateMember, 
   getMemberByEmail, 
@@ -112,6 +113,7 @@ type Bindings = {
   ADMIN_NOTIFICATION_EMAIL?: string  // 管理者通知メールの宛先（未設定時は既定値）
   CRON_SECRET?: string  // リマインドcron用シークレット（未設定時はSTRIPE_WEBHOOK_SECRETを流用）
   SESSION_SECRET?: string  // 管理セッション署名用シークレット（本番では必須設定）
+  ANTHROPIC_API_KEY?: string  // Claude(Anthropic) APIキー（AIコンテンツ生成用）
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -9294,11 +9296,11 @@ app.post('/admin/api/ai/generate-article', async (c) => {
     if (!topic) {
       return c.json({ error: 'テーマを入力してください' }, 400)
     }
-    
-    if (!c.env.GEMINI_API_KEY) {
-      return c.json({ error: 'GEMINI_API_KEY が設定されていません' }, 500)
+
+    if (!c.env.ANTHROPIC_API_KEY) {
+      return c.json({ error: 'ANTHROPIC_API_KEY が設定されていません' }, 500)
     }
-    
+
     // 文字数マッピング
     const lengthMap: Record<string, string> = {
       short: '1000〜1500文字',
@@ -9375,118 +9377,57 @@ ${additionalInstructions ? `【追加の指示】\n${additionalInstructions}\n` 
 - 「まとめ」は「使ってみた感想」「今後も試してみたいこと」のようなニュアンスで
 `
 
-    // Gemini API呼び出し
-    const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro']
-    
-    for (const model of models) {
+    // Claude(Opus 4.8)で記事生成 — 長尺コンテンツは最高品質モデルを使用
+    let text: string
+    try {
+      text = await generateWithClaude(c.env, prompt, {
+        model: CLAUDE_MODELS.opus,
+        maxTokens: 8000,
+      })
+    } catch (aiError: any) {
+      console.error('[AI Writer] Claude generation error:', aiError?.message || aiError)
+      return c.json({ error: 'AI記事生成に失敗しました。しばらく待ってから再試行してください。' }, 500)
+    }
+
+    // JSONを抽出してパース
+    const parsed = extractJson<any>(text)
+    if (!parsed) {
+      console.log('[AI Writer] JSON not found/parseable in Claude response')
+      return c.json({ error: 'AI記事の生成結果を解析できませんでした。もう一度お試しください。' }, 500)
+    }
+
+    // Unsplash画像検索
+    const images: string[] = []
+    if (c.env.UNSPLASH_ACCESS_KEY) {
       try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${c.env.GEMINI_API_KEY}`,
+        const keyword = topic.split(/[\s、。]/)[0]
+        const unsplashResponse = await fetch(
+          `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keyword + ' technology AI')}&per_page=4&orientation=landscape`,
           {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 8000
-              }
-            })
+            headers: { 'Authorization': `Client-ID ${c.env.UNSPLASH_ACCESS_KEY}` }
           }
         )
-        
-        if (!response.ok) {
-          if (response.status === 429) {
-            console.log(`[AI Writer] ${model}: Rate limit, trying next model`)
-            await new Promise(r => setTimeout(r, 1000))
-            continue
-          }
-          continue
+
+        if (unsplashResponse.ok) {
+          const unsplashData = await unsplashResponse.json() as any
+          images.push(...unsplashData.results.map((r: any) => r.urls.regular))
         }
-        
-        const data = await response.json() as any
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
-        
-        // JSONを抽出してパース
-        const jsonMatch = text.match(/\{[\s\S]*\}/)
-        if (!jsonMatch) {
-          console.log(`[AI Writer] ${model}: JSON not found in response`)
-          continue
-        }
-        
-        // 制御文字を除去してJSONをクリーンアップ
-        let cleanJson = jsonMatch[0]
-          // 改行・タブ以外の制御文字を除去
-          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-          // 文字列内の改行をエスケープ（JSONの文字列値内の改行をエスケープ）
-          .replace(/("(?:[^"\\]|\\.)*")/g, (match) => {
-            return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
-          })
-        
-        let parsed: any
-        try {
-          parsed = JSON.parse(cleanJson)
-        } catch (parseError) {
-          console.log(`[AI Writer] ${model}: JSON parse error, attempting repair`)
-          // 最後の手段: 構造化データを手動抽出
-          const titleMatch = text.match(/"title"\s*:\s*"([^"]*)"/)
-          const contentMatch = text.match(/"content"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"metaDescription|"\s*,\s*"categories|"\s*})/)
-          const metaMatch = text.match(/"metaDescription"\s*:\s*"([^"]*)"/)
-          
-          if (titleMatch) {
-            parsed = {
-              title: titleMatch[1],
-              content: contentMatch ? contentMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : '',
-              metaDescription: metaMatch ? metaMatch[1] : '',
-              categories: ['AI活用術'],
-              tags: ['AI']
-            }
-          } else {
-            console.log(`[AI Writer] ${model}: Could not extract data`)
-            continue
-          }
-        }
-        
-        // Unsplash画像検索
-        const images: string[] = []
-        if (c.env.UNSPLASH_ACCESS_KEY) {
-          try {
-            const keyword = topic.split(/[\s、。]/)[0]
-            const unsplashResponse = await fetch(
-              `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keyword + ' technology AI')}&per_page=4&orientation=landscape`,
-              {
-                headers: { 'Authorization': `Client-ID ${c.env.UNSPLASH_ACCESS_KEY}` }
-              }
-            )
-            
-            if (unsplashResponse.ok) {
-              const unsplashData = await unsplashResponse.json() as any
-              images.push(...unsplashData.results.map((r: any) => r.urls.regular))
-            }
-          } catch (error) {
-            console.error('[AI Writer] Unsplash image fetch error:', error)
-          }
-        }
-        
-        console.log(`[AI Writer] Article generated successfully with ${model}`)
-        return c.json({
-          title: parsed.title || topic,
-          content: parsed.content || '',
-          excerpt: parsed.excerpt || parsed.metaDescription || '',
-          metaDescription: parsed.metaDescription || '',
-          categories: parsed.categories || ['AI活用術'],
-          tags: parsed.tags || [],
-          images
-        })
-        
-      } catch (error: any) {
-        console.error(`[AI Writer] ${model} error:`, error.message || error)
-        continue
+      } catch (error) {
+        console.error('[AI Writer] Unsplash image fetch error:', error)
       }
     }
-    
-    return c.json({ error: 'AI記事生成に失敗しました。しばらく待ってから再試行してください。' }, 500)
-    
+
+    console.log('[AI Writer] Article generated successfully with Claude Opus 4.8')
+    return c.json({
+      title: parsed.title || topic,
+      content: parsed.content || '',
+      excerpt: parsed.excerpt || parsed.metaDescription || '',
+      metaDescription: parsed.metaDescription || '',
+      categories: parsed.categories || ['AI活用術'],
+      tags: parsed.tags || [],
+      images
+    })
+
   } catch (error) {
     console.error('[AI Writer] Generate article error:', error)
     return c.json({ error: 'エラーが発生しました' }, 500)
@@ -9981,17 +9922,17 @@ app.post('/admin/api/ai/generate-email-reply', async (c) => {
       return c.json({ error: 'お問い合わせ内容が必要です' }, 400)
     }
     
-    // Gemini APIキーの存在確認
-    if (!c.env.GEMINI_API_KEY) {
-      console.error('GEMINI_API_KEY is not configured')
+    // Claude APIキーの存在確認
+    if (!c.env.ANTHROPIC_API_KEY) {
+      console.error('ANTHROPIC_API_KEY is not configured')
       // APIキーがない場合はフォールバック
       const fallbackBody = createFallbackEmailReply(name, subject, message, type)
-      return c.json({ 
+      return c.json({
         body: fallbackBody,
         fallback: true
       })
     }
-    
+
     const prompt = `あなたはAI教育サービス「mirAIcafe」のカスタマーサポート担当です。
 以下のお問い合わせに対する、丁寧で親しみやすい返信メールの本文を作成してください。
 
@@ -10020,77 +9961,20 @@ ${message}
 
 返信メール本文のみを出力してください。`
 
-    // 使用するモデルのリスト（フォールバック順）
-    const models = [
-      'gemini-2.5-flash',
-      'gemini-2.5-flash-lite',
-      'gemini-2.0-flash'
-    ]
-    
+    // Claude(Sonnet 5)で返信下書きを生成 — トーン重視・人が確認して送るためSonnetが最適
     let generatedBody = ''
-    let lastError: Error | null = null
-    
-    // 各モデルを順番に試行
-    for (const model of models) {
-      try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${c.env.GEMINI_API_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                parts: [{ text: prompt }]
-              }],
-              generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 1024
-              }
-            })
-          }
-        )
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } }
-          const errorMessage = errorData.error?.message || `HTTP ${response.status}`
-          
-          if (response.status === 429 || errorMessage.includes('quota')) {
-            console.log(`Model ${model} rate limited, trying next...`)
-            continue
-          }
-          
-          throw new Error(`Gemini API error (${model}): ${errorMessage}`)
-        }
-        
-        const data = await response.json() as {
-          candidates?: Array<{
-            content?: {
-              parts?: Array<{ text?: string }>
-            }
-          }>
-          error?: { message?: string }
-        }
-        
-        if (data.error) {
-          throw new Error(data.error.message || 'AI処理でエラーが発生しました')
-        }
-        
-        generatedBody = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-        
-        if (generatedBody) {
-          // 生成成功
-          break
-        }
-      } catch (e) {
-        lastError = e as Error
-        console.error(`Model ${model} failed:`, e)
-        continue
-      }
+    try {
+      generatedBody = await generateWithClaude(c.env, prompt, {
+        model: CLAUDE_MODELS.sonnet,
+        maxTokens: 1500,
+      })
+    } catch (e) {
+      console.error('Claude email reply generation failed:', e)
     }
-    
+
     // 生成結果があればそれを返す
-    if (generatedBody) {
-      return c.json({ 
+    if (generatedBody && generatedBody.trim()) {
+      return c.json({
         body: generatedBody.trim(),
         model_used: true
       })
