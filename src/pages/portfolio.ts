@@ -189,7 +189,7 @@ export const renderPortfolioListPage = (portfolios: Portfolio[]) => {
                     <!-- Image Container -->
                     <div class="aspect-[16/10] overflow-hidden relative bg-gray-100">
                       ${portfolio.thumbnail ? `
-                        <img src="${portfolio.thumbnail}" alt="${portfolio.title}" 
+                        <img loading="lazy" decoding="async" src="${portfolio.thumbnail}" alt="${portfolio.title}" 
                           class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out">
                       ` : `
                         <div class="w-full h-full bg-gradient-to-br from-amber-50 via-orange-50 to-purple-50 flex items-center justify-center">
@@ -358,7 +358,7 @@ export const renderPortfolioDetailPage = (portfolio: Portfolio, relatedPortfolio
               </div>
             ` : portfolio.thumbnail ? `
               <div class="rounded-2xl overflow-hidden shadow-xl animate-fade-in">
-                <img src="${portfolio.thumbnail}" alt="${portfolio.title}" class="w-full">
+                <img loading="lazy" decoding="async" src="${portfolio.thumbnail}" alt="${portfolio.title}" class="w-full">
               </div>
             ` : ''}
             
@@ -371,7 +371,7 @@ export const renderPortfolioDetailPage = (portfolio: Portfolio, relatedPortfolio
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                   ${images.map((img, i) => `
                     <div class="aspect-video rounded-xl overflow-hidden cursor-pointer hover:opacity-90 transition shadow-md hover:shadow-lg" onclick="openLightbox('${img}')">
-                      <img src="${img}" alt="画像 ${i + 1}" class="w-full h-full object-cover">
+                      <img loading="lazy" decoding="async" src="${img}" alt="画像 ${i + 1}" class="w-full h-full object-cover">
                     </div>
                   `).join('')}
                 </div>
@@ -509,7 +509,7 @@ export const renderPortfolioDetailPage = (portfolio: Portfolio, relatedPortfolio
                   <div class="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
                     <div class="aspect-video overflow-hidden">
                       ${p.thumbnail ? `
-                        <img src="${p.thumbnail}" alt="${p.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                        <img loading="lazy" decoding="async" src="${p.thumbnail}" alt="${p.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                       ` : `
                         <div class="w-full h-full bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center">
                           <i class="fas fa-briefcase text-3xl text-amber-300"></i>
@@ -555,7 +555,7 @@ export const renderPortfolioDetailPage = (portfolio: Portfolio, relatedPortfolio
             <a href="/courses/${course.id}" class="group block">
               <div class="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100 h-full flex flex-col">
                 <div class="aspect-video overflow-hidden relative flex-shrink-0">
-                  <img src="${course.image}" alt="${course.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                  <img loading="lazy" decoding="async" src="${course.image}" alt="${course.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                   <div class="absolute top-3 left-3">
                     <span class="bg-white/95 backdrop-blur-sm text-xs font-semibold text-amber-700 px-3 py-1 rounded-full">${course.category}</span>
                   </div>
@@ -590,7 +590,7 @@ export const renderPortfolioDetailPage = (portfolio: Portfolio, relatedPortfolio
       <button class="absolute top-6 right-6 text-white text-3xl hover:text-gray-300 transition" onclick="closeLightbox()">
         <i class="fas fa-times"></i>
       </button>
-      <img id="lightbox-img" src="" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" onclick="event.stopPropagation()">
+      <img loading="lazy" decoding="async" id="lightbox-img" src="" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" onclick="event.stopPropagation()">
     </div>
     
     <script>

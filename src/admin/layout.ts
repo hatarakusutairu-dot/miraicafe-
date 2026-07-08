@@ -33,7 +33,7 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title} | mirAIcafe管理画面</title>
   <link rel="icon" type="image/png" href="/static/favicon.png">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/tailwind.css">
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
   <style>
     * { font-family: 'Noto Sans JP', sans-serif; }
@@ -666,7 +666,7 @@ export const renderLoginPage = (error?: string) => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ログイン | mirAIcafe管理画面</title>
   <link rel="icon" type="image/png" href="/static/favicon.png">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/tailwind.css">
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-slate-900 min-h-screen flex items-center justify-center p-4">

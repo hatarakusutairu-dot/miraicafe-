@@ -559,7 +559,7 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
           return \`
             <a href="/courses/\${course.id}" class="course-scroll-card bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all block group">
               <div class="aspect-video relative overflow-hidden bg-gradient-to-br from-gray-100 to-gray-50">
-                \${course.image ? \`<img src="\${course.image}" alt="\${course.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">\` : \`<div class="w-full h-full flex items-center justify-center"><i class="fas fa-book-open text-5xl text-gray-200"></i></div>\`}
+                \${course.image ? \`<img loading="lazy" decoding="async" src="\${course.image}" alt="\${course.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">\` : \`<div class="w-full h-full flex items-center justify-center"><i class="fas fa-book-open text-5xl text-gray-200"></i></div>\`}
                 <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
                 <div class="absolute top-3 left-3 flex gap-2">
                   <span class="text-xs font-bold px-2.5 py-1 rounded-full shadow-sm \${priceClass}">\${priceLabel}</span>
@@ -781,7 +781,7 @@ export const renderCoursesPage = (courses: Course[], seriesMap?: Record<string, 
               <!-- ヘッダー画像 -->
               <div class="aspect-[21/9] relative overflow-hidden bg-gradient-to-br from-ai-purple/20 to-ai-blue/20">
                 ${series.image ? `
-                  <img src="${series.image}" alt="${series.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                  <img loading="lazy" decoding="async" src="${series.image}" alt="${series.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                 ` : `
                   <div class="w-full h-full flex items-center justify-center">
                     <i class="fas fa-layer-group text-6xl text-ai-purple/30"></i>
@@ -1221,7 +1221,7 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
       </a>
       
       <div class="aspect-[3/1] max-h-96 overflow-hidden">
-        <img src="${course.image}" alt="${course.title}" class="w-full h-full object-cover">
+        <img loading="lazy" decoding="async" src="${course.image}" alt="${course.title}" class="w-full h-full object-cover">
         <div class="absolute inset-0 bg-gradient-to-t from-future-text/90 via-future-text/50 to-transparent"></div>
       </div>
       <div class="absolute bottom-0 left-0 right-0">
@@ -1356,7 +1356,7 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
                 <i class="fas fa-chevron-right text-lg sm:text-xl"></i>
               </button>
               <div class="max-w-4xl max-h-[85vh] sm:max-h-[80vh] px-12 sm:px-16">
-                <img id="modal-image" src="" alt="" class="max-w-full max-h-[70vh] sm:max-h-[75vh] object-contain mx-auto rounded-lg">
+                <img loading="lazy" decoding="async" id="modal-image" src="" alt="" class="max-w-full max-h-[70vh] sm:max-h-[75vh] object-contain mx-auto rounded-lg">
                 <p id="modal-caption" class="text-white text-center mt-3 sm:mt-4 text-sm sm:text-base px-4"></p>
               </div>
             </div>
@@ -2187,7 +2187,7 @@ export const renderSeriesDetailPage = (
       <div class="absolute inset-0 bg-gradient-to-br from-ai-purple/10 via-ai-blue/5 to-nature-mint/10"></div>
       ${series.image ? `
         <div class="absolute inset-0">
-          <img src="${series.image}" alt="" class="w-full h-full object-cover opacity-20">
+          <img loading="lazy" decoding="async" src="${series.image}" alt="" class="w-full h-full object-cover opacity-20">
           <div class="absolute inset-0 bg-gradient-to-t from-white via-white/80 to-white/60"></div>
         </div>
       ` : ''}
@@ -2385,7 +2385,7 @@ export const renderSeriesDetailPage = (
                 <!-- サムネイル -->
                 <div class="w-24 sm:w-32 flex-shrink-0 relative overflow-hidden bg-gradient-to-br from-ai-purple/10 to-ai-blue/10">
                   ${course.image ? `
-                    <img src="${course.image}" alt="" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    <img loading="lazy" decoding="async" src="${course.image}" alt="" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                   ` : `
                     <div class="w-full h-full flex items-center justify-center min-h-[100px]">
                       <span class="text-3xl font-bold text-ai-purple/30">${index + 1}</span>

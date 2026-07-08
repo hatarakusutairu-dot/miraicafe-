@@ -165,7 +165,7 @@ export const renderBlogPage = (posts: BlogPost[]) => {
                 <a href="/blog/${posts[0].id}" class="card-hover block bg-white overflow-hidden shadow-lg border border-future-sky/50 mb-8 rounded-2xl blog-card" data-category="${posts[0].category}" data-tags="${posts[0].tags?.join(',') || ''}">
                   <div class="grid grid-cols-1 md:grid-cols-2">
                     <div class="aspect-video md:aspect-auto md:h-64 overflow-hidden">
-                      <img src="${posts[0].image}" alt="${posts[0].title}" class="w-full h-full object-cover hover:scale-105 transition-transform duration-700">
+                      <img loading="lazy" decoding="async" src="${posts[0].image}" alt="${posts[0].title}" class="w-full h-full object-cover hover:scale-105 transition-transform duration-700">
                     </div>
                     <div class="p-6 flex flex-col justify-center">
                       <div class="flex flex-wrap items-center gap-2 text-sm mb-3">
@@ -197,7 +197,7 @@ export const renderBlogPage = (posts: BlogPost[]) => {
               ${posts.slice(1).map(post => `
                 <a href="/blog/${post.id}" class="card-hover bg-white overflow-hidden shadow-lg border border-future-sky/50 block blog-card rounded-2xl" data-category="${post.category}" data-tags="${post.tags?.join(',') || ''}">
                   <div class="aspect-video overflow-hidden">
-                    <img src="${post.image}" alt="${post.title}" class="w-full h-full object-cover hover:scale-110 transition-transform duration-700">
+                    <img loading="lazy" decoding="async" src="${post.image}" alt="${post.title}" class="w-full h-full object-cover hover:scale-110 transition-transform duration-700">
                   </div>
                   <div class="p-5">
                     <div class="flex flex-wrap items-center gap-2 text-sm mb-2">
@@ -748,7 +748,7 @@ export const renderBlogPostPage = (post: BlogPost, allPosts: BlogPost[], courses
     <section class="relative">
       <!-- アイキャッチ画像（大きく表示） -->
       <div class="relative h-[300px] md:h-[400px] overflow-hidden">
-        <img src="${post.image}" alt="${post.title}" class="w-full h-full object-cover">
+        <img loading="lazy" decoding="async" src="${post.image}" alt="${post.title}" class="w-full h-full object-cover">
         <!-- オーバーレイグラデーション -->
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
         
@@ -868,7 +868,7 @@ export const renderBlogPostPage = (post: BlogPost, allPosts: BlogPost[], courses
           ${relatedPosts.map(related => `
             <a href="/blog/${related.id}" class="group bg-white rounded-2xl overflow-hidden border border-purple-100 shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
               <div class="aspect-video overflow-hidden">
-                <img src="${related.image}" alt="${related.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <img loading="lazy" decoding="async" src="${related.image}" alt="${related.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
               </div>
               <div class="p-4">
                 <span class="${getCategoryColor(related.category).bgColor} ${getCategoryColor(related.category).color} text-xs font-medium px-2 py-1 rounded-full">${related.category}</span>
@@ -898,7 +898,7 @@ export const renderBlogPostPage = (post: BlogPost, allPosts: BlogPost[], courses
           ${courses.map((course: any) => `
             <a href="/courses/${course.id}" class="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
               <div class="aspect-video overflow-hidden">
-                <img src="${course.image}" alt="${course.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <img loading="lazy" decoding="async" src="${course.image}" alt="${course.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
               </div>
               <div class="p-4">
                 <span class="inline-block text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-700 mb-2">${course.category || 'AI講座'}</span>

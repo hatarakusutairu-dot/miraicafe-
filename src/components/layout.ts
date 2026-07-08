@@ -31,54 +31,10 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     gtag('config', 'G-RE398WK016');
   </script>
   
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            cafe: {
-              ivory: '#FAF8F3',
-              cream: '#F5F0E6',
-              beige: '#E8DCC8',
-              sand: '#DED3C2',
-              latte: '#D4C4A8',
-              caramel: '#C4A574',
-              wood: '#B8956A',
-              brown: '#8B7355',
-              espresso: '#5D4E3A',
-              dark: '#3D3428',
-              text: '#4A4035',
-              textLight: '#7A7265'
-            },
-            nature: {
-              mint: '#D4E5D0',
-              sage: '#B8CDB0',
-              green: '#8FB585',
-              forest: '#6B9B62',
-              sky: '#D4E8E8',
-              aqua: '#B8D8D8',
-              blue: '#8BBCBC'
-            },
-            // 旧Future/AIテーマの互換トークン。値をカフェ系パレットに再マッピングして
-            // 全ページの世界観を「温かいカフェ×ほんのりAI」に統一している
-            future: {
-              text: '#4A4035',       // = cafe.text
-              textLight: '#7A7265',  // = cafe.textLight
-              light: '#FAF8F3',      // = cafe.ivory
-              sky: '#E8DCC8'         // = cafe.beige（枠線・区切り）
-            },
-            ai: {
-              blue: '#6B9B62',       // = nature.forest（情報・リンク系アクセント）
-              cyan: '#8BBCBC',       // = nature.blue
-              purple: '#B8956A',     // = cafe.wood（強調・シリーズ系）
-              pink: '#C97B5D'        // テラコッタ（暖色アクセント）
-            }
-          }
-        }
-      }
-    }
-  </script>
+  <!-- Tailwind CSS（ビルド時生成。カラートークンは tailwind.config.cjs 参照） -->
+  <link rel="stylesheet" href="/static/tailwind.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
   <style>

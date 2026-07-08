@@ -16,7 +16,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
     <section class="relative min-h-[90vh] flex items-center overflow-hidden">
       <!-- Background Image with Warm Overlay -->
       <div class="absolute inset-0">
-        <img src="/static/greenhouse-bg.jpg" alt="温室カフェ" class="w-full h-full object-cover hero-zoom">
+        <img loading="eager" fetchpriority="high" decoding="async" src="/static/greenhouse-bg.jpg" alt="温室カフェ" class="w-full h-full object-cover hero-zoom">
         <div class="absolute inset-0 bg-gradient-to-r from-cafe-ivory/95 via-cafe-ivory/80 to-cafe-ivory/40"></div>
         <div class="absolute inset-0 bg-gradient-to-t from-cafe-ivory via-transparent to-transparent"></div>
       </div>
@@ -179,7 +179,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
                 <a href="\${item.url}" target="_blank" rel="noopener" 
                    class="flex-none w-72 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border border-gray-100 overflow-hidden group">
                   <div class="relative h-36 overflow-hidden bg-gradient-to-br from-blue-100 to-purple-100">
-                    <img 
+                    <img loading="lazy" decoding="async" 
                       src="\${item.image_url || ''}" 
                       alt="\${escapeHtml(item.title)}"
                       class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -313,7 +313,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           ${recentPosts.slice(0, 3).map(post => `
             <a href="/blog/${post.id}" class="group bg-white rounded-xl overflow-hidden shadow-lg border border-gray-100 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
               <div class="aspect-video overflow-hidden">
-                <img src="${post.image}" alt="${post.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                <img loading="lazy" decoding="async" src="${post.image}" alt="${post.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
               </div>
               <div class="p-6">
                 <div class="flex items-center gap-3 text-sm text-cafe-textLight mb-3">
@@ -365,11 +365,11 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         <div class="flex flex-col lg:flex-row gap-10 items-center relative">
           <!-- 左側: プロフィール画像 -->
           <div class="lg:w-72 flex-shrink-0 mx-auto lg:mx-0 relative">
-            <img src="/static/mion-profile.png" alt="mion(ミオン)" class="w-full max-w-xs mx-auto rounded-2xl shadow-xl">
+            <img loading="lazy" decoding="async" src="/static/mion-profile.png" alt="mion(ミオン)" class="w-full max-w-xs mx-auto rounded-2xl shadow-xl">
             
             <!-- 個別相談バナー（ふわふわアニメーション） - 直接予約ページへ -->
             <a href="/consultation" class="consultation-banner-wrapper absolute -bottom-12 -left-8 lg:-left-20 z-20 cursor-pointer block">
-              <img src="/static/consultation-btn.png?v=2" alt="個別相談はこちらから" class="consultation-banner w-44 md:w-52 lg:w-56 drop-shadow-lg hover:scale-110 transition-transform duration-300">
+              <img loading="lazy" decoding="async" src="/static/consultation-btn.png?v=2" alt="個別相談はこちらから" class="consultation-banner w-44 md:w-52 lg:w-56 drop-shadow-lg hover:scale-110 transition-transform duration-300">
             </a>
           </div>
           
@@ -416,7 +416,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
                 <ellipse class="steam-cloud steam-3" cx="98" cy="20" rx="7" ry="5" fill="#f5d6a8" opacity="0.4"/>
               </svg>
               <!-- カフェカップ画像 -->
-              <img src="/static/miraicafe-cup.png" alt="mirAIcafe ワークスペース" class="cafe-cup-image w-24 h-24 md:w-32 md:h-32 object-contain drop-shadow-lg">
+              <img loading="lazy" decoding="async" src="/static/miraicafe-cup.png" alt="mirAIcafe ワークスペース" class="cafe-cup-image w-24 h-24 md:w-32 md:h-32 object-contain drop-shadow-lg">
               <!-- ホバー時のツールチップ -->
               <div class="cafe-tooltip">
                 <span class="text-sm font-medium">☕ ワークスペース</span>
@@ -468,7 +468,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
             return `
             <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow group">
               <div class="aspect-video overflow-hidden relative">
-                <img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                <img loading="lazy" decoding="async" src="${item.image}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                 ${item.demo_type === 'video' ? `
                   <div class="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <i class="fas fa-play-circle text-white text-5xl"></i>
@@ -560,9 +560,9 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           </div>
           <div class="relative flex justify-center items-end gap-4">
             <div class="absolute inset-0 bg-nature-mint rounded-3xl opacity-30 blur-2xl"></div>
-            <img src="/static/companion-green.png" alt="リーフ" class="relative w-28 md:w-36 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char1 6s ease-in-out infinite;">
-            <img src="/static/companion-rabbit.png" alt="ロボうさぎ" class="relative w-32 md:w-40 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char2 7s ease-in-out infinite;">
-            <img src="/static/companion-pink.png" alt="ピンク" class="relative w-24 md:w-32 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char3 5s ease-in-out infinite;">
+            <img loading="lazy" decoding="async" src="/static/companion-green.png" alt="リーフ" class="relative w-28 md:w-36 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char1 6s ease-in-out infinite;">
+            <img loading="lazy" decoding="async" src="/static/companion-rabbit.png" alt="ロボうさぎ" class="relative w-32 md:w-40 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char2 7s ease-in-out infinite;">
+            <img loading="lazy" decoding="async" src="/static/companion-pink.png" alt="ピンク" class="relative w-24 md:w-32 drop-shadow-xl hover:scale-110 transition-transform duration-500" style="animation: float-char3 5s ease-in-out infinite;">
           </div>
         </div>
       </div>
@@ -716,7 +716,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           ${featuredCourses.map(course => `
             <div class="card-hover bg-white overflow-hidden shadow-lg border border-cafe-beige">
               <div class="aspect-video relative overflow-hidden">
-                <img src="${course.image}" alt="${course.title}" class="w-full h-full object-cover hover:scale-110 transition-transform duration-700">
+                <img loading="lazy" decoding="async" src="${course.image}" alt="${course.title}" class="w-full h-full object-cover hover:scale-110 transition-transform duration-700">
                 <div class="absolute inset-0 bg-gradient-to-t from-cafe-espresso/50 to-transparent"></div>
                 <div class="absolute top-4 left-4">
                   <span class="bg-cafe-wood text-white text-xs font-bold px-3 py-1 rounded-full shadow">${course.level}</span>
@@ -915,7 +915,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           <i class="fas fa-times text-lg"></i>
         </button>
         <div class="cafe-door-header pt-12 sm:pt-8">
-          <img src="/static/miraicafe-cup.png" alt="mirAIcafe" class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 sm:mb-3 drop-shadow-md">
+          <img loading="lazy" decoding="async" src="/static/miraicafe-cup.png" alt="mirAIcafe" class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 sm:mb-3 drop-shadow-md">
           <h2 class="text-xl sm:text-2xl font-bold text-amber-900">mirAIcafe ワークスペース</h2>
           <p class="text-amber-700 mt-1 sm:mt-2 text-sm sm:text-base">みんなでAIツールを触る時間☕</p>
         </div>

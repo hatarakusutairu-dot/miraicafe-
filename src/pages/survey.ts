@@ -52,7 +52,7 @@ export const renderSurveyPage = (
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>受講後アンケート | mirAIcafe</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/tailwind.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
@@ -581,7 +581,7 @@ export const renderSurveyPage = (
   <!-- 固定コーヒーカップ進捗 -->
   <div class="coffee-cup-fixed flex flex-col items-center gap-1">
     <div class="progress-cup-wrapper">
-      <img src="/static/coffee-cup.png" alt="進捗" class="progress-cup-img">
+      <img loading="lazy" decoding="async" src="/static/coffee-cup.png" alt="進捗" class="progress-cup-img">
       <div class="progress-cup-fill">
         <div class="progress-cup-fill-inner" id="coffee-fill" style="height: 100%;"></div>
       </div>
@@ -601,7 +601,7 @@ export const renderSurveyPage = (
         <!-- キャラクターバナー -->
         <div class="mb-4 sm:mb-6">
           <div class="character-banner-wrapper mx-auto max-w-sm">
-            <img src="/static/characters-banner.png" 
+            <img loading="lazy" decoding="async" src="/static/characters-banner.png" 
                  alt="mirAIcafe キャラクター" 
                  class="character-banner w-full">
           </div>
@@ -610,7 +610,7 @@ export const renderSurveyPage = (
         <h1 class="title-3d text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-3" style="color: #5a5a6e;">受講後アンケート</h1>
         
         ${logoUrl ? `
-          <img src="${logoUrl}" alt="Logo" class="h-12 mx-auto mb-3">
+          <img loading="lazy" decoding="async" src="${logoUrl}" alt="Logo" class="h-12 mx-auto mb-3">
         ` : ''}
         
         <p class="text-base sm:text-lg" style="color: #8b8b9e;">AI学習の体験について教えてください</p>
