@@ -599,7 +599,7 @@ export const renderContactPage = () => {
             submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>送信する';
           }
         } catch (error) {
-          alert('エラー: ' + error.message);
+          showToast('エラー: ' + error.message, 'error');
           submitBtn.disabled = false;
           submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>送信する';
         }
@@ -654,7 +654,7 @@ export const renderContactPage = () => {
           console.error('Speech recognition error:', event.error);
           stopRecording();
           if (event.error === 'not-allowed') {
-            alert('マイクへのアクセスが許可されていません。ブラウザの設定でマイクを許可してください。');
+            showToast('マイクへのアクセスが許可されていません。ブラウザの設定でマイクを許可してください。', 'error');
           }
         };
 

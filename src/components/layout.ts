@@ -1190,6 +1190,59 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       updateCharacterPositions();
     })();
   </script>
+
+  <!-- 共通トースト通知（alert()の置き換え。showToast(message, type) で全ページから利用可能） -->
+  <div id="toast-container" style="position: fixed; top: 5rem; right: 1rem; z-index: 10000; display: flex; flex-direction: column; gap: 0.5rem; max-width: min(22rem, calc(100vw - 2rem)); pointer-events: none;"></div>
+  <style>
+    .toast-item {
+      pointer-events: auto;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.625rem;
+      padding: 0.875rem 1rem;
+      border-radius: 1rem;
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: 0 8px 30px rgba(61, 52, 40, 0.18);
+      border-left: 4px solid #6B9B62;
+      color: #4A4035;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      opacity: 0;
+      transform: translateX(12px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    .toast-item.toast-visible { opacity: 1; transform: translateX(0); }
+    .toast-item.toast-error { border-left-color: #C0564A; }
+    .toast-item.toast-warning { border-left-color: #C4A574; }
+    .toast-item .toast-icon { flex-shrink: 0; margin-top: 0.1rem; }
+    .toast-item.toast-success .toast-icon { color: #6B9B62; }
+    .toast-item.toast-error .toast-icon { color: #C0564A; }
+    .toast-item.toast-warning .toast-icon { color: #C4A574; }
+  </style>
+  <script>
+    window.showToast = function(message, type, durationMs) {
+      type = type || 'success';
+      var container = document.getElementById('toast-container');
+      if (!container) { alert(message); return; }
+      var icons = { success: 'fa-circle-check', error: 'fa-circle-exclamation', warning: 'fa-triangle-exclamation' };
+      var el = document.createElement('div');
+      el.className = 'toast-item toast-' + type;
+      el.setAttribute('role', type === 'error' ? 'alert' : 'status');
+      var icon = document.createElement('i');
+      icon.className = 'fas ' + (icons[type] || icons.success) + ' toast-icon';
+      var text = document.createElement('span');
+      text.textContent = message;
+      el.appendChild(icon);
+      el.appendChild(text);
+      container.appendChild(el);
+      requestAnimationFrame(function() { el.classList.add('toast-visible'); });
+      var ttl = durationMs || (type === 'error' ? 6000 : 4000);
+      setTimeout(function() {
+        el.classList.remove('toast-visible');
+        setTimeout(function() { el.remove(); }, 300);
+      }, ttl);
+    };
+  </script>
 </body>
 </html>
 `

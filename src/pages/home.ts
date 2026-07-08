@@ -1087,7 +1087,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
       
       async function processWorkspaceBooking() {
         if (!selectedWorkspaceSchedule) {
-          alert('日程を選択してください');
+          showToast('日程を選択してください', 'warning');
           return;
         }
         
@@ -1096,7 +1096,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         const phone = document.getElementById('ws-phone').value.trim();
         
         if (!name || !email) {
-          alert('お名前とメールアドレスは必須です');
+          showToast('お名前とメールアドレスは必須です', 'warning');
           return;
         }
         
@@ -1105,7 +1105,7 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
         const agreeCommerce = document.getElementById('ws-agree-commerce').checked;
         
         if (!agreeTerms || !agreeCancellation || !agreeCommerce) {
-          alert('利用規約、キャンセルポリシー、特定商取引法に基づく表記への同意が必要です');
+          showToast('利用規約、キャンセルポリシー、特定商取引法に基づく表記への同意が必要です', 'warning');
           return;
         }
         
@@ -1126,11 +1126,11 @@ export const renderHomePage = (featuredCourses: Course[], recentPosts: BlogPost[
           if (data.url) {
             window.location.href = data.url;
           } else {
-            alert(data.error || '予約処理に失敗しました');
+            showToast(data.error || '予約処理に失敗しました', 'error');
           }
         } catch (error) {
           console.error('予約エラー:', error);
-          alert('予約処理中にエラーが発生しました');
+          showToast('予約処理中にエラーが発生しました', 'error');
         }
       }
     </script>

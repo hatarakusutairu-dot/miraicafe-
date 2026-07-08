@@ -100,6 +100,41 @@ export const renderReservationPage = (
       </div>
     </section>
 
+    <!-- 予約ステップインジケーター -->
+    <style>
+      .booking-step .step-dot {
+        width: 1.75rem; height: 1.75rem; border-radius: 9999px;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 0.8rem; font-weight: 700;
+        background: #E8DCC8; color: #7A7265;
+        transition: all 0.25s ease;
+      }
+      .booking-step .step-label { color: #7A7265; font-weight: 500; }
+      .booking-step.step-active .step-dot { background: #B8956A; color: #fff; box-shadow: 0 0 0 4px rgba(184,149,106,0.20); }
+      .booking-step.step-active .step-label { color: #4A4035; font-weight: 700; }
+      .booking-step.step-done .step-dot { background: #6B9B62; color: #fff; }
+      .booking-step.step-done .step-label { color: #6B9B62; }
+      .step-bar { flex: 1; height: 2px; background: #E8DCC8; margin: 0 0.5rem; min-width: 1.25rem; max-width: 3.5rem; }
+      @media (max-width: 480px) { .booking-step .step-label { font-size: 0.72rem; } }
+    </style>
+    <div class="bg-future-light pt-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <ol id="booking-steps" class="flex items-center justify-center bg-white rounded-full shadow-md px-5 py-3 max-w-xl mx-auto text-sm" aria-label="予約の進行状況">
+          <li class="booking-step step-active flex items-center gap-2" data-step="1">
+            <span class="step-dot">1</span><span class="step-label">内容を選ぶ</span>
+          </li>
+          <li class="step-bar" aria-hidden="true"></li>
+          <li class="booking-step flex items-center gap-2" data-step="2">
+            <span class="step-dot">2</span><span class="step-label">お客様情報</span>
+          </li>
+          <li class="step-bar" aria-hidden="true"></li>
+          <li class="booking-step flex items-center gap-2" data-step="3">
+            <span class="step-dot">3</span><span class="step-label">確認・決済</span>
+          </li>
+        </ol>
+      </div>
+    </div>
+
     <!-- Reservation Section -->
     <section class="py-12 bg-future-light">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -384,7 +419,9 @@ export const renderReservationPage = (
                 </div>
                 <div>
                   <label class="block text-future-text text-sm font-medium mb-2">メールアドレス <span class="text-red-500">*</span></label>
-                  <input type="email" id="customer-email" required class="w-full p-4 border-2 border-future-sky rounded-2xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light" placeholder="example@email.com">
+                  <input type="email" id="customer-email" required class="w-full p-4 border-2 border-future-sky rounded-2xl focus:border-ai-blue focus:outline-none transition-colors bg-future-light" placeholder="example@email.com" autocomplete="email" inputmode="email">
+                  <p id="email-error" class="hidden text-red-500 text-xs mt-1"><i class="fas fa-circle-exclamation mr-1"></i>メールアドレスの形式が正しくありません</p>
+                  <p class="text-xs text-future-textLight mt-1">確認メール・参加URLはこのアドレスに届きます</p>
                 </div>
                 <div>
                   <label class="block text-future-text text-sm font-medium mb-2">電話番号</label>
@@ -515,8 +552,9 @@ export const renderReservationPage = (
               </div>
 
               <button id="checkout-btn" disabled class="btn-ai w-full text-white py-4 rounded-full font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" style="background: linear-gradient(135deg, #6B9B62 0%, #B8956A 100%);">
-                <i id="checkout-btn-icon" class="fas fa-credit-card mr-2"></i><span id="checkout-btn-text">決済に進む</span>
+                <i id="checkout-btn-icon" class="fas fa-credit-card mr-2"></i><span id="checkout-btn-text">内容を確認する</span>
               </button>
+              <p id="checkout-missing" class="hidden text-xs text-cafe-textLight text-center mt-2"></p>
 
               <p id="payment-notice" class="text-xs text-future-textLight text-center mt-4 flex items-center justify-center">
                 <i class="fas fa-lock mr-1 text-ai-blue"></i>Stripeによる安全な決済
@@ -540,6 +578,34 @@ export const renderReservationPage = (
             <div class="w-12 h-12 border-4 border-ai-blue border-t-transparent rounded-full animate-spin"></div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- 決済前の最終確認モーダル -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <h3 class="text-xl font-bold text-cafe-text mb-4">
+          <i class="fas fa-clipboard-check text-nature-forest mr-2"></i>ご予約内容の確認
+        </h3>
+        <div id="confirm-dup-warning" class="hidden mb-4 p-3 bg-amber-50 border border-amber-300 rounded-xl text-sm text-amber-800">
+          <i class="fas fa-triangle-exclamation mr-1"></i><span id="confirm-dup-text"></span>
+        </div>
+        <dl class="space-y-2 text-sm mb-6">
+          <div class="flex justify-between gap-4"><dt class="text-cafe-textLight flex-shrink-0">講座</dt><dd id="confirm-course" class="font-medium text-cafe-text text-right"></dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-cafe-textLight flex-shrink-0">日程</dt><dd id="confirm-date" class="font-medium text-cafe-text text-right"></dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-cafe-textLight flex-shrink-0">お名前</dt><dd id="confirm-name" class="font-medium text-cafe-text text-right"></dd></div>
+          <div class="flex justify-between gap-4"><dt class="text-cafe-textLight flex-shrink-0">メール</dt><dd id="confirm-email" class="font-medium text-cafe-text text-right break-all"></dd></div>
+          <div class="flex justify-between gap-4 border-t border-cafe-beige pt-3 mt-3"><dt class="text-cafe-text font-bold">合計金額</dt><dd id="confirm-price" class="font-bold text-nature-forest text-lg text-right"></dd></div>
+        </dl>
+        <div class="flex gap-3">
+          <button id="confirm-cancel-btn" class="flex-1 py-3 rounded-full border-2 border-cafe-beige text-cafe-textLight font-medium hover:bg-cafe-ivory transition">戻る</button>
+          <button id="confirm-proceed-btn" class="flex-1 py-3 rounded-full text-white font-bold gradient-ai btn-ai shadow-lg">
+            <span id="confirm-proceed-text">決済へ進む</span>
+          </button>
+        </div>
+        <p class="text-xs text-cafe-textLight text-center mt-3">
+          <i class="fas fa-lock mr-1"></i>決済はStripeの安全なページで行われます
+        </p>
       </div>
     </div>
 
@@ -626,7 +692,7 @@ export const renderReservationPage = (
         window.history.replaceState({}, document.title, window.location.pathname);
       } else if (urlParams.get('canceled') === 'true') {
         // 決済キャンセル
-        alert('決済がキャンセルされました。再度お試しください。');
+        if (window.showToast) showToast('決済がキャンセルされました。再度お試しください。', 'warning');
         window.history.replaceState({}, document.title, window.location.pathname);
       }
 
@@ -790,6 +856,21 @@ export const renderReservationPage = (
         }
       });
 
+      // お客様情報のインラインバリデーション（入力のたびにボタン状態・ステップを更新）
+      var customerNameInput = document.getElementById('customer-name');
+      var customerEmailInput = document.getElementById('customer-email');
+      if (customerNameInput) customerNameInput.addEventListener('input', updateSummary);
+      if (customerEmailInput) {
+        customerEmailInput.addEventListener('input', function() {
+          var v = this.value.trim();
+          var bad = v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+          this.classList.toggle('border-red-400', !!bad);
+          var emailError = document.getElementById('email-error');
+          if (emailError) emailError.classList.toggle('hidden', !bad);
+          updateSummary();
+        });
+      }
+
       if (courseSelect) {
         courseSelect.addEventListener('change', function() {
           selectedCourseId = this.value;
@@ -808,21 +889,28 @@ export const renderReservationPage = (
       // 初期化時にサマリー更新（シリーズ予約の場合はボタンを有効化）
       updateSummary();
 
+      // メールアドレスの簡易形式チェック
+      function isValidEmail(v) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+      }
+
+      // 「内容を確認する」→ 重複チェック → 確認モーダル表示
       if (checkoutBtn) checkoutBtn.addEventListener('click', async function() {
-        const name = document.getElementById('customer-name').value;
-        const email = document.getElementById('customer-email').value;
-        const phone = document.getElementById('customer-phone').value;
-        const course = courses.find(c => c.id === selectedCourseId);
-        
+        const name = document.getElementById('customer-name').value.trim();
+        const email = document.getElementById('customer-email').value.trim();
+
         // 全ての規約への同意チェック
         if (!areAllPoliciesAgreed()) {
           if (policyError) policyError.classList.remove('hidden');
           if (termsAgree) termsAgree.scrollIntoView({ behavior: 'smooth', block: 'center' });
           return;
         }
-        
-        if (!name || !email) { alert('お名前とメールアドレスは必須です'); return; }
-        
+
+        if (!name || !email || !isValidEmail(email)) {
+          if (window.showToast) showToast('お名前と正しいメールアドレスを入力してください', 'error');
+          return;
+        }
+
         // 重複予約チェック
         var seriesIdEl = document.getElementById('series-id');
         var pricingTypeEl = document.getElementById('pricing-type');
@@ -830,7 +918,10 @@ export const renderReservationPage = (
         var seriesId = seriesIdEl ? seriesIdEl.value : '';
         var pricingType = pricingTypeEl ? pricingTypeEl.value : 'single';
         var termId = selectedTermIdEl ? selectedTermIdEl.value : '';
-        
+
+        var dupWarning = document.getElementById('confirm-dup-warning');
+        var dupText = document.getElementById('confirm-dup-text');
+        if (dupWarning) dupWarning.classList.add('hidden');
         try {
           const dupCheckResponse = await fetch('/api/check-duplicate-booking', {
             method: 'POST',
@@ -845,23 +936,58 @@ export const renderReservationPage = (
             })
           });
           const dupCheckData = await dupCheckResponse.json();
-          
-          if (dupCheckData.isDuplicate) {
-            const confirmProceed = confirm(
-              '⚠️ 重複予約の可能性があります\\n\\n' +
-              dupCheckData.existingBooking.message + '\\n\\n' +
-              '既に予約済みの場合、再度決済すると二重課金になります。\\n' +
-              '本当に続行しますか？'
-            );
-            if (!confirmProceed) {
-              return;
-            }
+
+          if (dupCheckData.isDuplicate && dupWarning && dupText) {
+            dupText.textContent = dupCheckData.existingBooking.message +
+              ' 既に予約済みの場合、再度決済すると二重課金になります。内容をご確認のうえお進みください。';
+            dupWarning.classList.remove('hidden');
           }
         } catch (dupError) {
           console.error('Duplicate check error:', dupError);
           // エラーが発生しても続行を許可（ユーザー体験を損なわないため）
         }
-        
+
+        // 確認モーダルに予約内容を反映して表示
+        var summaryPlanEl = document.getElementById('summary-plan');
+        var summaryTermEl = document.getElementById('summary-term');
+        var confCourse = summaryCourse ? summaryCourse.textContent : (summaryPlanEl ? summaryPlanEl.textContent : '');
+        var confDate = summaryDate
+          ? (summaryDate.textContent + (summaryTime ? '　' + summaryTime.textContent : ''))
+          : (summaryTermEl ? summaryTermEl.textContent : '');
+        document.getElementById('confirm-course').textContent = confCourse || '-';
+        document.getElementById('confirm-date').textContent = confDate || '-';
+        document.getElementById('confirm-name').textContent = name;
+        document.getElementById('confirm-email').textContent = email;
+        document.getElementById('confirm-price').textContent = summaryPrice ? summaryPrice.textContent : '';
+        var selectedPriceNow = document.getElementById('selected-price');
+        var priceNow = selectedPriceNow ? parseInt(selectedPriceNow.value) : 0;
+        var courseNow = courses.find(c => c.id === selectedCourseId);
+        var effectiveNow = (seriesId && termId && pricingType !== 'single') ? priceNow : (courseNow ? courseNow.price : 0);
+        document.getElementById('confirm-proceed-text').textContent = effectiveNow === 0 ? '予約を確定する' : '決済へ進む';
+        document.getElementById('confirm-modal').classList.remove('hidden');
+      });
+
+      // 確認モーダル: 戻る
+      var confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+      if (confirmCancelBtn) confirmCancelBtn.addEventListener('click', function() {
+        document.getElementById('confirm-modal').classList.add('hidden');
+      });
+
+      // 確認モーダル: 確定 → 決済/予約処理へ
+      var confirmProceedBtn = document.getElementById('confirm-proceed-btn');
+      if (confirmProceedBtn) confirmProceedBtn.addEventListener('click', async function() {
+        document.getElementById('confirm-modal').classList.add('hidden');
+        const name = document.getElementById('customer-name').value.trim();
+        const email = document.getElementById('customer-email').value.trim();
+        const phone = document.getElementById('customer-phone').value;
+        const course = courses.find(c => c.id === selectedCourseId);
+        var seriesIdEl = document.getElementById('series-id');
+        var pricingTypeEl = document.getElementById('pricing-type');
+        var selectedTermIdEl = document.getElementById('selected-term-id');
+        var seriesId = seriesIdEl ? seriesIdEl.value : '';
+        var pricingType = pricingTypeEl ? pricingTypeEl.value : 'single';
+        var termId = selectedTermIdEl ? selectedTermIdEl.value : '';
+
         document.getElementById('payment-modal').classList.remove('hidden');
         
         // 無料講座の場合はモーダルテキストを変更
@@ -871,7 +997,7 @@ export const renderReservationPage = (
         }
         
         try {
-          // シリーズ一括予約かどうかを判定（変数は重複チェック時に既に取得済み）
+          // シリーズ一括予約かどうかを判定
           var selectedPriceEl = document.getElementById('selected-price');
           var isSeriesBooking = seriesId && termId && pricingType !== 'single';
           var paymentPrice = selectedPriceEl ? parseInt(selectedPriceEl.value) : (course ? course.price : 0);
@@ -960,10 +1086,10 @@ export const renderReservationPage = (
           } else {
             throw new Error(checkoutData.error || '決済セッションの作成に失敗しました');
           }
-        } catch (error) { 
+        } catch (error) {
           console.error('Checkout error:', error);
-          document.getElementById('payment-modal').classList.add('hidden'); 
-          alert('エラーが発生しました: ' + (error.message || '予約処理中にエラーが発生しました')); 
+          document.getElementById('payment-modal').classList.add('hidden');
+          if (window.showToast) showToast('エラーが発生しました: ' + (error.message || '予約処理中にエラーが発生しました'), 'error');
         }
       });
 
@@ -1090,24 +1216,65 @@ export const renderReservationPage = (
         const paymentNotice = document.getElementById('payment-notice');
         if (displayPrice === 0) {
           btnIcon.className = 'fas fa-calendar-check mr-2';
-          btnText.textContent = '予約する（無料）';
+          btnText.textContent = '内容を確認する（無料予約）';
           paymentNotice.innerHTML = '<i class="fas fa-gift mr-1 text-green-500"></i>この講座は無料です';
         } else {
           btnIcon.className = 'fas fa-credit-card mr-2';
-          btnText.textContent = '決済に進む';
+          btnText.textContent = '内容を確認する';
           paymentNotice.innerHTML = '<i class="fas fa-lock mr-1 text-ai-blue"></i>Stripeによる安全な決済';
         }
-        
-        // ボタンの有効化条件
-        // シリーズ一括予約: 開催期が選択されている + 規約同意
-        // シリーズ単発参加: セッションが選択されている + 規約同意
-        // 通常の単発予約: 講座・日程が選択されている + 規約同意
+
+        // ボタンの有効化条件と「あと何が必要か」の提示
+        // 選択完了の判定はブッキング種別ごと（開催期 / セッション / 講座+日程）
+        var selectionDone;
         if (isSeriesBooking) {
-          checkoutBtn.disabled = !termId || !areAllPoliciesAgreed();
+          selectionDone = !!termId;
         } else if (isSeriesSingleBooking) {
-          checkoutBtn.disabled = !selectedCourseId || !selectedScheduleId || !areAllPoliciesAgreed();
+          selectionDone = !!(selectedCourseId && selectedScheduleId);
         } else {
-          checkoutBtn.disabled = !course || !schedule || !areAllPoliciesAgreed();
+          selectionDone = !!(course && schedule);
+        }
+
+        var nameEl = document.getElementById('customer-name');
+        var emailEl = document.getElementById('customer-email');
+        var nameVal = nameEl ? nameEl.value.trim() : '';
+        var emailVal = emailEl ? emailEl.value.trim() : '';
+        var emailOk = emailVal && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal);
+        var infoDone = !!(nameVal && emailOk);
+
+        var missing = [];
+        if (!selectionDone) missing.push(isSeriesBooking ? '開催期の選択' : (isSeriesSingleBooking ? '受講回の選択' : '講座と日程の選択'));
+        if (!nameVal) missing.push('お名前');
+        if (!emailOk) missing.push(emailVal ? 'メールアドレスの修正' : 'メールアドレス');
+        if (!areAllPoliciesAgreed()) missing.push('規約への同意');
+
+        checkoutBtn.disabled = missing.length > 0;
+
+        var missingEl = document.getElementById('checkout-missing');
+        if (missingEl) {
+          if (missing.length > 0) {
+            missingEl.textContent = 'あと必要: ' + missing.join('・');
+            missingEl.classList.remove('hidden');
+          } else {
+            missingEl.classList.add('hidden');
+          }
+        }
+
+        // ステップインジケーターを更新
+        var steps = document.querySelectorAll('#booking-steps .booking-step');
+        if (steps.length === 3) {
+          var states = [selectionDone, infoDone, missing.length === 0];
+          var activeSet = false;
+          steps.forEach(function(stepEl, i) {
+            stepEl.classList.remove('step-done', 'step-active');
+            if (states[i]) {
+              stepEl.classList.add('step-done');
+            } else if (!activeSet) {
+              stepEl.classList.add('step-active');
+              activeSet = true;
+            }
+          });
+          if (!activeSet) steps[2].classList.add('step-active');
         }
       }
 

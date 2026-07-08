@@ -803,17 +803,17 @@ export const renderConsultationPage = (props: ConsultationPageProps = {}) => {
         const agreeCommerce = document.getElementById('agreeCommerce').checked;
         
         if (!name || !email) {
-          alert('お名前とメールアドレスは必須です');
+          showToast('お名前とメールアドレスは必須です', 'warning');
           return;
         }
         
         if (!selectedDate || !selectedTime) {
-          alert('日時を選択してください');
+          showToast('日時を選択してください', 'warning');
           return;
         }
         
         if (!agreeTerms || !agreeCancellation || !agreeCommerce) {
-          alert('利用規約、キャンセルポリシー、特定商取引法に基づく表記への同意が必要です');
+          showToast('利用規約、キャンセルポリシー、特定商取引法に基づく表記への同意が必要です', 'warning');
           return;
         }
         
@@ -844,13 +844,13 @@ export const renderConsultationPage = (props: ConsultationPageProps = {}) => {
             // 申請完了ページへリダイレクト
             window.location.href = '/consultation/applied?id=' + data.consultationId;
           } else {
-            alert(data.error || '予約申請に失敗しました');
+            showToast(data.error || '予約申請に失敗しました', 'error');
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>予約を申請する';
           }
         } catch (error) {
           console.error('予約エラー:', error);
-          alert('予約申請中にエラーが発生しました');
+          showToast('予約申請中にエラーが発生しました', 'error');
           submitBtn.disabled = false;
           submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>予約を申請する';
         }

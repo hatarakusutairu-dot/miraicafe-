@@ -2096,7 +2096,7 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
         form.addEventListener('submit', function(e) {
           e.preventDefault();
           if (!ratingInput.value) {
-            alert('評価を選択してください');
+            showToast('評価を選択してください', 'warning');
             return;
           }
 
@@ -2123,12 +2123,12 @@ export const renderCourseDetailPage = (course: Course, schedules: Schedule[], al
                 resetStars();
                 charCount.textContent = '0';
               } else {
-                alert(result.error || 'エラーが発生しました');
+                showToast(result.error || 'エラーが発生しました', 'error');
               }
             });
           })
           .catch(function(err) {
-            alert('送信に失敗しました。もう一度お試しください。');
+            showToast('送信に失敗しました。もう一度お試しください。', 'error');
           });
         });
 
@@ -2450,7 +2450,7 @@ export const renderSeriesDetailPage = (
         const currentCourseId = '${linkedCourses[currentSession - 1]?.id || linkedCourses[0]?.id || ''}';
         
         if (isInProgress && planType !== 'single') {
-          alert('現在開講中のため、途中参加は単発のみとなります。\\nコース一括・早期割引は次回開催をお待ちください。');
+          showToast('現在開講中のため、途中参加は単発のみとなります。コース一括・早期割引は次回開催をお待ちください。', 'warning', 6000);
           return;
         }
         
@@ -2475,7 +2475,7 @@ export const renderSeriesDetailPage = (
         })))};
         
         if (schedules.length === 0) {
-          alert('追加できる日程がありません');
+          showToast('追加できる日程がありません', 'warning');
           return;
         }
         
@@ -2496,7 +2496,7 @@ export const renderSeriesDetailPage = (
           }, i * 500); // 500ms間隔で開く
         });
         
-        alert(schedules.length + '件の日程をカレンダーに追加します。\\nポップアップブロックが有効な場合は許可してください。');
+        showToast(schedules.length + '件の日程をカレンダーに追加します。ポップアップブロックが有効な場合は許可してください。', 'warning', 6000);
       }
     </script>
   `
