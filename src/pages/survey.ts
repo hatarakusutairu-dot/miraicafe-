@@ -52,7 +52,6 @@ export const renderSurveyPage = (
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>受講後アンケート | mirAIcafe</title>
-  <link rel="stylesheet" href="/static/tailwind.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
@@ -573,6 +572,7 @@ export const renderSurveyPage = (
       }
     }
   </style>
+  <link rel="stylesheet" href="/static/tailwind.css">
 </head>
 <body class="antialiased">
   <!-- 背景キャンバス -->

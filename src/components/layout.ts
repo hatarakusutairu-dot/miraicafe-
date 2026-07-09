@@ -31,8 +31,7 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     gtag('config', 'G-RE398WK016');
   </script>
   
-  <!-- Tailwind CSS（ビルド時生成。カラートークンは tailwind.config.cjs 参照） -->
-  <link rel="stylesheet" href="/static/tailwind.css">
+  <!-- Tailwind CSSはカスケード順維持のため</head>直前で読み込む（下記コメント参照） -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -321,7 +320,8 @@ export const renderLayout = (title: string, content: string, activeNav: string =
     }
     
     /* Content boxes - always above background animations */
-    .glass, .glass-warm {
+    /* fixed要素（ヘッダー等）にはposition:relativeを適用しない（.fixedとの競合防止） */
+    .glass:not(.fixed), .glass-warm:not(.fixed) {
       position: relative;
       z-index: 25;
     }
@@ -928,6 +928,10 @@ export const renderLayout = (title: string, content: string, activeNav: string =
       pointer-events: none;
     }
   </style>
+  <!-- Tailwind CSS（ビルド時生成。トークンは tailwind.config.cjs 参照）
+       旧CDNは生成CSSをhead末尾に注入していたため、ユーティリティが上記カスタムCSSより
+       後勝ちだった。その優先順位を維持するためlinkはインラインstyleの後に置くこと -->
+  <link rel="stylesheet" href="/static/tailwind.css">
 </head>
 <body class="bg-cafe-ivory min-h-screen flex flex-col overflow-x-hidden">
   <!-- Animated Background (軽量ページでは非表示) -->

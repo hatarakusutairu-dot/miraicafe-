@@ -33,7 +33,6 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title} | mirAIcafe管理画面</title>
   <link rel="icon" type="image/png" href="/static/favicon.png">
-  <link rel="stylesheet" href="/static/tailwind.css">
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
   <style>
     * { font-family: 'Noto Sans JP', sans-serif; }
@@ -117,6 +116,7 @@ export const renderAdminLayout = (title: string, content: string, activePage: st
       color: #6b7280;
     }
   </style>
+  <link rel="stylesheet" href="/static/tailwind.css">
 </head>
 <body class="bg-gray-100 min-h-screen">
   <!-- Mobile Header -->
